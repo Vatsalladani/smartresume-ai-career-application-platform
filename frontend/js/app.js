@@ -873,7 +873,13 @@ function wireNavigation() {
     if (validTab === "evidence-vault") loadEvidenceVault();
     if (validTab === "job-radar") loadJobRadar();
     if (validTab === "career-insights") loadCareerInsights();
-    if (validTab === "interview") loadInterviewSessions();
+    if (validTab === "interview") {
+      loadInterviewSessions();
+      loadClaimsToDefend();
+      syncInterviewContextUI();
+    } else {
+      stopLiveInterviewMedia();
+    }
     if (validTab === "smartapply") loadSmartApplyAnswers();
     if (validTab === "billing") {
       loadBillingSummary();
@@ -1004,12 +1010,52 @@ function renderDashboard() {
   const p = state.profile || {};
   const score = p.completeness_score || 0;
 
+  // Prominent Current Resume Control
+  const resumeNameEl = $("#dashCurrentResumeName");
+  const resumeBadgeEl = $("#dashCurrentResumeBadge");
+  const changeBtn = $("#dashChangeResumeBtn");
+  const activeTplId = state.activeTemplate || "classic-ats";
+  const tplDef = (window.RESUME_TEMPLATES || []).find(t => t.id === activeTplId) || { name: "Classic ATS", isPro: false };
+
+  if (resumeNameEl) {
+    resumeNameEl.textContent = tplDef.name || "Classic ATS";
+  }
+  if (resumeBadgeEl) {
+    const isUserPro = state.user?.plan === "PRO" || state.user?.is_pro;
+    const isTrial = state.user?.is_trial;
+    if (tplDef.isPro && !isUserPro && !isTrial) {
+      resumeBadgeEl.textContent = "PRO 🔒";
+      resumeBadgeEl.className = "badge-sub badge-pro-lock";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "View / Upgrade";
+    } else if (tplDef.isPro && isTrial) {
+      resumeBadgeEl.textContent = "PRO · Trial included";
+      resumeBadgeEl.className = "badge-sub badge-pro-trial";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change";
+    } else if (tplDef.isPro) {
+      resumeBadgeEl.textContent = "PRO";
+      resumeBadgeEl.className = "badge-sub badge-pro";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change";
+    } else {
+      resumeBadgeEl.textContent = "Standard";
+      resumeBadgeEl.className = "badge-sub";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change";
+    }
+  }
+
   // 4 Core Questions in Dashboard
   const q1 = $("#dashQ1Answer");
   if (q1) {
     const verifiedCount = (p.skills || []).filter(s => s.evidence_status === "SUPPORTED").length;
     const totalSkills = (p.skills || []).length;
-    q1.textContent = `Profile Health: ${score}/100 (${score >= 80 ? "Strong Evidence" : score >= 50 ? "Moderate" : "Needs Grounding"}). ${verifiedCount} of ${totalSkills} skills verified with project/experience evidence.`;
+    let strengthMsg = "Let's build your verified career foundation.";
+    if (score >= 80) {
+      strengthMsg = "Your profile has strong evidence across your core skills.";
+    } else if (score >= 50) {
+      strengthMsg = "Your profile has moderate supporting evidence. Add project proof to strengthen it.";
+    } else if (totalSkills > 0) {
+      strengthMsg = "Your profile currently has limited supporting evidence across core skills.";
+    }
+    q1.textContent = `${strengthMsg} (${verifiedCount} of ${totalSkills} skills verified with project/experience evidence).`;
   }
 
   const q2 = $("#dashQ2Answer");
@@ -1030,7 +1076,7 @@ function renderDashboard() {
     if (missing.length > 0) {
       q3.textContent = `Priority actions: ${missing.join(", ")}. Grounding improves ATS alignment.`;
     } else {
-      q3.textContent = "Strong foundational profile. Run Resume Health Report to inspect verb strength & density.";
+      q3.textContent = "Strong foundational profile. Run Strength Audit to inspect verb strength & density.";
     }
   }
 
@@ -1046,7 +1092,7 @@ function renderDashboard() {
     }
   }
 
-  // Grounding meter
+  // Career Profile Strength meter
   $("#dashCompletenessPercent").textContent = `${score}%`;
   const circle = $("#dashMeterCircle");
   if (score >= 80) {
@@ -1054,10 +1100,10 @@ function renderDashboard() {
     $("#dashCompletenessLabel").textContent = "Strong Evidence Grounding";
   } else if (score >= 50) {
     circle.style.borderColor = "var(--warning)";
-    $("#dashCompletenessLabel").textContent = "Moderate Grounding";
+    $("#dashCompletenessLabel").textContent = "Moderate Profile Strength";
   } else {
     circle.style.borderColor = "var(--primary)";
-    $("#dashCompletenessLabel").textContent = "Action Recommended";
+    $("#dashCompletenessLabel").textContent = "Foundation In Progress";
   }
 
   // Quotas in Dashboard
@@ -1164,7 +1210,7 @@ function renderDashboard() {
       activities.push({
         icon: "user-check",
         title: "Career Profile Updated",
-        subtitle: `Profile health score: ${score}%`,
+        subtitle: `Career profile strength: ${score}%`,
         date: new Date(state.profile.updated_at).toLocaleDateString(),
         actionTab: "profile",
       });
@@ -1947,6 +1993,17 @@ async function selectJob(id) {
   const job = state.jobs.find((j) => j.id === id);
   if (!job) return;
   state.activeJob = job;
+  state.activeJobContext = {
+    role: job.title,
+    company: job.company,
+    companyUrl: "",
+    jobUrl: job.job_url || "",
+    jobDescription: job.raw_description || "",
+    versionId: null,
+    jobId: job.id,
+    verification: null,
+  };
+  syncInterviewContextUI();
   $("#targetJobTitle").value = job.title;
   $("#targetCompany").value = job.company;
   $("#targetJobUrl").value = job.job_url || "";
@@ -2515,6 +2572,7 @@ function renderApplicationsList(apps) {
           ${app.job_url ? `<a href="${escapeHtml(app.job_url)}" target="_blank" class="text-xs text-primary ml-2">Job Link &nearr;</a>` : ""}
         </div>
         <div class="card-actions">
+          <button class="secondary-btn xs" type="button" data-prep-app="${app.id}" title="Practice interview for this job"><i data-lucide="messages-square"></i> Interview</button>
           <select class="text-xs" data-status-app="${app.id}">
             <option value="SAVED" ${app.status === "SAVED" ? "selected" : ""}>SAVED</option>
             <option value="APPLIED" ${app.status === "APPLIED" ? "selected" : ""}>APPLIED</option>
@@ -2527,6 +2585,19 @@ function renderApplicationsList(apps) {
       </div>
       ${app.notes ? `<p class="text-xs text-muted mt-1">${escapeHtml(app.notes)}</p>` : ""}
     `;
+    card.querySelector(`[data-prep-app="${app.id}"]`)?.addEventListener("click", () => {
+      state.activeJobContext = {
+        role: app.job_title,
+        company: app.company,
+        companyUrl: "",
+        jobUrl: app.job_url || "",
+        jobId: app.job_posting_id || null,
+        versionId: app.application_version_id || null,
+        verification: null,
+      };
+      syncInterviewContextUI();
+      navigateToTab("interview");
+    });
     card.querySelector(`[data-status-app="${app.id}"]`).addEventListener("change", (e) => updateAppStatus(app.id, e.target.value));
     card.querySelector(`[data-del-app="${app.id}"]`).addEventListener("click", () => deleteApplication(app.id));
     container.appendChild(card);
@@ -3483,31 +3554,194 @@ async function loadSmartApplyAnswers() {
 }
 
 // ==========================================================================
-// 4. INTERVIEW COPILOT MODULE
+// 4. INTERVIEW COPILOT MODULE — TEXT & LIVE AI MODES
 // ==========================================================================
 let activeInterviewSessionId = null;
+let liveMediaStream = null;
+let isLiveMicMuted = false;
+let isLiveCameraOff = false;
+
+// Active job application context (propagate across tabs)
+if (!state.activeJobContext) {
+  state.activeJobContext = {
+    role: "Software Engineer",
+    company: "Target Company",
+    companyUrl: "",
+    jobUrl: "",
+    versionId: null,
+    jobId: null,
+    verification: null,
+  };
+}
+
+function syncInterviewContextUI() {
+  const ctx = state.activeJobContext || {};
+  const roleEl = $("#interviewActiveRole");
+  const compEl = $("#interviewActiveCompany");
+  const roleInp = $("#interviewRoleInput");
+  const compInp = $("#interviewCompanyInput");
+
+  if (roleEl && ctx.role) roleEl.textContent = ctx.role;
+  if (compEl && ctx.company) compEl.textContent = ctx.company;
+  if (roleInp && ctx.role) roleInp.value = ctx.role;
+  if (compInp && ctx.company) compInp.value = ctx.company;
+
+  if (ctx.company) {
+    verifyCompanyContext(ctx.company, ctx.companyUrl, ctx.jobUrl);
+  }
+}
+
+async function verifyCompanyContext(companyName, companyUrl = "", jobUrl = "") {
+  if (!companyName) return;
+  const badge = $("#interviewCompanyBadge");
+  try {
+    const res = await API.request("/company/verify", {
+      method: "POST",
+      body: {
+        company_name: companyName,
+        company_url: companyUrl || null,
+        job_url: jobUrl || null,
+      },
+    });
+    if (badge) {
+      if (res.verification_status === "VERIFIED") {
+        badge.textContent = "✓ Verified";
+        badge.className = "company-badge badge-verified";
+      } else if (res.verification_status === "LIKELY_VERIFIED") {
+        badge.textContent = "✓ Likely Verified";
+        badge.className = "company-badge badge-likely";
+      } else if (res.verification_status === "SUSPICIOUS") {
+        badge.textContent = "⚠ Needs Review";
+        badge.className = "company-badge badge-suspicious";
+      } else {
+        badge.textContent = "? Unverified";
+        badge.className = "company-badge badge-unverified";
+      }
+    }
+    state.activeJobContext.verification = res;
+  } catch (_) {}
+}
+
+async function loadClaimsToDefend() {
+  const container = $("#claimsList");
+  if (!container) return;
+  try {
+    const jobId = state.activeJobContext?.jobId || "";
+    const claims = await API.request(`/interview/claims-to-defend?job_id=${jobId}`);
+    if (!claims || claims.length === 0) {
+      container.innerHTML = `<p class="text-xs text-muted">Complete your career profile to generate grounded claims to defend.</p>`;
+      return;
+    }
+    container.innerHTML = claims.slice(0, 3).map((c) => `
+      <div class="claim-item-card">
+        <div class="claim-head">
+          <span class="badge-sub">${escapeHtml(c.category || "Technical")}</span>
+          <strong>${escapeHtml(c.claim)}</strong>
+        </div>
+        <p class="text-xs text-muted mt-1">${escapeHtml(c.why_asked)}</p>
+        <div class="claim-prep-tip text-xs">
+          <strong>Prep Question:</strong> "${escapeHtml(c.suggested_question)}"
+        </div>
+      </div>
+    `).join("");
+  } catch (_) {}
+}
+
+function stopLiveInterviewMedia() {
+  if (liveMediaStream) {
+    liveMediaStream.getTracks().forEach((track) => track.stop());
+    liveMediaStream = null;
+  }
+  const videoEl = $("#liveCameraPreview");
+  if (videoEl) videoEl.srcObject = null;
+  isLiveMicMuted = false;
+  isLiveCameraOff = false;
+  $("#cameraDisabledOverlay")?.classList.add("hidden");
+  $("#liveMicToggleBtn")?.classList.remove("active-muted");
+}
 
 function wireInterviewCopilot() {
-  $("#startInterviewForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const role = $("#interviewRoleInput").value.trim();
-    const company = $("#interviewCompanyInput").value.trim();
-    const mode = $("#interviewModeSelect").value;
+  // Context edit toggle
+  $("#interviewEditContextBtn")?.addEventListener("click", () => {
+    const row = $("#interviewContextInputsRow");
+    if (row) row.classList.toggle("hidden");
+  });
+
+  // Role and Company manual inputs
+  $("#interviewRoleInput")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim() || "Software Engineer";
+    state.activeJobContext.role = val;
+    if ($("#interviewActiveRole")) $("#interviewActiveRole").textContent = val;
+  });
+
+  $("#interviewCompanyInput")?.addEventListener("change", (e) => {
+    const val = e.target.value.trim() || "Target Company";
+    state.activeJobContext.company = val;
+    if ($("#interviewActiveCompany")) $("#interviewActiveCompany").textContent = val;
+    verifyCompanyContext(val);
+  });
+
+  $("#interviewResetContextBtn")?.addEventListener("click", () => {
+    state.activeJobContext = {
+      role: "Software Engineer",
+      company: "Target Company",
+      companyUrl: "",
+      jobUrl: "",
+      versionId: null,
+      jobId: null,
+      verification: null,
+    };
+    syncInterviewContextUI();
+    toast("Interview context reset.");
+  });
+
+  // Mode selection cards
+  const modeTextCard = $("#modeCardText");
+  const modeLiveCard = $("#modeCardLive");
+
+  modeTextCard?.addEventListener("click", () => {
+    modeTextCard.classList.add("active-card");
+    modeLiveCard?.classList.remove("active-card");
+  });
+
+  modeLiveCard?.addEventListener("click", () => {
+    modeLiveCard.classList.add("active-card");
+    modeTextCard?.classList.remove("active-card");
+  });
+
+  // START TEXT INTERVIEW
+  $("#startTextInterviewBtn")?.addEventListener("click", async () => {
+    const role = $("#interviewRoleInput")?.value.trim() || state.activeJobContext.role || "Software Engineer";
+    const company = $("#interviewCompanyInput")?.value.trim() || state.activeJobContext.company || "Target Company";
+    const level = $("#interviewCareerLevelSelect")?.value || "DEVELOPING";
 
     try {
-      toast("Initializing AI Interview Copilot...");
+      toast("Initializing Text Interview Session...");
       const session = await API.request("/interview/sessions", {
         method: "POST",
-        body: { target_role: role, target_company: company, session_mode: mode },
+        body: {
+          target_role: role,
+          target_company: company,
+          session_mode: "TEXT",
+          career_level: level,
+          job_id: state.activeJobContext.jobId || null,
+        },
       });
+
       activeInterviewSessionId = session.id;
+      $("#textInterviewWorkspace")?.classList.remove("hidden");
+      $("#liveInterviewRoom")?.classList.add("hidden");
+      $("#interviewReviewCard")?.classList.add("hidden");
+
       renderActiveInterviewSession(session);
       await loadInterviewSessions();
+      toast("Level 1: Warm-up initialized.");
     } catch (err) {
       toast(err.message, "error");
     }
   });
 
+  // TEXT INTERVIEW TURN SUBMIT
   $("#interviewTurnForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!activeInterviewSessionId) return;
@@ -3524,28 +3758,228 @@ function wireInterviewCopilot() {
         method: "POST",
         body: { message_text: text },
       });
+
       appendInterviewMsg("ai", turnRes.ai_response);
-      if (turnRes.turn_feedback) {
-        toast(turnRes.turn_feedback.star_assessment || "Response recorded.");
+
+      // Update progression step active indicator
+      if (turnRes.turn_feedback && turnRes.turn_feedback.level) {
+        const lvl = turnRes.turn_feedback.level;
+        $$(".prog-step").forEach((step, idx) => {
+          if (idx + 1 === lvl) step.classList.add("active");
+          else step.classList.remove("active");
+        });
+        const pill = $("#interviewStatusPill");
+        if (pill) pill.textContent = `Level ${lvl} / 6`;
+      }
+
+      if (turnRes.turn_feedback?.star_assessment) {
+        toast(turnRes.turn_feedback.star_assessment);
       }
     } catch (err) {
       toast(err.message, "error");
     }
   });
 
+  // COMPLETE & EVALUATE INTERVIEW
   $("#endInterviewBtn")?.addEventListener("click", async () => {
     if (!activeInterviewSessionId) return;
     try {
-      toast("Evaluating full interview performance...");
+      toast("Generating Evidence-Based Interview Review...");
       const evaluation = await API.request(`/interview/sessions/${activeInterviewSessionId}/complete`, { method: "POST" });
-      appendInterviewMsg("ai", `🏁 **Interview Completed! Readiness Verdict: ${evaluation.readiness_level}**\n\n• **Strengths**: ${evaluation.strong_areas.join(", ")}\n• **Needs Practice**: ${evaluation.needs_practice.join(", ")}`);
-      $("#endInterviewBtn")?.classList.add("hidden");
-      $("#interviewTurnForm")?.classList.add("hidden");
-      toast("Readiness evaluation generated!");
+
+      $("#textInterviewWorkspace")?.classList.add("hidden");
+      $("#liveInterviewRoom")?.classList.add("hidden");
+      stopLiveInterviewMedia();
+
+      renderInterviewReviewCard(evaluation);
+      toast("Review generated!");
     } catch (err) {
       toast(err.message, "error");
     }
   });
+
+  // START LIVE AI INTERVIEW
+  $("#startLiveInterviewBtn")?.addEventListener("click", async () => {
+    const role = $("#interviewRoleInput")?.value.trim() || state.activeJobContext.role || "Software Engineer";
+    const company = $("#interviewCompanyInput")?.value.trim() || state.activeJobContext.company || "Target Company";
+    const level = $("#interviewCareerLevelSelect")?.value || "DEVELOPING";
+
+    const room = $("#liveInterviewRoom");
+    const notConfiguredBanner = $("#liveNotConfiguredBanner");
+    const statusPill = $("#liveConnectionStatus");
+
+    // Hide other panels
+    $("#textInterviewWorkspace")?.classList.add("hidden");
+    $("#interviewReviewCard")?.classList.add("hidden");
+    if (room) room.classList.remove("hidden");
+
+    if ($("#liveRoleCompany")) {
+      $("#liveRoleCompany").textContent = `${role} at ${company}`;
+    }
+
+    try {
+      toast("Checking Gemini Live configuration...");
+      const liveConfig = await API.request("/interview/live-config");
+
+      if (!liveConfig.configured) {
+        if (notConfiguredBanner) notConfiguredBanner.classList.remove("hidden");
+        if (statusPill) {
+          statusPill.textContent = "Config Pending";
+          statusPill.className = "badge-sub badge-unverified";
+        }
+        return;
+      }
+
+      if (notConfiguredBanner) notConfiguredBanner.classList.add("hidden");
+      if (statusPill) {
+        statusPill.textContent = "Connecting...";
+        statusPill.className = "badge-sub badge-likely";
+      }
+
+      // Explicit permission request for camera & mic
+      toast("Requesting camera and microphone access...");
+      liveMediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const videoEl = $("#liveCameraPreview");
+      if (videoEl) {
+        videoEl.srcObject = liveMediaStream;
+      }
+
+      if (statusPill) {
+        statusPill.textContent = "Live Active";
+        statusPill.className = "badge-sub badge-verified";
+      }
+
+      // Create live session in backend
+      const session = await API.request("/interview/sessions", {
+        method: "POST",
+        body: {
+          target_role: role,
+          target_company: company,
+          session_mode: "LIVE",
+          career_level: level,
+          job_id: state.activeJobContext.jobId || null,
+        },
+      });
+      activeInterviewSessionId = session.id;
+      toast("Live Interview session ready. AI interviewer listening.");
+    } catch (err) {
+      if (statusPill) {
+        statusPill.textContent = "Access Denied / Interrupted";
+        statusPill.className = "badge-sub badge-suspicious";
+      }
+      toast(err.message || "Could not access camera/microphone.", "error");
+    }
+  });
+
+  // LIVE INTERVIEW CONTROLS
+  $("#liveMicToggleBtn")?.addEventListener("click", () => {
+    if (!liveMediaStream) return;
+    const audioTracks = liveMediaStream.getAudioTracks();
+    if (audioTracks.length > 0) {
+      isLiveMicMuted = !isLiveMicMuted;
+      audioTracks.forEach((t) => (t.enabled = !isLiveMicMuted));
+      const btn = $("#liveMicToggleBtn");
+      if (btn) {
+        if (isLiveMicMuted) {
+          btn.classList.add("active-muted");
+          btn.querySelector(".control-label").textContent = "Unmute";
+        } else {
+          btn.classList.remove("active-muted");
+          btn.querySelector(".control-label").textContent = "Mute";
+        }
+      }
+    }
+  });
+
+  $("#liveCameraToggleBtn")?.addEventListener("click", () => {
+    if (!liveMediaStream) return;
+    const videoTracks = liveMediaStream.getVideoTracks();
+    if (videoTracks.length > 0) {
+      isLiveCameraOff = !isLiveCameraOff;
+      videoTracks.forEach((t) => (t.enabled = !isLiveCameraOff));
+      const overlay = $("#cameraDisabledOverlay");
+      if (overlay) {
+        if (isLiveCameraOff) overlay.classList.remove("hidden");
+        else overlay.classList.add("hidden");
+      }
+    }
+  });
+
+  $("#liveRepeatBtn")?.addEventListener("click", () => {
+    toast("Repeating question...");
+  });
+
+  $("#liveSkipBtn")?.addEventListener("click", () => {
+    toast("Skipping to next round...");
+  });
+
+  $("#liveEndBtn")?.addEventListener("click", async () => {
+    stopLiveInterviewMedia();
+    $("#liveInterviewRoom")?.classList.add("hidden");
+    if (activeInterviewSessionId) {
+      try {
+        const evalRes = await API.request(`/interview/sessions/${activeInterviewSessionId}/complete`, { method: "POST" });
+        renderInterviewReviewCard(evalRes);
+      } catch (_) {}
+    }
+    toast("Live interview ended.");
+  });
+
+  // Review Practice Again
+  $("#reviewPracticeAgainBtn")?.addEventListener("click", () => {
+    $("#interviewReviewCard")?.classList.add("hidden");
+    $("#textInterviewWorkspace")?.classList.remove("hidden");
+  });
+
+  // Gemini Config Modal controls
+  $("#closeGeminiModalBtn")?.addEventListener("click", closeGeminiModal);
+  $("#dismissGeminiModalBtn")?.addEventListener("click", closeGeminiModal);
+}
+
+function openGeminiConfigModal() {
+  const modal = $("#geminiConfigModal");
+  if (modal) modal.classList.remove("hidden");
+}
+window.openGeminiConfigModal = openGeminiConfigModal;
+
+function closeGeminiModal() {
+  const modal = $("#geminiConfigModal");
+  if (modal) modal.classList.add("hidden");
+}
+window.closeGeminiModal = closeGeminiModal;
+
+function renderInterviewReviewCard(evaluation) {
+  const card = $("#interviewReviewCard");
+  if (!card) return;
+  card.classList.remove("hidden");
+
+  const badge = $("#reviewReadinessBadge");
+  if (badge) {
+    badge.textContent = evaluation.readiness_level || "COMPLETED";
+    badge.className = evaluation.readiness_level === "READY" ? "badge-musthave" : "badge-sub badge-unverified";
+  }
+
+  const strongList = $("#reviewStrongList");
+  if (strongList) {
+    strongList.innerHTML = (evaluation.strong_areas || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("");
+  }
+
+  const practiceList = $("#reviewPracticeList");
+  if (practiceList) {
+    practiceList.innerHTML = (evaluation.needs_practice || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
+  }
+
+  const techGaps = $("#reviewTechnicalGapsList");
+  if (techGaps) {
+    techGaps.innerHTML = (evaluation.technical_gaps || []).map((g) => `<li>${escapeHtml(g)}</li>`).join("");
+  }
+
+  const claimsList = $("#reviewClaimsList");
+  if (claimsList) {
+    claimsList.innerHTML = (evaluation.resume_claims_to_defend || []).map((c) => `
+      <li><strong>${escapeHtml(c.claim || "Claim")}:</strong> ${escapeHtml(c.defense_tip || "")}</li>
+    `).join("");
+  }
 }
 
 async function loadInterviewSessions() {
@@ -3553,7 +3987,7 @@ async function loadInterviewSessions() {
   if (!container) return;
   try {
     const sessions = await API.request("/interview/sessions");
-    if (sessions.length === 0) {
+    if (!sessions || sessions.length === 0) {
       container.innerHTML = `<p class="text-muted text-xs">No previous interview sessions yet.</p>`;
       return;
     }
@@ -3561,8 +3995,8 @@ async function loadInterviewSessions() {
       <div class="panel p-2 mb-2 text-xs cursor-pointer" onclick="resumeInterviewSession(${s.id})">
         <strong>${escapeHtml(s.target_role || "Role")}</strong> at ${escapeHtml(s.target_company || "Company")}
         <div class="flex-between text-muted mt-1">
+          <span>${s.session_mode || "TEXT"}</span>
           <span>${s.status}</span>
-          <span>Score: ${s.readiness_score}/100</span>
         </div>
       </div>
     `).join("");
@@ -3573,6 +4007,9 @@ async function resumeInterviewSession(sessionId) {
   try {
     const session = await API.request(`/interview/sessions/${sessionId}`);
     activeInterviewSessionId = session.id;
+    $("#textInterviewWorkspace")?.classList.remove("hidden");
+    $("#liveInterviewRoom")?.classList.add("hidden");
+    $("#interviewReviewCard")?.classList.add("hidden");
     renderActiveInterviewSession(session);
   } catch (err) {
     toast(err.message, "error");
@@ -3580,17 +4017,20 @@ async function resumeInterviewSession(sessionId) {
 }
 
 function renderActiveInterviewSession(session) {
-  $("#activeInterviewTitle").textContent = `${session.target_role} at ${session.target_company}`;
-  $("#interviewStatusPill").textContent = session.status;
-  $("#endInterviewBtn")?.classList.remove("hidden");
-  $("#interviewTurnForm")?.classList.remove("hidden");
+  if ($("#activeInterviewTitle")) {
+    $("#activeInterviewTitle").textContent = `${session.target_role} at ${session.target_company}`;
+  }
+  if ($("#interviewStatusPill")) {
+    $("#interviewStatusPill").textContent = session.status;
+  }
 
   const chatBox = $("#interviewChatBox");
-  chatBox.innerHTML = "";
-
-  (session.messages || []).forEach((m) => {
-    appendInterviewMsg(m.sender.toLowerCase() === "user" ? "user" : "ai", m.message_text);
-  });
+  if (chatBox) {
+    chatBox.innerHTML = "";
+    (session.messages || []).forEach((m) => {
+      appendInterviewMsg(m.sender.toLowerCase() === "user" ? "user" : "ai", m.message_text);
+    });
+  }
 }
 
 function appendInterviewMsg(sender, text) {
@@ -3598,7 +4038,7 @@ function appendInterviewMsg(sender, text) {
   if (!chatBox) return;
   const msgEl = document.createElement("div");
   msgEl.className = `chat-msg ${sender}`;
-  msgEl.innerHTML = text.replace(/\n/g, "<br>");
+  msgEl.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
   chatBox.appendChild(msgEl);
   chatBox.scrollTop = chatBox.scrollHeight;
 }

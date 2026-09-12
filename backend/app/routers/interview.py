@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.responses import success_response
 from app.database import get_db
 from app.dependencies import get_current_user
@@ -10,10 +12,42 @@ from app.schemas.interview import (
     InterviewSessionOut,
     InterviewMessageCreate,
     InterviewEvaluationOut,
+    ClaimsToDefendOut,
+    LiveConfigOut,
 )
 from app.services import interview_service
 
 router = APIRouter(prefix="/interview", tags=["interview"])
+settings = get_settings()
+
+
+@router.get("/live-config")
+def get_live_config(current_user: User = Depends(get_current_user)) -> dict:
+    """Returns whether Gemini Live API is configured in the environment."""
+    has_key = bool(settings.gemini_api_key)
+    msg = (
+        "Gemini Live API is ready."
+        if has_key
+        else "Live AI Interview is not configured yet. Configure GEMINI_API_KEY in backend/.env."
+    )
+    return success_response(
+        LiveConfigOut(
+            configured=has_key,
+            model_name=settings.gemini_live_model if has_key else None,
+            message=msg,
+        ).model_dump()
+    )
+
+
+@router.get("/claims-to-defend")
+def get_claims_to_defend_endpoint(
+    job_id: Optional[int] = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Returns candidate's resume claims with targeted preparation questions."""
+    claims = interview_service.get_claims_to_defend(db, current_user.id, job_id=job_id)
+    return success_response(claims)
 
 
 @router.post("/sessions")

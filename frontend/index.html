@@ -250,8 +250,7 @@
       <div class="brand-row compact">
         <div class="brand-mark">SR</div>
         <div class="brand-text">
-          <h1>SmartResume</h1>
-          <span class="badge-sub">v2.0 Pro</span>
+          <h1>SmartResume<span class="brand-ai">.ai</span></h1>
         </div>
       </div>
 
@@ -326,10 +325,23 @@
         <div class="view-header">
           <div class="view-header-content">
             <h2 id="dashWelcomeName">Welcome back!</h2>
-            <p>Your career operating system summary. Track profile health, active applications, and recommended next steps.</p>
+            <p>Your career operating system summary. Track career profile strength, active applications, and recommended next steps.</p>
           </div>
           <div class="view-header-actions">
-            <button class="ghost-btn sm" type="button" onclick="navigateToTab('templates')" title="Click to browse or change active resume template"><i data-lucide="layout-template"></i><span id="dashActiveTemplateName">Template: Classic ATS</span></button>
+            <!-- Prominent Current Resume Control -->
+            <div class="current-resume-control" id="dashCurrentResumeControl">
+              <div class="current-resume-meta">
+                <span class="current-resume-label">CURRENT RESUME</span>
+                <div class="current-resume-name-row">
+                  <strong id="dashCurrentResumeName" class="current-resume-title">Classic ATS</strong>
+                  <span id="dashCurrentResumeBadge" class="badge-sub">Standard</span>
+                </div>
+              </div>
+              <button id="dashChangeResumeBtn" class="secondary-btn sm" type="button" onclick="navigateToTab('templates')" title="Change active resume template">
+                <i data-lucide="layout-template"></i>
+                <span>Change</span>
+              </button>
+            </div>
             <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="file-plus"></i><span>Build My Resume</span></button>
             <button class="primary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="radar"></i><span>Analyze a Job</span></button>
             <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
@@ -352,11 +364,11 @@
           <div class="context-guide-body">
             <div class="guide-col">
               <h5>What is this?</h5>
-              <p>Your central command center summarizing profile health, monthly usage quotas, active applications, and job matches.</p>
+              <p>Your central command center summarizing career profile strength, monthly usage quotas, active applications, and job matches.</p>
             </div>
             <div class="guide-col">
               <h5>What to do:</h5>
-              <p>Check profile grounding score, review recommended actions below, and track pending application submissions.</p>
+              <p>Review profile strength score, inspect recommended actions below, and track pending application submissions.</p>
             </div>
             <div class="guide-col">
               <h5>What you get:</h5>
@@ -365,25 +377,25 @@
           </div>
         </div>
 
-        <!-- SECOND: Profile Health & Evidence Health -->
+        <!-- SECOND: Career Profile Strength & Monthly Quotas -->
         <div class="grid two mb-4">
-          <!-- Card 1: Profile Health (Answers Q1: "How healthy is my career profile?") -->
+          <!-- Card 1: Career Profile Strength -->
           <div class="panel">
             <div class="panel-head">
-              <h4><i data-lucide="shield-check"></i> Career Profile Health</h4>
-              <button class="text-btn text-xs" type="button" onclick="openHealthReportModal()">Health Report &rarr;</button>
+              <h4><i data-lucide="shield-check"></i> Career Profile Strength</h4>
+              <button class="text-btn text-xs" type="button" onclick="openHealthReportModal()">Strength Breakdown &rarr;</button>
             </div>
             <div class="flex-row align-center gap-4 mb-3">
               <div class="meter-circle" id="dashMeterCircle" style="width: 72px; height: 72px; min-width: 72px;">
                 <span id="dashCompletenessPercent" style="font-size: 1.25rem;">0%</span>
               </div>
               <div>
-                <strong id="dashCompletenessLabel" class="text-sm">Evaluating Grounding...</strong>
-                <p id="dashQ1Answer" class="text-xs text-muted mt-1">Evaluating profile health and evidence coverage...</p>
+                <strong id="dashCompletenessLabel" class="text-sm">Career Profile Strength</strong>
+                <p id="dashQ1Answer" class="text-xs text-muted mt-1">How complete and well-supported your career profile is.</p>
               </div>
             </div>
             <div class="button-row mt-auto">
-              <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>10-Dimension Health</span></button>
+              <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>Profile Strength Audit</span></button>
               <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="user-check"></i><span>Edit Profile</span></button>
             </div>
           </div>
@@ -1805,7 +1817,10 @@
         <div class="view-header">
           <div class="view-header-content">
             <h2>AI Interview Copilot</h2>
-            <p>Practice realistic mock interview sessions calibrated directly against your verified resume claims and target job requirements.</p>
+            <p>Practice realistic mock interviews calibrated directly against your verified resume claims and target job requirements.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" id="interviewResetContextBtn"><i data-lucide="refresh-cw"></i><span>Reset Job Context</span></button>
           </div>
         </div>
 
@@ -1823,62 +1838,295 @@
           </div>
           <div class="context-guide-body">
             <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>An interactive technical and behavioral interviewer calibrated against your exact resume bullet claims.</p>
+              <h5>Two Clear Practice Modes:</h5>
+              <p>Practice by Text (adaptive 6-level STAR chat) or Live AI Interview (real-time spoken & video interview room).</p>
             </div>
             <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Select your interview mode (Behavioral, Technical, or STAR text chat). Answer prompts using Situation, Task, Action, Result.</p>
+              <h5>Resume Claim Defense:</h5>
+              <p>Questions probe specific claims stated in your actual resume bullets (FastAPI, SQL, system scale, ownership).</p>
             </div>
             <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>Actionable feedback on metric clarity, depth of technical explanation, and leadership delivery before real hiring manager rounds.</p>
+              <h5>Evidence-Based Review:</h5>
+              <p>Feedback evaluates communication, technical depth, and metrics citing your actual answers, with zero fake scores.</p>
             </div>
           </div>
         </div>
 
-        <div class="grid two mb-4">
+        <!-- 1. Active Application Context Card -->
+        <div class="interview-context-bar panel mb-4">
+          <div class="flex-between align-center wrap-gap">
+            <div class="context-bar-info">
+              <span class="text-xs text-muted uppercase font-bold">Interview Context</span>
+              <div class="context-bar-title-row">
+                <h3 id="interviewActiveRole">Software Engineer</h3>
+                <span class="text-muted">at</span>
+                <strong id="interviewActiveCompany">Target Company</strong>
+                <span id="interviewCompanyBadge" class="badge-sub">Standard</span>
+                <span id="interviewResumeVersionBadge" class="badge-sub">Resume Version: #1</span>
+              </div>
+            </div>
+            <div class="context-bar-actions">
+              <button class="text-btn text-xs" type="button" id="interviewEditContextBtn"><i data-lucide="edit-2"></i> Edit Target Details</button>
+            </div>
+          </div>
+
+          <!-- Collapsible context edit inputs (hidden by default) -->
+          <div id="interviewContextInputsRow" class="grid three mt-3 pt-3 border-t hidden">
+            <label>Target Role<input id="interviewRoleInput" placeholder="e.g. Senior Backend Engineer" value="Software Engineer"></label>
+            <label>Target Company<input id="interviewCompanyInput" placeholder="e.g. Razorpay or Acme Corp" value="Target Company"></label>
+            <label>Career Level
+              <select id="interviewCareerLevelSelect">
+                <option value="EARLY_CAREER">Early Career (Projects & Fundamentals)</option>
+                <option value="DEVELOPING" selected>Developing (Ownership & Production)</option>
+                <option value="EXPERIENCED">Experienced (Architecture & Leadership)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Two Primary Mode Selection Cards (Requirements 11 & 31) -->
+        <div class="grid two mb-4" id="interviewModeSelectGrid">
+          <div class="interview-mode-card panel active-card" id="modeCardText">
+            <div class="mode-card-header">
+              <div class="mode-icon-circle text-icon"><i data-lucide="message-square"></i></div>
+              <div class="mode-card-title">
+                <h4>Practice by Text</h4>
+                <p class="text-xs text-muted">Conversational STAR-focused chat with adaptive difficulty</p>
+              </div>
+            </div>
+            <p class="text-xs text-muted mt-2 mb-3">
+              Engage in a structured 6-level interview progression: Warm-up, Role Fundamentals, Technical Depth, Resume Claim Defense, Resilience, and Behavioral Decision-Making.
+            </p>
+            <button class="primary-btn sm w-100" type="button" id="startTextInterviewBtn">
+              <i data-lucide="play"></i>
+              <span>Start Text Interview</span>
+            </button>
+          </div>
+
+          <div class="interview-mode-card panel" id="modeCardLive">
+            <div class="mode-card-header">
+              <div class="mode-icon-circle live-icon"><i data-lucide="video"></i></div>
+              <div class="mode-card-title">
+                <h4>Live AI Interview</h4>
+                <p class="text-xs text-muted">Spoken and video mock interview in dedicated room</p>
+              </div>
+            </div>
+            <p class="text-xs text-muted mt-2 mb-3">
+              Practice speaking naturally with camera preview, live speech evaluation, framing feedback, and instant repeat/skip controls. Local and private.
+            </p>
+            <button class="secondary-btn sm w-100" type="button" id="startLiveInterviewBtn">
+              <i data-lucide="video"></i>
+              <span>Start Live Interview</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Claims To Be Ready To Defend Widget (Requirements 14 & 30) -->
+        <div class="panel mb-4" id="claimsToDefendContainer">
+          <div class="panel-head flex-between">
+            <h4><i data-lucide="shield-alert"></i> Claims To Be Ready To Defend</h4>
+            <span class="text-xs text-muted">Extracted from your resume claims & verified skills</span>
+          </div>
+          <div id="claimsList" class="grid three mt-3">
+            <div class="claim-item-card">
+              <div class="claim-head">
+                <span class="badge-sub">Technical Core</span>
+                <strong>System Design & REST APIs</strong>
+              </div>
+              <p class="text-xs text-muted mt-1">Why asked: Interviewers test request lifecycles, authentication middlewares, and serialization bottlenecks.</p>
+              <div class="claim-prep-tip text-xs">
+                <strong>Prep Question:</strong> "Walk me through how you structured dependency injection and validated payloads."
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Text Interview Workspace Panel (Hidden initially until started or resumed) -->
+        <div id="textInterviewWorkspace" class="grid two mb-4 hidden">
           <div class="panel">
             <div class="panel-head">
               <div>
-                <h3><i data-lucide="messages-square"></i> AI Interview Copilot</h3>
-                <p class="text-sm text-muted">Practice mock interviews grounded directly in your resume claims and target job requirements.</p>
+                <h4><i data-lucide="list-ordered"></i> Interview Progression</h4>
+                <p class="text-xs text-muted">6 adaptive levels grounded in candidate answers</p>
               </div>
             </div>
-            <form id="startInterviewForm" class="mt-3">
-              <label>Target Role Title<input id="interviewRoleInput" placeholder="e.g. Senior Backend Engineer" required></label>
-              <label>Target Company<input id="interviewCompanyInput" placeholder="e.g. Razorpay or Acme Corp" required></label>
-              <label>Session Mode
-                <select id="interviewModeSelect">
-                  <option value="TEXT">Text Chat (STAR Focused)</option>
-                  <option value="BEHAVIORAL">Behavioral & Leadership</option>
-                  <option value="TECHNICAL">Technical Deep-Dive</option>
-                </select>
-              </label>
-              <button class="primary-btn mt-3" type="submit"><i data-lucide="play"></i><span>Start Interview Session</span></button>
-            </form>
+            <div class="interview-progression-list mt-3">
+              <div class="prog-step active" id="progStep1">
+                <span class="step-num">1</span>
+                <div><strong>Level 1: Warm-up</strong><p class="text-xs text-muted">Role overview & career introduction</p></div>
+              </div>
+              <div class="prog-step" id="progStep2">
+                <span class="step-num">2</span>
+                <div><strong>Level 2: Role Fundamentals</strong><p class="text-xs text-muted">Core architecture & reliable patterns</p></div>
+              </div>
+              <div class="prog-step" id="progStep3">
+                <span class="step-num">3</span>
+                <div><strong>Level 3: Technical Depth</strong><p class="text-xs text-muted">Tradeoffs, data structures & memory models</p></div>
+              </div>
+              <div class="prog-step" id="progStep4">
+                <span class="step-num">4</span>
+                <div><strong>Level 4: Resume Claim Defense</strong><p class="text-xs text-muted">Deep dive into your actual resume claims</p></div>
+              </div>
+              <div class="prog-step" id="progStep5">
+                <span class="step-num">5</span>
+                <div><strong>Level 5: Resilience & Recovery</strong><p class="text-xs text-muted">Handling edge cases & service degradation</p></div>
+              </div>
+              <div class="prog-step" id="progStep6">
+                <span class="step-num">6</span>
+                <div><strong>Level 6: Behavioral (STAR)</strong><p class="text-xs text-muted">Teamwork, conflict & technical decision-making</p></div>
+              </div>
+            </div>
 
-            <h4 class="mt-4 mb-2">Previous Practice Sessions</h4>
-            <div id="interviewSessionsList" class="cards-list">
-              <p class="text-muted text-xs">No previous interview sessions yet.</p>
+            <div class="mt-4 pt-3 border-t">
+              <h5 class="mb-2">Past Interview Sessions</h5>
+              <div id="interviewSessionsList" class="cards-list">
+                <p class="text-muted text-xs">No previous sessions yet.</p>
+              </div>
             </div>
           </div>
 
           <div class="panel interview-chat-panel">
-            <div class="panel-head border-b pb-2">
+            <div class="panel-head border-b pb-2 flex-between">
               <div>
-                <h4 id="activeInterviewTitle">Live Interview Session</h4>
-                <span id="interviewStatusPill" class="badge-sub">Ready</span>
+                <h4 id="activeInterviewTitle">Text Interview Session</h4>
+                <span id="interviewStatusPill" class="badge-sub">Level 1: Warm-up</span>
               </div>
-              <button id="endInterviewBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="check-circle"></i><span>Complete & Evaluate</span></button>
+              <button id="endInterviewBtn" class="secondary-btn sm" type="button"><i data-lucide="check-circle"></i><span>Complete & Evaluate</span></button>
             </div>
             <div id="interviewChatBox" class="chat-messages-box">
-              <p class="text-muted text-center py-4 text-sm">Start a session on the left to begin your mock interview.</p>
+              <p class="text-muted text-center py-4 text-sm">Session initialized. Answer questions using the STAR method.</p>
             </div>
-            <form id="interviewTurnForm" class="chat-input-row hidden">
-              <textarea id="candidateAnswerInput" rows="3" placeholder="Type your answer using the STAR method..." required></textarea>
+            <form id="interviewTurnForm" class="chat-input-row">
+              <textarea id="candidateAnswerInput" rows="3" placeholder="Type your answer using Situation, Task, Action, Result..." required></textarea>
               <button class="primary-btn sm" type="submit"><i data-lucide="send"></i><span>Submit Turn</span></button>
             </form>
+          </div>
+        </div>
+
+        <!-- 5. Live AI Interview Room (Requirements 15, 16, 17, 21) (Hidden initially) -->
+        <div id="liveInterviewRoom" class="live-room-panel panel mb-4 hidden">
+          <div class="live-room-header flex-between border-b pb-3 mb-3">
+            <div>
+              <div class="flex-row align-center gap-2">
+                <span class="live-recording-indicator"></span>
+                <h3 id="liveSessionHeading">Live AI Interview Room</h3>
+                <span class="badge-sub" id="liveConnectionStatus">Connecting...</span>
+              </div>
+              <p class="text-xs text-muted mt-1">Practicing: <strong id="liveRoleCompany">Software Engineer at Target Company</strong></p>
+            </div>
+            <div class="privacy-pill text-xs">
+              <i data-lucide="shield-check"></i>
+              <span>Local Practice Mode · No Recording Saved</span>
+            </div>
+          </div>
+
+          <!-- Non-configured Fallback Notice (Requirement 17) -->
+          <div id="liveNotConfiguredBanner" class="auth-alert info mb-3 hidden">
+            <i data-lucide="info"></i>
+            <div class="alert-content flex-between align-center w-100">
+              <div>
+                <strong>Live AI Interview is not configured yet.</strong>
+                <p class="text-xs text-muted">To enable real-time spoken practice, set GEMINI_API_KEY and GEMINI_LIVE_MODEL_NAME in your backend/.env configuration.</p>
+              </div>
+              <button class="secondary-btn xs ml-3" type="button" onclick="openGeminiConfigModal()"><i data-lucide="settings"></i> Configure Gemini</button>
+            </div>
+          </div>
+
+          <!-- Video & Visualizer Grid (Requirement 15) -->
+          <div class="grid two live-video-grid mb-3">
+            <!-- Left: AI Interviewer Stream -->
+            <div class="live-stream-box ai-box">
+              <div class="stream-label">AI INTERVIEWER</div>
+              <div class="ai-avatar-visualizer">
+                <div class="ai-avatar-pulse" id="aiAvatarPulse">
+                  <i data-lucide="bot"></i>
+                </div>
+                <div class="audio-wave-bars" id="aiAudioWave">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <div class="ai-live-prompt-box">
+                <span class="text-xs text-muted uppercase font-bold">Current Question:</span>
+                <p id="aiLiveQuestionText" class="mt-1 text-sm">"Walk me through a challenging problem you solved in your recent work."</p>
+              </div>
+            </div>
+
+            <!-- Right: Candidate Camera Preview -->
+            <div class="live-stream-box candidate-box">
+              <div class="stream-label">YOUR CAMERA (PREVIEW)</div>
+              <div class="camera-preview-container">
+                <video id="liveCameraPreview" autoplay playsinline muted></video>
+                <div id="cameraDisabledOverlay" class="camera-disabled-overlay hidden">
+                  <i data-lucide="camera-off"></i>
+                  <span>Camera Disabled</span>
+                </div>
+              </div>
+              <div class="candidate-presentation-feedback text-xs text-muted">
+                <span id="cameraFramingTip">✓ Camera framing & lighting optimal</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accessible Live Control Dock (Requirement 21 & 47) -->
+          <div class="live-controls-dock flex-center gap-3 py-2 border-t">
+            <button class="icon-btn live-control-btn" id="liveMicToggleBtn" type="button" title="Mute/Unmute Microphone" aria-label="Mute microphone">
+              <i data-lucide="mic"></i>
+              <span class="control-label">Mute</span>
+            </button>
+            <button class="icon-btn live-control-btn" id="liveCameraToggleBtn" type="button" title="Turn Camera On/Off" aria-label="Turn camera off">
+              <i data-lucide="video"></i>
+              <span class="control-label">Camera</span>
+            </button>
+            <button class="secondary-btn sm" id="liveRepeatBtn" type="button" title="Repeat current question">
+              <i data-lucide="rotate-ccw"></i>
+              <span>Repeat</span>
+            </button>
+            <button class="secondary-btn sm" id="liveSkipBtn" type="button" title="Skip to next question">
+              <i data-lucide="skip-forward"></i>
+              <span>Skip</span>
+            </button>
+            <button class="danger-btn sm" id="liveEndBtn" type="button" title="End interview session">
+              <i data-lucide="phone-off"></i>
+              <span>End Interview</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 6. Evidence-Based Interview Review Card (Requirements 23, 24, 25) (Hidden until completed) -->
+        <div id="interviewReviewCard" class="panel mb-4 hidden">
+          <div class="panel-head flex-between border-b pb-2">
+            <div>
+              <h3><i data-lucide="award"></i> EVIDENCE-BASED INTERVIEW REVIEW</h3>
+              <p class="text-xs text-muted">Feedback is based on your answers, the selected job description, and your resume context.</p>
+            </div>
+            <span class="badge-musthave" id="reviewReadinessBadge">READY</span>
+          </div>
+
+          <div class="grid two mt-4">
+            <div class="review-dimension-box">
+              <h5 class="text-success"><i data-lucide="check-circle-2"></i> Strong Delivery Areas</h5>
+              <ul id="reviewStrongList" class="clean-bullet-list mt-2 text-xs"></ul>
+            </div>
+            <div class="review-dimension-box">
+              <h5 class="text-warning"><i data-lucide="alert-triangle"></i> Areas To Practice</h5>
+              <ul id="reviewPracticeList" class="clean-bullet-list mt-2 text-xs"></ul>
+            </div>
+          </div>
+
+          <div class="grid two mt-3">
+            <div class="review-dimension-box">
+              <h5><i data-lucide="code-2"></i> Technical Depth & Gaps</h5>
+              <ul id="reviewTechnicalGapsList" class="clean-bullet-list mt-2 text-xs"></ul>
+            </div>
+            <div class="review-dimension-box">
+              <h5><i data-lucide="shield"></i> Resume Claims Defensibility</h5>
+              <ul id="reviewClaimsList" class="clean-bullet-list mt-2 text-xs"></ul>
+            </div>
+          </div>
+
+          <div class="button-row mt-4 pt-3 border-t">
+            <button class="primary-btn sm" type="button" id="reviewPracticeAgainBtn"><i data-lucide="rotate-cw"></i><span>Practice Again</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')"><i data-lucide="briefcase"></i><span>View Applications</span></button>
           </div>
         </div>
       </section>
@@ -2510,6 +2758,29 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
       </div>
       <div class="modal-footer">
         <button id="dismissOAuthModalBtn" class="primary-btn sm w-full" type="button">Understood</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GEMINI CONFIGURATION GUIDE (Requirement 42) -->
+  <div id="geminiConfigModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="geminiConfigModalTitle">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="geminiConfigModalTitle"><i data-lucide="sparkles"></i> Gemini Live Configuration</h3>
+        </div>
+        <button id="closeGeminiModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-muted mb-3">To enable real-time spoken practice, configure your Gemini credentials in <code>backend/.env</code>:</p>
+        <div class="panel p-3 bg-subtle text-xs mb-3 font-mono" style="word-break: break-all; background: var(--bg-secondary); border-radius: 6px;">
+          GEMINI_API_KEY=your_google_ai_studio_api_key<br>
+          GEMINI_LIVE_MODEL_NAME=gemini-2.0-flash-exp
+        </div>
+        <p class="text-xs text-muted">Refer to <strong>GEMINI_SETUP.md</strong> in the workspace root for setup instructions, API key guides, and testing requirements.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissGeminiModalBtn" class="primary-btn sm w-full" type="button">Understood</button>
       </div>
     </div>
   </div>

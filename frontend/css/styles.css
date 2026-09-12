@@ -159,6 +159,11 @@ button {
   margin: 0;
 }
 
+.brand-ai {
+  color: var(--primary);
+  font-weight: 800;
+}
+
 .badge-sub {
   font-size: 0.72rem;
   background: var(--primary-subtle);
@@ -166,6 +171,77 @@ button {
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 700;
+}
+
+/* ==========================================================================
+   CURRENT RESUME CONTROL (DASHBOARD)
+   ========================================================================== */
+.current-resume-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: border-color var(--transition-fast, 0.2s ease);
+}
+
+.current-resume-control:hover {
+  border-color: var(--primary);
+}
+
+.current-resume-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.current-resume-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.current-resume-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.current-resume-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.badge-pro-lock {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+[data-theme="dark"] .badge-pro-lock {
+  background: rgba(180, 83, 9, 0.2);
+  color: #fcd34d;
+  border-color: rgba(180, 83, 9, 0.4);
+}
+
+.badge-pro-trial {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+[data-theme="dark"] .badge-pro-trial {
+  background: rgba(5, 150, 105, 0.2);
+  color: #6ee7b7;
+  border-color: rgba(5, 150, 105, 0.4);
 }
 
 h1, h2, h3, h4, h5, p {
@@ -3013,6 +3089,367 @@ svg {
   letter-spacing: 0.5px;
   margin: 14px 0 6px 0;
   text-transform: uppercase;
+}
+
+/* ==========================================================================
+   COMPANY VERIFICATION BADGES & STATUSES
+   ========================================================================== */
+.company-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.badge-verified {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-likely {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-unverified {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-suspicious {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ==========================================================================
+   INTERVIEW COPILOT — TWO MODES & CONTEXT BAR
+   ========================================================================== */
+.interview-context-bar {
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border-color);
+  padding: 16px 20px;
+  border-radius: var(--radius-md, 8px);
+}
+
+.context-bar-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.context-bar-title-row h3 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.interview-mode-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: 20px;
+  transition: all var(--transition-fast, 0.2s ease);
+  display: flex;
+  flex-direction: column;
+}
+
+.interview-mode-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.mode-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mode-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.mode-icon-circle.text-icon {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--primary);
+}
+
+.mode-icon-circle.live-icon {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.mode-card-title h4 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* Claims To Defend */
+.claim-item-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.claim-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.claim-prep-tip {
+  background: var(--bg-primary);
+  border-left: 3px solid var(--primary);
+  padding: 8px 10px;
+  border-radius: 0 4px 4px 0;
+  color: var(--text-secondary);
+}
+
+/* 6-Level Progression Steps */
+.interview-progression-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prog-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.prog-step.active {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+}
+
+.step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.prog-step.active .step-num {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ==========================================================================
+   LIVE AI INTERVIEW ROOM (Requirements 15, 16, 21)
+   ========================================================================== */
+.live-room-panel {
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.live-recording-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+  animation: pulse-ring 1.8s infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.live-video-grid {
+  gap: 16px;
+}
+
+.live-stream-box {
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  min-height: 260px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stream-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 5;
+}
+
+.ai-avatar-visualizer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.ai-avatar-pulse {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  box-shadow: 0 0 24px rgba(37, 99, 235, 0.35);
+}
+
+.audio-wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin-top: 14px;
+}
+
+.audio-wave-bars span {
+  display: inline-block;
+  width: 4px;
+  height: 12px;
+  background: var(--primary);
+  border-radius: 2px;
+  animation: wave-anim 1.2s infinite ease-in-out;
+}
+
+.audio-wave-bars span:nth-child(2) { animation-delay: 0.2s; height: 18px; }
+.audio-wave-bars span:nth-child(3) { animation-delay: 0.4s; height: 24px; }
+.audio-wave-bars span:nth-child(4) { animation-delay: 0.6s; height: 16px; }
+.audio-wave-bars span:nth-child(5) { animation-delay: 0.8s; height: 10px; }
+
+@keyframes wave-anim {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1.3); }
+}
+
+.ai-live-prompt-box {
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  padding: 12px 16px;
+}
+
+.camera-preview-container {
+  flex: 1;
+  background: #111827;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-preview-container video {
+  width: 100%;
+  height: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.camera-disabled-overlay {
+  position: absolute;
+  inset: 0;
+  background: #111827;
+  color: #9ca3af;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.candidate-presentation-feedback {
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  padding: 10px 14px;
+}
+
+/* Live Controls Dock */
+.live-controls-dock {
+  background: var(--bg-secondary);
+  border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+  padding: 12px 16px;
+}
+
+.live-control-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  height: auto;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.live-control-btn.active-muted {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.live-control-btn .control-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* Evidence-Based Review Card */
+.review-dimension-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  padding: 16px;
+}
+
+.clean-bullet-list {
+  padding-left: 18px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-secondary);
 }
 
 

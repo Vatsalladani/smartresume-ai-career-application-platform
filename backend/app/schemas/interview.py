@@ -8,7 +8,25 @@ class InterviewSessionCreate(BaseModel):
     version_id: Optional[int] = None
     target_role: str = Field(default="", max_length=150)
     target_company: str = Field(default="", max_length=150)
-    session_mode: str = Field(default="TEXT", max_length=20)  # TEXT, VOICE
+    session_mode: str = Field(default="TEXT", max_length=20)  # TEXT, LIVE
+    career_level: Optional[str] = Field(default="DEVELOPING", max_length=30)  # EARLY_CAREER, DEVELOPING, EXPERIENCED
+
+
+class ClaimsToDefendOut(BaseModel):
+    claim: str
+    category: str
+    why_asked: str
+    evidence: str
+    suggested_question: str
+
+
+class LiveConfigOut(BaseModel):
+    configured: bool
+    model_name: Optional[str] = None
+    message: str
+
+    model_config = {"protected_namespaces": ()}
+
 
 
 class InterviewMessageCreate(BaseModel):

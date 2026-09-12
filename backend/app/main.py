@@ -12,6 +12,7 @@ from app.routers import (
     applications,
     auth,
     career_insights,
+    company,
     evidence_vault,
     interview,
     job_radar,
@@ -55,6 +56,7 @@ app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(profile.router, prefix=settings.api_prefix)
 app.include_router(evidence_vault.router, prefix=settings.api_prefix)
 app.include_router(jobs.router, prefix=settings.api_prefix)
+app.include_router(company.router, prefix=settings.api_prefix)
 app.include_router(job_radar.router, prefix=settings.api_prefix)
 app.include_router(resumes.router, prefix=settings.api_prefix)
 app.include_router(ai.router, prefix=settings.api_prefix)

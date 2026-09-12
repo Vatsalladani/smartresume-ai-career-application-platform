@@ -48,10 +48,11 @@ class Settings:
     password_reset_minutes: int = 20
     email_verification_minutes: int = 60 * 24
 
-    # AI Model Configuration (Gemini 3.6 Flash default, 3.5 Flash-Lite cost-optimized)
+    # AI Model Configuration (Gemini 3.6 Flash default, 3.5 Flash-Lite cost-optimized, 2.0 Live)
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.6-flash"
     gemini_lite_model: str = "gemini-3.5-flash-lite"
+    gemini_live_model: str = "gemini-2.0-flash-exp"
 
     # Payment configuration & pricing (India Tier 1 default)
     payments_mode: Literal["mock", "razorpay"] = "mock"
@@ -158,6 +159,7 @@ def get_settings() -> Settings:
         gemini_api_key=_optional("GEMINI_API_KEY"),
         gemini_model=_str("GEMINI_MODEL_NAME", "gemini-3.6-flash"),
         gemini_lite_model=_str("GEMINI_FAST_MODEL_NAME", _str("GEMINI_LITE_MODEL_NAME", "gemini-3.5-flash-lite")),
+        gemini_live_model=_str("GEMINI_LIVE_MODEL_NAME", "gemini-2.0-flash-exp"),
         payments_mode=_str("PAYMENTS_MODE", "mock"),
         payment_mode=_str("PAYMENT_MODE", "test"),
         test_upi_id=_str("TEST_UPI_ID", "ladanivatsal8892@oksbi"),
