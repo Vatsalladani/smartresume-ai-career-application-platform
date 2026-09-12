@@ -254,20 +254,78 @@
         </div>
       </div>
 
-      <nav class="nav-tabs" aria-label="Main navigation">
-        <button class="active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
-        <button data-tab="profile"><i data-lucide="user-check"></i><span>Career Profile</span></button>
-        <button data-tab="evidence-vault"><i data-lucide="database"></i><span>Evidence Vault</span></button>
-        <button data-tab="templates"><i data-lucide="layout-template"></i><span>Resume Templates</span></button>
-        <button data-tab="job-radar"><i data-lucide="compass"></i><span>Job Radar</span></button>
-        <button data-tab="fit"><i data-lucide="radar"></i><span>Job Match</span></button>
-        <button data-tab="tailor"><i data-lucide="sparkles"></i><span>Application Builder</span></button>
-        <button data-tab="smartapply"><i data-lucide="external-link"></i><span>SmartApply</span></button>
-        <button data-tab="applications"><i data-lucide="briefcase"></i><span>Applications</span></button>
-        <button data-tab="interview"><i data-lucide="messages-square"></i><span>Interview Copilot</span></button>
-        <button data-tab="career-insights"><i data-lucide="trending-up"></i><span>Career Insights</span></button>
-        <button data-tab="billing"><i data-lucide="credit-card"></i><span>Billing & Usage</span></button>
-        <button data-tab="settings"><i data-lucide="settings"></i><span>Settings</span></button>
+      <nav class="nav-groups" aria-label="Main navigation">
+        <div class="nav-group-single">
+          <button class="nav-item active" data-tab="dashboard">
+            <i data-lucide="layout-dashboard"></i><span>Home</span>
+          </button>
+        </div>
+
+        <div class="nav-group" data-nav-group="resume">
+          <div class="nav-group-header"><span>MY RESUME</span></div>
+          <div class="nav-group-items">
+            <button class="nav-item" data-tab="profile">
+              <i data-lucide="user-check"></i><span>Profile & Evidence</span>
+            </button>
+            <button class="nav-item" data-tab="resume-builder">
+              <i data-lucide="edit-3"></i><span>Resume Builder</span>
+            </button>
+            <button class="nav-item" data-tab="templates">
+              <i data-lucide="layout-template"></i><span>Templates</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-group" data-nav-group="jobs">
+          <div class="nav-group-header"><span>JOBS</span></div>
+          <div class="nav-group-items">
+            <button class="nav-item" data-tab="fit">
+              <i data-lucide="radar"></i><span>Check Job Fit</span>
+            </button>
+            <button class="nav-item" data-tab="job-radar">
+              <i data-lucide="compass"></i><span>Job Radar</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-group" data-nav-group="applications">
+          <div class="nav-group-header"><span>APPLICATIONS</span></div>
+          <div class="nav-group-items">
+            <button class="nav-item" data-tab="tailor">
+              <i data-lucide="sparkles"></i><span>Prepare Application</span>
+            </button>
+            <button class="nav-item" data-tab="smartapply">
+              <i data-lucide="external-link"></i><span>SmartApply</span>
+            </button>
+            <button class="nav-item" data-tab="applications">
+              <i data-lucide="briefcase"></i><span>Application Tracker</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-group-single">
+          <button class="nav-item" data-tab="interview">
+            <i data-lucide="messages-square"></i><span>Interview</span>
+          </button>
+        </div>
+
+        <div class="nav-group-single">
+          <button class="nav-item" data-tab="career-insights">
+            <i data-lucide="trending-up"></i><span>Insights</span>
+          </button>
+        </div>
+
+        <div class="nav-group nav-group-secondary" data-nav-group="secondary">
+          <div class="nav-group-header"><span>ACCOUNT</span></div>
+          <div class="nav-group-items">
+            <button class="nav-item" data-tab="billing">
+              <i data-lucide="credit-card"></i><span>Billing</span>
+            </button>
+            <button class="nav-item" data-tab="settings">
+              <i data-lucide="settings"></i><span>Settings</span>
+            </button>
+          </div>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -328,24 +386,56 @@
             <p>Your career operating system summary. Track career profile strength, active applications, and recommended next steps.</p>
           </div>
           <div class="view-header-actions">
-            <!-- Prominent Current Resume Control -->
-            <div class="current-resume-control" id="dashCurrentResumeControl">
-              <div class="current-resume-meta">
-                <span class="current-resume-label">CURRENT RESUME</span>
-                <div class="current-resume-name-row">
-                  <strong id="dashCurrentResumeName" class="current-resume-title">Classic ATS</strong>
-                  <span id="dashCurrentResumeBadge" class="badge-sub">Standard</span>
-                </div>
-              </div>
-              <button id="dashChangeResumeBtn" class="secondary-btn sm" type="button" onclick="navigateToTab('templates')" title="Change active resume template">
-                <i data-lucide="layout-template"></i>
-                <span>Change</span>
-              </button>
+            <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="edit-3"></i><span>Resume Builder</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="radar"></i><span>Check Job Fit</span></button>
+          </div>
+        </div>
+
+        <!-- CURRENT RESUME HERO CARD (Prominent visual resume status) -->
+        <div class="current-resume-hero-card" id="dashCurrentResumeHeroCard">
+          <div class="current-resume-hero-visual">
+            <div class="current-resume-icon-badge">
+              <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
+              <span class="text-xs" style="font-size: 0.65rem; font-weight: 700;">ATS</span>
             </div>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="file-plus"></i><span>Build My Resume</span></button>
-            <button class="primary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="radar"></i><span>Analyze a Job</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Start Interview</span></button>
+            <div class="current-resume-hero-info">
+              <div class="current-resume-hero-badge-row">
+                <span class="text-xs text-muted font-bold tracking-wider">CURRENT RESUME</span>
+                <span id="dashCurrentResumeBadge" class="badge-sub">Standard</span>
+              </div>
+              <h3 id="dashCurrentResumeName" class="current-resume-hero-title">Classic ATS</h3>
+              <p class="current-resume-hero-desc" id="dashCurrentResumeDesc">Active template linked to your Master Profile. Clean, machine-readable formatting.</p>
+            </div>
+          </div>
+          <div class="current-resume-hero-actions">
+            <button class="secondary-btn sm" type="button" id="dashPreviewResumeBtn" onclick="openActiveResumePreview()">
+              <i data-lucide="eye"></i><span>Preview</span>
+            </button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
+              <i data-lucide="edit-3"></i><span>Edit in Builder</span>
+            </button>
+            <button class="primary-btn sm" type="button" id="dashChangeResumeBtn" onclick="navigateToTab('templates')">
+              <i data-lucide="layout-template"></i><span>Change Template</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- NO RESUME EMPTY STATE (Shown if profile is completely empty) -->
+        <div class="current-resume-hero-card hidden" id="dashNoResumeHeroCard">
+          <div class="current-resume-hero-visual">
+            <div class="current-resume-icon-badge" style="background: var(--surface-2); color: var(--muted);">
+              <i data-lucide="file-plus" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div class="current-resume-hero-info">
+              <span class="text-xs text-muted font-bold tracking-wider">NO RESUME YET</span>
+              <h3 class="current-resume-hero-title">Create your first resume</h3>
+              <p class="current-resume-hero-desc">Build an ATS-optimized resume directly from your career experience.</p>
+            </div>
+          </div>
+          <div class="current-resume-hero-actions">
+            <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
+              <i data-lucide="file-plus"></i><span>Build My Resume</span>
+            </button>
           </div>
         </div>
 
@@ -508,16 +598,17 @@
         </div>
       </section>
 
-      <!-- TAB 1: MASTER PROFILE -->
+      <!-- TAB 1: PROFILE & EVIDENCE -->
       <section id="tabProfile" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Career Profile</h2>
-            <p>Your master career data store and single source of truth. Manage personal details, experience, skills, projects, and certifications grounded in verifiable evidence.</p>
+            <h2>Profile & Evidence</h2>
+            <p>Keep the information behind your resume accurate, complete, and supported by real evidence.</p>
           </div>
           <div class="view-header-actions">
+            <button class="primary-btn sm" type="button" onclick="$('#saveMasterProfileBtn').click()"><i data-lucide="save"></i><span>Save Profile</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="edit-3"></i><span>Resume Builder</span></button>
             <button class="secondary-btn sm" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
-            <button class="primary-btn sm" type="button" onclick="$('#saveMasterProfileBtn').click()"><i data-lucide="save"></i><span>Save Master Profile</span></button>
           </div>
         </div>
 
@@ -526,7 +617,7 @@
           <div class="context-guide-head">
             <div class="context-guide-title">
               <i data-lucide="user-check"></i>
-              <span>Building Your Career Profile</span>
+              <span>Profile & Evidence — Grounding Store</span>
             </div>
             <div class="context-guide-actions">
               <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
@@ -536,16 +627,15 @@
           <div class="context-guide-body">
             <div class="guide-col">
               <h5>What is this?</h5>
-              <p>Your permanent, canonical career database. Everything you enter here serves as the ground truth for AI tailoring.</p>
+              <p>Your permanent, canonical career database. Everything you enter here serves as the ground truth for your resume and AI tailoring.</p>
             </div>
             <div class="guide-col">
               <h5>What to do:</h5>
-              <p>Add your employment history, key projects, and verified skills. Use measurable metrics (e.g., "$2M revenue", "40% latency reduction").</p>
+              <p>Add verified employment history, key projects, and skill tags. Link evidence URLs or repositories to support your claims.</p>
             </div>
             <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>100% hallucination-free resumes. The AI engine will never fabricate skills or claims that aren't verified in your profile.</p>
-            </div>
+              <h5>Evidence Grounding:</h5>
+              <p>Evidence shows what you have actually done. SmartResume uses it to keep recommendations grounded with zero hallucinations.</p>
           </div>
         </div>
 
@@ -729,15 +819,249 @@
         </div>
       </section>
 
-      <!-- TAB 2: JOB MATCH & FIT ENGINE -->
+
+      <!-- TAB: RESUME BUILDER -->
+      <section id="tabResumeBuilder" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Resume Builder</h2>
+            <p>Design, customize, and edit your resume with live preview and instant export.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('templates')" title="Change resume template">
+              <i data-lucide="layout-template"></i>
+              <span id="builderActiveTemplateName">Template: Classic ATS</span>
+            </button>
+            <button class="secondary-btn sm" type="button" id="builderSyncProfileBtn" title="Sync latest data from Master Profile">
+              <i data-lucide="refresh-cw"></i>
+              <span>Sync Profile</span>
+            </button>
+            <button class="primary-btn sm" type="button" id="builderDownloadPdfBtn">
+              <i data-lucide="download"></i>
+              <span>Download PDF</span>
+            </button>
+            <button class="secondary-btn sm" type="button" id="builderDownloadDocxBtn">
+              <i data-lucide="file-text"></i>
+              <span>Download DOCX</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Resume Builder Context Guide -->
+        <div class="context-guide" data-guide-id="resume-builder">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="sparkles"></i>
+              <span>Resume Builder & Live Preview</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>Your interactive resume editor. Changes made on the left reflect immediately in the formatted ATS document on the right.</p>
+            </div>
+            <div class="guide-col">
+              <h5>Customization:</h5>
+              <p>Adjust typography, line spacing, and accent color. Switch templates at any time without re-typing content.</p>
+            </div>
+            <div class="guide-col">
+              <h5>Export Ready:</h5>
+              <p>Download clean, machine-parseable PDF or editable DOCX formats tested with major applicant tracking systems.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customizer Toolbar -->
+        <div class="panel p-3 mb-4 flex-row justify-between align-center flex-wrap gap-3">
+          <div class="flex-row align-center gap-3 flex-wrap">
+            <div class="flex-row align-center gap-2">
+              <label class="text-xs text-muted" for="builderFontSize">Font Size:</label>
+              <select id="builderFontSize" class="form-select sm" style="width: 100px;">
+                <option value="small">Small</option>
+                <option value="medium" selected>Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </div>
+            <div class="flex-row align-center gap-2">
+              <label class="text-xs text-muted" for="builderSpacing">Spacing:</label>
+              <select id="builderSpacing" class="form-select sm" style="width: 110px;">
+                <option value="compact">Compact</option>
+                <option value="standard" selected>Standard</option>
+                <option value="relaxed">Relaxed</option>
+              </select>
+            </div>
+            <div class="flex-row align-center gap-2">
+              <label class="text-xs text-muted" for="builderAccentColor">Accent Color:</label>
+              <input type="color" id="builderAccentColor" value="#1e3a8a" style="width: 36px; height: 28px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+            </div>
+          </div>
+          <div class="flex-row align-center gap-2">
+            <button class="secondary-btn sm" type="button" id="builderFullscreenPreviewBtn">
+              <i data-lucide="maximize-2"></i>
+              <span>Fullscreen Preview</span>
+            </button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')">
+              <i data-lucide="edit-3"></i>
+              <span>Edit Full Profile</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Two Column Workspace: Left Editor, Right Live Preview -->
+        <div class="grid two gap-4 align-start builder-grid">
+          <!-- Left Column: Focused Section Editors -->
+          <div class="column-stack gap-3" id="builderEditorColumn">
+            <!-- Section 1: Contact & Headline -->
+            <div class="panel">
+              <div class="panel-head flex-row justify-between align-center">
+                <h4><i data-lucide="user"></i> Contact & Headline</h4>
+                <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                  <i data-lucide="chevron-down"></i>
+                </button>
+              </div>
+              <div class="panel-body">
+                <div class="form-grid">
+                  <label>Full Name
+                    <input id="builderFullName" type="text" placeholder="Your Name">
+                  </label>
+                  <label>Professional Headline
+                    <input id="builderHeadline" type="text" placeholder="e.g. Senior Software Engineer">
+                  </label>
+                  <label>Email
+                    <input id="builderEmail" type="email" placeholder="you@domain.com">
+                  </label>
+                  <label>Phone
+                    <input id="builderPhone" type="tel" placeholder="+1 (555) 012-3456">
+                  </label>
+                  <label class="span-2">Location
+                    <input id="builderLocation" type="text" placeholder="City, State / Country">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Executive Summary -->
+            <div class="panel">
+              <div class="panel-head flex-row justify-between align-center">
+                <h4><i data-lucide="file-text"></i> Professional Summary</h4>
+                <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                  <i data-lucide="chevron-down"></i>
+                </button>
+              </div>
+              <div class="panel-body">
+                <textarea id="builderSummary" rows="4" placeholder="Brief 2-3 sentence overview of your career, core specializations, and quantifiable achievements..."></textarea>
+              </div>
+            </div>
+
+            <!-- Section 3: Experience -->
+            <div class="panel">
+              <div class="panel-head flex-row justify-between align-center">
+                <h4><i data-lucide="briefcase"></i> Work Experience</h4>
+                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
+                  <i data-lucide="plus"></i><span>Manage in Profile</span>
+                </button>
+              </div>
+              <div class="panel-body" id="builderExperienceList">
+                <p class="text-xs text-muted">Experience items are synchronized with your Master Profile.</p>
+              </div>
+            </div>
+
+            <!-- Section 4: Projects -->
+            <div class="panel">
+              <div class="panel-head flex-row justify-between align-center">
+                <h4><i data-lucide="folder-git-2"></i> Key Projects</h4>
+                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
+                  <i data-lucide="plus"></i><span>Manage in Profile</span>
+                </button>
+              </div>
+              <div class="panel-body" id="builderProjectsList">
+                <p class="text-xs text-muted">Project entries are synchronized with your Master Profile.</p>
+              </div>
+            </div>
+
+            <!-- Section 5: Skills -->
+            <div class="panel">
+              <div class="panel-head flex-row justify-between align-center">
+                <h4><i data-lucide="award"></i> Skills</h4>
+                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
+                  <i data-lucide="plus"></i><span>Manage in Profile</span>
+                </button>
+              </div>
+              <div class="panel-body" id="builderSkillsList">
+                <p class="text-xs text-muted">Skills are synchronized with your Master Profile.</p>
+              </div>
+            </div>
+
+            <!-- Section 6: Education -->
+            <div class="panel">
+              <div class="panel-head flex-row justify-between align-center">
+                <h4><i data-lucide="graduation-cap"></i> Education</h4>
+                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
+                  <i data-lucide="plus"></i><span>Manage in Profile</span>
+                </button>
+              </div>
+              <div class="panel-body" id="builderEducationList">
+                <p class="text-xs text-muted">Education records are synchronized with your Master Profile.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Resume Preview Sheet -->
+          <div class="builder-preview-container" style="position: sticky; top: 80px;">
+            <div class="resume-preview-sheet" id="builderLivePreviewSheet">
+              <div class="resume-preview-canvas" id="builderPreviewCanvas">
+                <div class="preview-canvas-header">
+                  <h2 id="prevCanvasName">Candidate Name</h2>
+                  <p class="preview-headline" id="prevCanvasHeadline">Professional Headline</p>
+                  <p class="preview-contact" id="prevCanvasContact">email@domain.com | Location | Phone</p>
+                </div>
+                <div class="preview-canvas-divider" id="prevCanvasDivider"></div>
+                
+                <div id="prevSectionSummary" class="prev-section">
+                  <h3 class="preview-section-title">Summary</h3>
+                  <p id="prevCanvasSummary" class="text-xs">Professional summary highlighting verified experience...</p>
+                </div>
+
+                <div id="prevSectionExperience" class="prev-section">
+                  <h3 class="preview-section-title">Professional Experience</h3>
+                  <div id="prevCanvasExperience" class="prev-items-list"></div>
+                </div>
+
+                <div id="prevSectionProjects" class="prev-section">
+                  <h3 class="preview-section-title">Key Projects</h3>
+                  <div id="prevCanvasProjects" class="prev-items-list"></div>
+                </div>
+
+                <div id="prevSectionSkills" class="prev-section">
+                  <h3 class="preview-section-title">Skills & Technologies</h3>
+                  <p id="prevCanvasSkills" class="text-xs"></p>
+                </div>
+
+                <div id="prevSectionEducation" class="prev-section">
+                  <h3 class="preview-section-title">Education</h3>
+                  <div id="prevCanvasEducation" class="prev-items-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: CHECK JOB FIT -->
       <section id="tabFit" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Job Match & Fit Analysis</h2>
-            <p>Evaluate your master profile against target job postings. Uncover keyword coverage, role competencies, hard vs soft skill gaps, and ATS readiness scores.</p>
+            <h2>Check Job Fit</h2>
+            <p>See how this role matches your actual experience before you apply.</p>
           </div>
           <div class="view-header-actions">
-            <button class="primary-btn sm" type="button" onclick="$('#runFitAnalysisBtn').click()"><i data-lucide="wand-sparkles"></i><span>Analyze Job Fit</span></button>
+            <button class="primary-btn sm" type="button" onclick="$('#analyzeJobBtn').click()"><i data-lucide="radar"></i><span>Analyze This Job</span></button>
+            <button class="secondary-btn sm" type="button" onclick="$('#saveTargetJobBtn').click()"><i data-lucide="bookmark"></i><span>Save Job</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
           </div>
         </div>
 
@@ -922,12 +1246,12 @@
       <section id="tabApplicationBuilder" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Application Builder & Tailoring Studio</h2>
-            <p>Generate role-grounded resume variations, review side-by-side bullet diffs, select ATS templates, and commit immutable version snapshots.</p>
+            <h2>Prepare Application</h2>
+            <p>Build everything needed to apply for one specific job from your verified profile.</p>
           </div>
           <div class="view-header-actions">
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('templates')"><i data-lucide="layout-template"></i><span>Browse Templates</span></button>
-            <button class="primary-btn sm" type="button" onclick="$('#generateTailoringBtn').click()"><i data-lucide="wand-sparkles"></i><span>Generate Tailoring</span></button>
+            <button class="primary-btn sm" type="button" onclick="$('#generateTailoringBtn').click()"><i data-lucide="sparkles"></i><span>Prepare Application Pack</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')"><i data-lucide="briefcase"></i><span>Application Tracker</span></button>
           </div>
         </div>
 
@@ -936,7 +1260,7 @@
           <div class="context-guide-head">
             <div class="context-guide-title">
               <i data-lucide="sparkles"></i>
-              <span>How AI Tailoring & Version Snapshots Work</span>
+              <span>Prepare Application — Role-Specific Pack</span>
             </div>
             <div class="context-guide-actions">
               <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
@@ -946,15 +1270,15 @@
           <div class="context-guide-body">
             <div class="guide-col">
               <h5>What is this?</h5>
-              <p>A controlled tailoring workspace that generates targeted resume bullet points backed strictly by your verified evidence.</p>
+              <p>Build a job-specific resume version, cover letter, and outreach email tailored to this exact role without fabrication.</p>
             </div>
             <div class="guide-col">
               <h5>What to do:</h5>
-              <p>Click "Generate Tailoring Proposal", review diffs side-by-side, accept or reject changes, pick an ATS template, and save a snapshot.</p>
+              <p>Review recommended bullet enhancements, accept or reject suggested changes, and commit your tailored resume version.</p>
             </div>
             <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>An immutable, timestamped resume version saved in your history and ready for instant PDF or DOCX download.</p>
+              <h5>Zero Fabrication Guarantee:</h5>
+              <p>Every change is grounded in your verified profile and evidence. Unmatched requirements are highlighted as honest gaps.</p>
             </div>
           </div>
         </div>
@@ -1069,11 +1393,13 @@
       <section id="tabApplications" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Applications Tracker</h2>
-            <p>Organize and track your active job applications, interview pipelines, status transitions, and personal interview notes.</p>
+            <h2>Application Tracker</h2>
+            <p>Track every job application from saved to offer in one organized pipeline.</p>
           </div>
           <div class="view-header-actions">
-            <button class="secondary-btn sm" type="button" onclick="$('#refreshApplicationsBtn').click()"><i data-lucide="refresh-cw"></i><span>Refresh List</span></button>
+            <button class="primary-btn sm" type="button" onclick="$('#appCompany').focus()"><i data-lucide="plus"></i><span>Add Application</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
+            <button class="secondary-btn sm" type="button" onclick="$('#refreshApplicationsBtn').click()"><i data-lucide="refresh-cw"></i><span>Refresh</span></button>
           </div>
         </div>
 
@@ -1082,7 +1408,7 @@
           <div class="context-guide-head">
             <div class="context-guide-title">
               <i data-lucide="briefcase"></i>
-              <span>Managing Your Job Search Pipeline</span>
+              <span>Application Tracker — Pipeline Command</span>
             </div>
             <div class="context-guide-actions">
               <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
@@ -1092,15 +1418,15 @@
           <div class="context-guide-body">
             <div class="guide-col">
               <h5>What is this?</h5>
-              <p>A unified tracker to record everywhere you apply, linked directly to the tailored resume version you submitted.</p>
+              <p>A unified pipeline to record everywhere you apply, linked directly to the tailored resume version you submitted.</p>
             </div>
             <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Add a new job application on the left, link it to a target job posting, and update its stage (SAVED, APPLIED, INTERVIEW, OFFER, REJECTED).</p>
+              <h5>Pipeline Stages:</h5>
+              <p>Move opportunities through Saved, Ready, Applied, Interviewing, Offer, and Rejected so you never lose context.</p>
             </div>
             <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>A crystal-clear pipeline view so you never forget which version of your resume you submitted to which company.</p>
+              <h5>Context Reusable:</h5>
+              <p>Click "Prep Interview" on any application to instantly load that role, company, and resume into Interview practice.</p>
             </div>
           </div>
         </div>
@@ -1121,10 +1447,12 @@
             <label>Application Status
               <select id="appStatus">
                 <option value="SAVED">SAVED</option>
+                <option value="READY">READY</option>
                 <option value="APPLIED">APPLIED</option>
-                <option value="INTERVIEW">INTERVIEW</option>
+                <option value="INTERVIEW">INTERVIEWING</option>
                 <option value="OFFER">OFFER</option>
                 <option value="REJECTED">REJECTED</option>
+                <option value="WITHDRAWN">WITHDRAWN</option>
               </select>
             </label>
             <label class="span-2">Linked Job Posting (Fit Engine)
@@ -1159,8 +1487,8 @@
       <section id="tabBilling" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Billing, Subscriptions & Export Packs</h2>
-            <p>Review monthly quota allowances, upgrade your subscription tier, purchase non-expiring export packs, and view invoices.</p>
+            <h2>Billing</h2>
+            <p>View your current plan, monthly usage limits, subscription status, and payment history.</p>
           </div>
         </div>
 
@@ -1553,12 +1881,12 @@
         </div>
       </section>
 
-      <!-- TAB: RESUME TEMPLATES -->
+      <!-- TAB 8: TEMPLATES -->
       <section id="tabTemplates" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Resume Templates</h2>
-            <p>Choose an ATS-validated layout engineered for your role, experience level, and target recruitment market.</p>
+            <h2>Templates</h2>
+            <p>Select an ATS-validated layout engineered for your career level and target industry.</p>
           </div>
           <div class="view-header-actions">
             <button id="openCompareModalBtn" class="secondary-btn sm" type="button"><i data-lucide="columns"></i><span>Compare Selected (<span id="compareCount">0</span>)</span></button>
@@ -1812,11 +2140,11 @@
         </div>
       </section>
 
-      <!-- TAB: INTERVIEW COPILOT -->
+      <!-- TAB: INTERVIEW -->
       <section id="tabInterview" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>AI Interview Copilot</h2>
+            <h2>Interview</h2>
             <p>Practice realistic mock interviews calibrated directly against your verified resume claims and target job requirements.</p>
           </div>
           <div class="view-header-actions">
@@ -2135,7 +2463,7 @@
       <section id="tabCareerInsights" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Career Insights & Market Demand</h2>
+            <h2>Insights</h2>
             <p>Objective market demand intelligence, skill requirement gaps, and career leveling pathways.</p>
           </div>
           <div class="view-header-actions">
@@ -2209,6 +2537,30 @@
         </div>
       </section>
     </section>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+      <button class="mobile-nav-item active" data-tab="dashboard" type="button">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Home</span>
+      </button>
+      <button class="mobile-nav-item" data-tab="resume-builder" type="button">
+        <i data-lucide="edit-3"></i>
+        <span>Resume</span>
+      </button>
+      <button class="mobile-nav-item" data-tab="fit" type="button">
+        <i data-lucide="radar"></i>
+        <span>Jobs</span>
+      </button>
+      <button class="mobile-nav-item" data-tab="applications" type="button">
+        <i data-lucide="briefcase"></i>
+        <span>Tracker</span>
+      </button>
+      <button class="mobile-nav-item" id="mobileMoreNavBtn" type="button">
+        <i data-lucide="menu"></i>
+        <span>Menu</span>
+      </button>
+    </nav>
   </main>
 
   <!-- MODAL: TEMPLATE PREVIEW & CUSTOMIZER -->

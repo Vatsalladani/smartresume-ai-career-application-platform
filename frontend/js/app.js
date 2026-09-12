@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireTheme();
   wireAuth();
   wireNavigation();
+  wireResumeBuilder();
   wireMasterProfile();
   wireJobFit();
   wireTailoringStudio();
@@ -785,29 +786,39 @@ async function handleOAuthCallback(code, provider) {
 const ROUTES = {
   "#/dashboard": "dashboard",
   "#/career-profile": "profile",
+  "#/profile": "profile",
   "#/evidence": "evidence-vault",
+  "#/evidence-vault": "evidence-vault",
+  "#/resume-builder": "resume-builder",
   "#/templates": "templates",
   "#/job-radar": "job-radar",
   "#/job-match": "fit",
+  "#/check-job-fit": "fit",
+  "#/fit": "fit",
   "#/application-builder": "tailor",
+  "#/prepare-application": "tailor",
+  "#/tailor": "tailor",
   "#/smartapply": "smartapply",
   "#/applications": "applications",
+  "#/application-tracker": "applications",
   "#/interview": "interview",
   "#/insights": "career-insights",
+  "#/career-insights": "career-insights",
   "#/billing": "billing",
   "#/settings": "settings",
 };
 
 const TAB_TO_ROUTE = {
   "dashboard": "#/dashboard",
-  "profile": "#/career-profile",
+  "profile": "#/profile",
   "evidence-vault": "#/evidence",
+  "resume-builder": "#/resume-builder",
   "templates": "#/templates",
   "job-radar": "#/job-radar",
-  "fit": "#/job-match",
-  "tailor": "#/application-builder",
+  "fit": "#/check-job-fit",
+  "tailor": "#/prepare-application",
   "smartapply": "#/smartapply",
-  "applications": "#/applications",
+  "applications": "#/application-tracker",
   "interview": "#/interview",
   "career-insights": "#/insights",
   "billing": "#/billing",
@@ -818,6 +829,7 @@ const TAB_MAP = {
   "dashboard": "tabDashboard",
   "profile": "tabProfile",
   "evidence-vault": "tabEvidenceVault",
+  "resume-builder": "tabResumeBuilder",
   "templates": "tabTemplates",
   "job-radar": "tabJobRadar",
   "fit": "tabFit",
@@ -834,14 +846,14 @@ function wireNavigation() {
   function activateTab(tabName, updateHash = true) {
     const validTab = TAB_MAP[tabName] ? tabName : "dashboard";
 
-    // 1. Highlight sidebar navigation item
-    $$(".nav-tabs button").forEach((item) => {
+    // 1. Highlight sidebar & mobile navigation items
+    $$(".nav-tabs button, .nav-groups .nav-item, .mobile-bottom-nav .mobile-nav-item").forEach((item) => {
       if (item.dataset.tab === validTab) {
         item.classList.add("active");
         item.setAttribute("aria-selected", "true");
         const label = item.querySelector("span") ? item.querySelector("span").textContent.trim() : item.textContent.trim();
         const pageTitleEl = $("#pageTitle");
-        if (pageTitleEl) pageTitleEl.textContent = label;
+        if (pageTitleEl && label && label !== "Menu") pageTitleEl.textContent = label;
         document.title = `SmartResume.ai — ${label}`;
       } else {
         item.classList.remove("active");
@@ -869,6 +881,7 @@ function wireNavigation() {
     }
 
     // 5. Trigger view data refresh
+    if (validTab === "resume-builder") loadResumeBuilderView();
     if (validTab === "templates") loadTemplatesView();
     if (validTab === "evidence-vault") loadEvidenceVault();
     if (validTab === "job-radar") loadJobRadar();
@@ -890,8 +903,8 @@ function wireNavigation() {
     drawIcons();
   }
 
-  // Sidebar button click events
-  $$(".nav-tabs button").forEach((button) => {
+  // Navigation button click events
+  $$(".nav-tabs button, .nav-groups .nav-item, .mobile-bottom-nav .mobile-nav-item[data-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       activateTab(button.dataset.tab, true);
     });
@@ -910,6 +923,7 @@ function wireNavigation() {
 
   // Mobile drawer controls
   const mobileMenuBtn = $("#mobileMenuBtn");
+  const mobileMoreNavBtn = $("#mobileMoreNavBtn");
   const backdrop = $("#sidebarBackdrop");
 
   function openMobileDrawer() {
@@ -925,6 +939,7 @@ function wireNavigation() {
   }
 
   if (mobileMenuBtn) mobileMenuBtn.addEventListener("click", openMobileDrawer);
+  if (mobileMoreNavBtn) mobileMoreNavBtn.addEventListener("click", openMobileDrawer);
   if (backdrop) backdrop.addEventListener("click", closeMobileDrawer);
 
   // Register tab activation handler
@@ -1010,12 +1025,21 @@ function renderDashboard() {
   const p = state.profile || {};
   const score = p.completeness_score || 0;
 
-  // Prominent Current Resume Control
+  // Prominent Current Resume Hero Card vs No Resume State
+  const hasProfileData = !!(p.full_name || (p.experiences && p.experiences.length > 0) || (p.skills && p.skills.length > 0));
+  const heroCard = $("#dashCurrentResumeHeroCard");
+  const noResumeCard = $("#dashNoResumeHeroCard");
+  if (heroCard && noResumeCard) {
+    heroCard.classList.toggle("hidden", !hasProfileData);
+    noResumeCard.classList.toggle("hidden", hasProfileData);
+  }
+
+  // Active Template name & badge
   const resumeNameEl = $("#dashCurrentResumeName");
   const resumeBadgeEl = $("#dashCurrentResumeBadge");
   const changeBtn = $("#dashChangeResumeBtn");
-  const activeTplId = state.activeTemplate || "classic-ats";
-  const tplDef = (window.RESUME_TEMPLATES || []).find(t => t.id === activeTplId) || { name: "Classic ATS", isPro: false };
+  const activeTplId = state.activeTemplateId || state.activeTemplate || "classic_ats";
+  const tplDef = (state.templates || []).find(t => t.template_id === activeTplId) || (window.RESUME_TEMPLATES || []).find(t => t.id === activeTplId) || { name: "Classic ATS", isPro: false };
 
   if (resumeNameEl) {
     resumeNameEl.textContent = tplDef.name || "Classic ATS";
@@ -1030,15 +1054,15 @@ function renderDashboard() {
     } else if (tplDef.isPro && isTrial) {
       resumeBadgeEl.textContent = "PRO · Trial included";
       resumeBadgeEl.className = "badge-sub badge-pro-trial";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change Template";
     } else if (tplDef.isPro) {
       resumeBadgeEl.textContent = "PRO";
       resumeBadgeEl.className = "badge-sub badge-pro";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change Template";
     } else {
       resumeBadgeEl.textContent = "Standard";
       resumeBadgeEl.className = "badge-sub";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change";
+      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change Template";
     }
   }
 
@@ -1247,6 +1271,360 @@ function renderDashboard() {
 
   syncActiveTemplateDisplay();
   drawIcons();
+}
+
+function openActiveResumePreview() {
+  const tplId = state.activeTemplateId || "classic_ats";
+  if (typeof openTemplatePreviewModal === "function") {
+    openTemplatePreviewModal(tplId);
+  } else {
+    navigateToTab("resume-builder");
+  }
+}
+window.openActiveResumePreview = openActiveResumePreview;
+
+// ==========================================================================
+// RESUME BUILDER CONTROLLER (Two-column interactive editor + live canvas)
+// ==========================================================================
+function wireResumeBuilder() {
+  const syncBtn = $("#builderSyncProfileBtn");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", () => {
+      syncBuilderFromProfile();
+      toast("Synchronized resume with your Master Profile.");
+    });
+  }
+
+  // Inputs live sync
+  const inputs = [
+    "builderFullName",
+    "builderHeadline",
+    "builderEmail",
+    "builderPhone",
+    "builderLocation",
+    "builderSummary",
+  ];
+  inputs.forEach((id) => {
+    const el = $(`#${id}`);
+    if (el) {
+      el.addEventListener("input", () => {
+        updateResumePreviewCanvasFromInputs();
+      });
+    }
+  });
+
+  // Customizer styling
+  const fontSizeSelect = $("#builderFontSize");
+  if (fontSizeSelect) {
+    fontSizeSelect.addEventListener("change", (e) => {
+      state.customizer.fontSize = e.target.value;
+      applyCustomizerStylesToCanvas();
+    });
+  }
+
+  const spacingSelect = $("#builderSpacing");
+  if (spacingSelect) {
+    spacingSelect.addEventListener("change", (e) => {
+      state.customizer.spacing = e.target.value;
+      applyCustomizerStylesToCanvas();
+    });
+  }
+
+  const accentPicker = $("#builderAccentColor");
+  if (accentPicker) {
+    accentPicker.addEventListener("input", (e) => {
+      state.customizer.accentColor = e.target.value;
+      applyCustomizerStylesToCanvas();
+    });
+  }
+
+  // Fullscreen preview
+  const fullscreenBtn = $("#builderFullscreenPreviewBtn");
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener("click", () => {
+      openActiveResumePreview();
+    });
+  }
+
+  // Export buttons in Resume Builder
+  const pdfBtn = $("#builderDownloadPdfBtn");
+  if (pdfBtn) {
+    pdfBtn.addEventListener("click", () => {
+      if (state.activeJob && state.activeVersion) {
+        handleExportWithPreCheck("pdf");
+      } else {
+        executeProfileResumeExport("pdf");
+      }
+    });
+  }
+
+  const docxBtn = $("#builderDownloadDocxBtn");
+  if (docxBtn) {
+    docxBtn.addEventListener("click", () => {
+      if (state.activeJob && state.activeVersion) {
+        handleExportWithPreCheck("docx");
+      } else {
+        executeProfileResumeExport("docx");
+      }
+    });
+  }
+}
+
+async function executeProfileResumeExport(format) {
+  try {
+    toast(`Preparing your ${format.toUpperCase()} resume...`);
+    const token = API.getAccessToken();
+    const tpl = state.activeTemplateId || "classic_ats";
+    const res = await fetch(`/api/v1/resumes/export-profile?format=${format}&template_id=${tpl}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Export returned status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `SmartResume_${(state.profile?.full_name || "Resume").replace(/\\s+/g, "_")}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast(`Resume ${format.toUpperCase()} downloaded successfully!`);
+  } catch (err) {
+    if (format === "pdf") {
+      window.print();
+    } else {
+      toast("Select a target job or prepare an application to download a tailored version pack.", "info");
+    }
+  }
+}
+
+function loadResumeBuilderView() {
+  const t = (state.templates || []).find((x) => x.template_id === state.activeTemplateId);
+  const name = t ? t.name : "Classic ATS";
+  const label = $("#builderActiveTemplateName");
+  if (label) label.textContent = `Template: ${name}`;
+
+  syncBuilderFromProfile();
+  applyCustomizerStylesToCanvas();
+}
+
+function syncBuilderFromProfile() {
+  const p = state.profile || {};
+  const nameEl = $("#builderFullName");
+  if (nameEl) nameEl.value = p.full_name || state.user?.full_name || "";
+  const headlineEl = $("#builderHeadline");
+  if (headlineEl) headlineEl.value = p.headline || "";
+  const emailEl = $("#builderEmail");
+  if (emailEl) emailEl.value = p.email || state.user?.email || "";
+  const phoneEl = $("#builderPhone");
+  if (phoneEl) phoneEl.value = p.phone || "";
+  const locationEl = $("#builderLocation");
+  if (locationEl) locationEl.value = p.location || "";
+  const summaryEl = $("#builderSummary");
+  if (summaryEl) summaryEl.value = p.summary || "";
+
+  renderBuilderExperienceList(p.experiences || []);
+  renderBuilderProjectsList(p.projects || []);
+  renderBuilderSkillsList(p.skills || []);
+  renderBuilderEducationList(p.education || []);
+
+  updateResumePreviewCanvasFromInputs();
+}
+
+function renderBuilderExperienceList(exps) {
+  const container = $("#builderExperienceList");
+  if (!container) return;
+  if (!exps || exps.length === 0) {
+    container.innerHTML = '<p class="text-xs text-muted">No experience entries added yet. <a href="javascript:void(0)" onclick="navigateToTab(\'profile\')">Add in Profile</a></p>';
+    return;
+  }
+  container.innerHTML = exps.map(e => `
+    <div class="p-2 border rounded mb-2 bg-surface-2 text-xs">
+      <div class="flex-row justify-between">
+        <strong>${escapeHtml(e.title || "Role")}</strong>
+        <span class="text-muted">${escapeHtml(e.start_date || "")} – ${e.is_current ? "Present" : escapeHtml(e.end_date || "")}</span>
+      </div>
+      <span class="text-muted">${escapeHtml(e.company || "")}</span>
+      <p class="text-xs text-muted mt-1">${(e.bullets || []).length} verified achievement bullets</p>
+    </div>
+  `).join("");
+}
+
+function renderBuilderProjectsList(projs) {
+  const container = $("#builderProjectsList");
+  if (!container) return;
+  if (!projs || projs.length === 0) {
+    container.innerHTML = '<p class="text-xs text-muted">No projects added yet. <a href="javascript:void(0)" onclick="navigateToTab(\'profile\')">Add in Profile</a></p>';
+    return;
+  }
+  container.innerHTML = projs.map(p => `
+    <div class="p-2 border rounded mb-2 bg-surface-2 text-xs">
+      <div class="flex-row justify-between">
+        <strong>${escapeHtml(p.title || "Project")}</strong>
+        <span class="text-muted">${(p.technologies || []).slice(0, 3).join(", ")}</span>
+      </div>
+      <p class="text-xs text-muted mt-1">${escapeHtml(p.description || "").slice(0, 80)}...</p>
+    </div>
+  `).join("");
+}
+
+function renderBuilderSkillsList(skills) {
+  const container = $("#builderSkillsList");
+  if (!container) return;
+  if (!skills || skills.length === 0) {
+    container.innerHTML = '<p class="text-xs text-muted">No skills added yet. <a href="javascript:void(0)" onclick="navigateToTab(\'profile\')">Add in Profile</a></p>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="flex-row flex-wrap gap-1">
+      ${skills.map(s => `<span class="tag-pill text-xs">${escapeHtml(typeof s === "string" ? s : s.name)}</span>`).join("")}
+    </div>
+  `;
+}
+
+function renderBuilderEducationList(edu) {
+  const container = $("#builderEducationList");
+  if (!container) return;
+  if (!edu || edu.length === 0) {
+    container.innerHTML = '<p class="text-xs text-muted">No education records added yet. <a href="javascript:void(0)" onclick="navigateToTab(\'profile\')">Add in Profile</a></p>';
+    return;
+  }
+  container.innerHTML = edu.map(ed => `
+    <div class="p-2 border rounded mb-2 bg-surface-2 text-xs">
+      <div class="flex-row justify-between">
+        <strong>${escapeHtml(ed.degree || "Degree")}${ed.field_of_study ? ` in ${escapeHtml(ed.field_of_study)}` : ""}</strong>
+        <span class="text-muted">${escapeHtml(ed.graduation_year || "")}</span>
+      </div>
+      <span class="text-muted">${escapeHtml(ed.institution || "")}</span>
+    </div>
+  `).join("");
+}
+
+function updateResumePreviewCanvasFromInputs() {
+  const name = $("#builderFullName")?.value || state.profile?.full_name || "Your Name";
+  const headline = $("#builderHeadline")?.value || state.profile?.headline || "";
+  const email = $("#builderEmail")?.value || state.profile?.email || "";
+  const phone = $("#builderPhone")?.value || state.profile?.phone || "";
+  const loc = $("#builderLocation")?.value || state.profile?.location || "";
+  const summary = $("#builderSummary")?.value || state.profile?.summary || "";
+
+  const nameEl = $("#prevCanvasName");
+  if (nameEl) nameEl.textContent = name;
+  const headEl = $("#prevCanvasHeadline");
+  if (headEl) headEl.textContent = headline;
+  const contactEl = $("#prevCanvasContact");
+  if (contactEl) {
+    const parts = [email, phone, loc].filter(Boolean);
+    contactEl.textContent = parts.join(" | ");
+  }
+
+  const sumEl = $("#prevCanvasSummary");
+  if (sumEl) sumEl.textContent = summary || "Professional summary highlighting verified domain expertise, quantifiable achievements, and proven leadership.";
+
+  // Render Experience in canvas
+  const exps = state.profile?.experiences || [];
+  const expContainer = $("#prevCanvasExperience");
+  if (expContainer) {
+    if (exps.length === 0) {
+      expContainer.innerHTML = '<p class="text-xs text-muted" style="font-style: italic;">No employment history added yet.</p>';
+    } else {
+      expContainer.innerHTML = exps.map(e => `
+        <div class="prev-item-entry">
+          <div class="prev-item-header">
+            <span><strong>${escapeHtml(e.title || "")}</strong> — ${escapeHtml(e.company || "")}</span>
+            <span>${escapeHtml(e.start_date || "")} – ${e.is_current ? "Present" : escapeHtml(e.end_date || "")}</span>
+          </div>
+          ${e.location ? `<div class="prev-item-sub">${escapeHtml(e.location)}</div>` : ""}
+          <ul class="prev-item-bullets">
+            ${(e.bullets || []).map(b => `<li>${escapeHtml(typeof b === "string" ? b : b.text)}</li>`).join("")}
+          </ul>
+        </div>
+      `).join("");
+    }
+  }
+
+  // Render Projects in canvas
+  const projs = state.profile?.projects || [];
+  const projContainer = $("#prevCanvasProjects");
+  if (projContainer) {
+    if (projs.length === 0) {
+      projContainer.innerHTML = '<p class="text-xs text-muted" style="font-style: italic;">No key projects added yet.</p>';
+    } else {
+      projContainer.innerHTML = projs.map(p => `
+        <div class="prev-item-entry">
+          <div class="prev-item-header">
+            <span><strong>${escapeHtml(p.title || "")}</strong></span>
+            ${p.url ? `<a href="${escapeHtml(p.url)}" target="_blank" class="text-xs" style="color: var(--primary);">View Project &rarr;</a>` : ""}
+          </div>
+          <p class="text-xs mt-1" style="color: #374151;">${escapeHtml(p.description || "")}</p>
+          ${(p.technologies || []).length > 0 ? `<p class="text-xs text-muted mt-1"><strong>Technologies:</strong> ${escapeHtml(p.technologies.join(", "))}</p>` : ""}
+        </div>
+      `).join("");
+    }
+  }
+
+  // Render Skills in canvas
+  const skills = state.profile?.skills || [];
+  const skillContainer = $("#prevCanvasSkills");
+  if (skillContainer) {
+    if (skills.length === 0) {
+      skillContainer.textContent = "No skills listed yet.";
+    } else {
+      skillContainer.textContent = skills.map(s => typeof s === "string" ? s : s.name).join(" • ");
+    }
+  }
+
+  // Render Education in canvas
+  const edus = state.profile?.education || [];
+  const eduContainer = $("#prevCanvasEducation");
+  if (eduContainer) {
+    if (edus.length === 0) {
+      eduContainer.innerHTML = '<p class="text-xs text-muted" style="font-style: italic;">No education records added yet.</p>';
+    } else {
+      eduContainer.innerHTML = edus.map(ed => `
+        <div class="prev-item-entry">
+          <div class="prev-item-header">
+            <span><strong>${escapeHtml(ed.degree || "")}${ed.field_of_study ? ` in ${escapeHtml(ed.field_of_study)}` : ""}</strong></span>
+            <span>${escapeHtml(ed.graduation_year || "")}</span>
+          </div>
+          <div class="prev-item-sub">${escapeHtml(ed.institution || "")}</div>
+        </div>
+      `).join("");
+    }
+  }
+}
+
+function applyCustomizerStylesToCanvas() {
+  const canvas = $("#builderPreviewCanvas");
+  if (!canvas) return;
+  const customizer = state.customizer || {};
+
+  if (customizer.fontSize === "small") {
+    canvas.style.fontSize = "12px";
+  } else if (customizer.fontSize === "large") {
+    canvas.style.fontSize = "15px";
+  } else {
+    canvas.style.fontSize = "13.5px";
+  }
+
+  if (customizer.spacing === "compact") {
+    canvas.style.lineHeight = "1.25";
+    canvas.style.padding = "24px 28px";
+  } else if (customizer.spacing === "relaxed") {
+    canvas.style.lineHeight = "1.55";
+    canvas.style.padding = "40px 48px";
+  } else {
+    canvas.style.lineHeight = "1.4";
+    canvas.style.padding = "32px 36px";
+  }
+
+  if (customizer.accentColor) {
+    const divider = $("#prevCanvasDivider");
+    if (divider) divider.style.background = customizer.accentColor;
+    $$(".preview-section-title").forEach(el => el.style.color = customizer.accentColor);
+  }
 }
 
 // TAB 1: MASTER PROFILE

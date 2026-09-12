@@ -736,35 +736,145 @@ svg {
   flex-direction: column;
 }
 
-.nav-tabs {
-  display: grid;
-  gap: 6px;
+.nav-tabs,
+.nav-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 160px);
+  padding-right: 4px;
 }
 
+.nav-groups::-webkit-scrollbar {
+  width: 4px;
+}
+.nav-groups::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-group-header {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  padding: 6px 12px 2px;
+  user-select: none;
+}
+
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-group-single {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-item,
 .nav-tabs button {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 10px;
   width: 100%;
   border: 0;
   background: transparent;
   color: var(--muted);
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 7px;
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
+.nav-item i,
+.nav-tabs button i {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+}
+
+.nav-item.active,
 .nav-tabs button.active {
   color: var(--primary);
   background: var(--primary-subtle);
   font-weight: 700;
 }
 
+.nav-item:hover:not(.active),
 .nav-tabs button:hover:not(.active) {
   color: var(--text);
   background: var(--surface-2);
+}
+
+.nav-group-secondary {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 58px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 990;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 4px;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  min-width: 54px;
+}
+
+.mobile-nav-item i {
+  width: 18px;
+  height: 18px;
+}
+
+.mobile-nav-item.active {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  .workspace {
+    padding-bottom: 74px !important;
+  }
 }
 
 .sidebar-footer {
@@ -3018,6 +3128,143 @@ svg {
 
 .term-explain:hover i {
   opacity: 1;
+}
+
+/* ==========================================================================
+   CURRENT RESUME HERO CARD (DASHBOARD)
+   ========================================================================== */
+.current-resume-hero-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease;
+}
+
+.current-resume-hero-card:hover {
+  border-color: var(--primary);
+}
+
+.current-resume-hero-visual {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.current-resume-icon-badge {
+  width: 52px;
+  height: 60px;
+  background: var(--primary-subtle);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+
+.current-resume-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-resume-hero-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.current-resume-hero-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.current-resume-hero-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.current-resume-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* RESUME BUILDER TWO-COLUMN WORKSPACE */
+.builder-grid {
+  grid-template-columns: 1fr 1.1fr;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .builder-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.builder-preview-container {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 140px);
+}
+
+.resume-preview-sheet {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  background: white;
+  border-radius: 4px;
+}
+
+.prev-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.prev-item-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prev-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.prev-item-sub {
+  font-size: 0.78rem;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.prev-item-bullets {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-size: 0.76rem;
+  color: #374151;
+  line-height: 1.45;
 }
 
 /* Customizer Controls Bar in Preview Modal */

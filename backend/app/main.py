@@ -76,11 +76,59 @@ def health() -> dict:
     return {"success": True, "message": "OK", "data": {"service": settings.app_name}}
 
 
-# Mount frontend static assets for unified local development
+# Mount frontend static assets and clean SEO routes
 from pathlib import Path
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend"
-if frontend_dir.exists() and (frontend_dir / "index.html").exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
+
+if frontend_dir.exists():
+    @app.api_route("/robots.txt", methods=["GET", "HEAD"], include_in_schema=False)
+    def get_robots_txt():
+        robots_file = frontend_dir / "robots.txt"
+        if robots_file.exists():
+            return FileResponse(str(robots_file), media_type="text/plain")
+        return Response("User-agent: *\nAllow: /\nDisallow: /api/\n", media_type="text/plain")
+
+    @app.api_route("/sitemap.xml", methods=["GET", "HEAD"], include_in_schema=False)
+    def get_sitemap_xml():
+        sitemap_file = frontend_dir / "sitemap.xml"
+        if sitemap_file.exists():
+            return FileResponse(str(sitemap_file), media_type="application/xml")
+        return Response("<urlset></urlset>", media_type="application/xml")
+
+    # Clean SEO-friendly public pages
+    seo_routes = {
+        "/resume-builder": "resume-builder.html",
+        "/resume-templates": "resume-templates.html",
+        "/job-match": "job-match.html",
+        "/interview-prep": "interview-prep.html",
+        "/pricing": "pricing.html",
+        "/about": "about.html",
+        "/blog": "blog.html",
+        "/contact": "contact.html",
+        "/privacy": "privacy.html",
+        "/terms": "terms.html",
+    }
+
+    for route_path, page_file in seo_routes.items():
+        def _make_handler(target_file=page_file):
+            def handler():
+                fp = frontend_dir / target_file
+                if fp.exists():
+                    return FileResponse(str(fp), media_type="text/html")
+                return FileResponse(str(frontend_dir / "index.html"), media_type="text/html")
+            return handler
+        app.add_api_route(route_path, _make_handler(page_file), methods=["GET", "HEAD"], include_in_schema=False)
+
+    @app.api_route("/app", methods=["GET", "HEAD"], include_in_schema=False)
+    def get_app_view():
+        resp = FileResponse(str(frontend_dir / "index.html"), media_type="text/html")
+        resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return resp
+
+    if (frontend_dir / "index.html").exists():
+        app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
+
 

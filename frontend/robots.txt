@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+Allow: /resume-builder
+Allow: /resume-templates
+Allow: /job-match
+Allow: /interview-prep
+Allow: /pricing
+Allow: /about
+Allow: /blog
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+
+# Disallow private user data and internal authenticated API routes
+Disallow: /api/
+Disallow: /app
+Disallow: /dashboard
+Disallow: /career-profile
+Disallow: /evidence
+Disallow: /applications
+Disallow: /billing
+Disallow: /settings
+Disallow: /interview/private-session
+
+Sitemap: https://smartresume.ai/sitemap.xml\n

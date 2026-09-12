@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <title>AI Resume Builder — Evidence-Grounded ATS Optimization | SmartResume.ai</title>
+  <meta name="description" content="Create machine-readable, ATS-tested resumes grounded strictly in your verified career experience. Zero AI hallucinations, real-time preview, and instant PDF/DOCX export.">
+  <link rel="canonical" href="https://smartresume.ai/resume-builder">
+  <!-- Open Graph -->
+  <meta property="og:title" content="AI Resume Builder — Evidence-Grounded ATS Optimization | SmartResume.ai">
+  <meta property="og:description" content="Create machine-readable, ATS-tested resumes grounded strictly in your verified career experience. Zero AI hallucinations, real-time preview, and instant PDF/DOCX export.">
+  <meta property="og:url" content="https://smartresume.ai/resume-builder">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SmartResume.ai">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Resume Builder — Evidence-Grounded ATS Optimization | SmartResume.ai">
+  <meta name="twitter:description" content="Create machine-readable, ATS-tested resumes grounded strictly in your verified career experience. Zero AI hallucinations, real-time preview, and instant PDF/DOCX export.">
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "AI Resume Builder",
+  "description": "Create machine-readable, ATS-tested resumes grounded strictly in your verified career experience. Zero AI hallucinations, real-time preview, and instant PDF/DOCX export.",
+  "url": "https://smartresume.ai/resume-builder",
+  "publisher": {
+    "@type": "Organization",
+    "name": "SmartResume.ai",
+    "url": "https://smartresume.ai"
+  }
+}
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .public-page { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    .pub-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; position: sticky; top: 0; z-index: 100; }
+    .pub-nav { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .pub-logo { font-size: 1.3rem; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .pub-links { display: flex; align-items: center; gap: 24px; }
+    .pub-links a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: color 0.15s; }
+    .pub-links a:hover, .pub-links a.active { color: var(--primary); }
+    .pub-main { max-width: 1000px; margin: 0 auto; padding: 48px 24px 80px; width: 100%; flex: 1; }
+    .pub-hero { text-align: center; margin-bottom: 48px; }
+    .pub-hero h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; line-height: 1.2; color: var(--text); }
+    .pub-hero p { font-size: 1.15rem; color: var(--muted); max-width: 720px; margin: 0 auto 28px; line-height: 1.6; }
+    .pub-cta-row { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+    .pub-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin: 40px 0; }
+    .pub-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; box-shadow: var(--shadow-sm); }
+    .pub-card h3 { font-size: 1.15rem; font-weight: 700; margin: 12px 0 8px; color: var(--text); }
+    .pub-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.55; }
+    .pub-faq { margin-top: 56px; }
+    .pub-faq h2 { font-size: 1.75rem; font-weight: 800; margin-bottom: 24px; text-align: center; }
+    .pub-faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin-bottom: 12px; }
+    .pub-faq-item h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .pub-faq-item p { font-size: 0.88rem; color: var(--muted); margin: 0; line-height: 1.5; }
+    .pub-footer { background: var(--surface); border-top: 1px solid var(--border); padding: 48px 32px 32px; font-size: 0.85rem; color: var(--muted); }
+    .pub-footer-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 32px; margin-bottom: 36px; }
+    .pub-footer-col h4 { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pub-footer-col ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .pub-footer-col a { color: var(--muted); text-decoration: none; }
+    .pub-footer-col a:hover { color: var(--primary); }
+    .pub-footer-bottom { max-width: 1200px; margin: 0 auto; padding-top: 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; }
+    @media (max-width: 768px) {
+      .pub-nav { flex-direction: column; gap: 16px; align-items: flex-start; }
+      .pub-links { flex-wrap: wrap; gap: 14px; }
+      .pub-hero h1 { font-size: 1.9rem; }
+      .pub-footer-inner { grid-template-columns: 1fr; }
+    }
+  </style>
+
+</head>
+<body class="public-page">
+
+  <header class="pub-header">
+    <nav class="pub-nav" aria-label="Public navigation">
+      <a href="/" class="pub-logo">
+        <span class="brand-mark" style="width: 32px; height: 32px; font-size: 0.9rem;">SR</span>
+        <span>SmartResume<span class="brand-ai">.ai</span></span>
+      </a>
+      <div class="pub-links">
+        <a href="/resume-builder">Resume Builder</a>
+        <a href="/resume-templates">Templates</a>
+        <a href="/job-match">Job Fit</a>
+        <a href="/interview-prep">Interview</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/blog">Blog</a>
+        <a href="/#/signin">Sign In</a>
+        <a href="/#/register" class="primary-btn sm">Get Started</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="pub-main">
+    <div class="pub-hero">
+      <h1>The Evidence-Grounded AI Resume Builder</h1>
+      <p>Build high-impact, machine-readable resumes tailored to your target industry. SmartResume verifies every bullet against your real career evidence.</p>
+      <div class="pub-cta-row">
+        <a href="/#/register" class="primary-btn">Build My Resume Free</a>
+        <a href="/resume-templates" class="secondary-btn">Explore Templates</a>
+      </div>
+    </div>
+    
+          <div class="pub-card-grid">
+            <div class="pub-card">
+              <i data-lucide="shield-check" style="color: var(--primary); width: 28px; height: 28px;"></i>
+              <h3>Zero Fabrication Policy</h3>
+              <p>Unlike generic AI tools that invent fake metrics or skills, SmartResume operates exclusively from your verified profile and evidence vault.</p>
+            </div>
+            <div class="pub-card">
+              <i data-lucide="eye" style="color: var(--primary); width: 28px; height: 28px;"></i>
+              <h3>Real-Time Live Canvas</h3>
+              <p>Preview your formatted resume in real time. Adjust font sizes, line spacing, margins, and accent colors with instant document updates.</p>
+            </div>
+            <div class="pub-card">
+              <i data-lucide="file-check-2" style="color: var(--primary); width: 28px; height: 28px;"></i>
+              <h3>100% ATS Validated</h3>
+              <p>Export in clean, machine-parseable PDF or DOCX formats engineered to pass Workday, Greenhouse, Taleo, and Lever parsing algorithms.</p>
+            </div>
+          </div>
+          <div class="pub-faq">
+            <h2>Frequently Asked Questions</h2>
+            <div class="pub-faq-item">
+              <h3>Does SmartResume invent or exaggerate work experience?</h3>
+              <p>No. SmartResume has a strict zero-hallucination guarantee. Every bullet point is formulated from your actual experiences, projects, and evidence entries.</p>
+            </div>
+            <div class="pub-faq-item">
+              <h3>Can I download my resume in Word (DOCX) format?</h3>
+              <p>Yes. You can export in both high-resolution PDF and fully editable Microsoft Word DOCX formats.</p>
+            </div>
+            <div class="pub-faq-item">
+              <h3>How does the live resume editor work?</h3>
+              <p>The builder provides focused section controls on the left and a live formatted document on the right that syncs with every keystroke.</p>
+            </div>
+          </div>
+        
+  </main>
+
+  <footer class="pub-footer">
+    <div class="pub-footer-inner">
+      <div class="pub-footer-col">
+        <div class="pub-logo" style="margin-bottom: 12px;">
+          <span class="brand-mark" style="width: 28px; height: 28px; font-size: 0.8rem;">SR</span>
+          <span>SmartResume<span class="brand-ai">.ai</span></span>
+        </div>
+        <p style="max-width: 320px; line-height: 1.6;">The Evidence-Grounded AI Career & Application Operating System. Create ATS-optimized resumes, check job fit, prepare applications, and practise interviews from one verified master profile.</p>
+      </div>
+      <div class="pub-footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/resume-builder">AI Resume Builder</a></li>
+          <li><a href="/resume-templates">ATS Resume Templates</a></li>
+          <li><a href="/job-match">Job Fit Analysis</a></li>
+          <li><a href="/interview-prep">Interview Prep</a></li>
+          <li><a href="/pricing">Pricing & Plans</a></li>
+        </ul>
+      </div>
+      <div class="pub-footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="/blog">Career Insights Blog</a></li>
+          <li><a href="/about">About SmartResume</a></li>
+          <li><a href="/contact">Contact Support</a></li>
+        </ul>
+      </div>
+      <div class="pub-footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="pub-footer-bottom">
+      <span>&copy; 2026 SmartResume.ai. All rights reserved. Zero fabrication guarantee.</span>
+      <span>Engineered for global ATS compliance.</span>
+    </div>
+  </footer>
+  <script>lucide.createIcons();</script>
+
+</body>
+</html>
