@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartResume.ai — Evidence-Grounded ATS Resume Platform</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+  <!-- AUTH VIEW -->
+  <section id="authView" class="auth-view">
+    <div class="auth-panel">
+      <div class="brand-row">
+        <div class="brand-mark">SR</div>
+        <div>
+          <h1>SmartResume.ai</h1>
+          <p id="authSubtitle">Sign in to your account</p>
+        </div>
+      </div>
+
+      <!-- Social OAuth 2.0 Buttons -->
+      <div id="oauthActionGroup" class="oauth-buttons-stack">
+        <button id="googleOAuthBtn" class="oauth-btn google-btn" type="button">
+          <svg class="oauth-icon" viewBox="0 0 24 24" width="18" height="18">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <button id="linkedinOAuthBtn" class="oauth-btn linkedin-btn" type="button">
+          <svg class="oauth-icon" viewBox="0 0 24 24" width="18" height="18" fill="#0A66C2">
+            <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+          </svg>
+          <span>Continue with LinkedIn</span>
+        </button>
+      </div>
+
+      <div class="oauth-divider">
+        <span>or continue with email</span>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <label>Email Address
+          <input id="loginEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+        </label>
+        <label>Password
+          <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••">
+        </label>
+        <button class="primary-btn" type="submit"><i data-lucide="log-in"></i><span>Sign In</span></button>
+      </form>
+
+      <form id="registerForm" class="auth-form hidden">
+        <label>Full Name
+          <input id="registerName" type="text" autocomplete="name" required placeholder="Alex Sharma">
+        </label>
+        <label>Email Address
+          <input id="registerEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+        </label>
+        <label>Password
+          <input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
+          <span class="field-hint">Must contain at least 1 digit and 1 special symbol.</span>
+        </label>
+        <button class="primary-btn" type="submit"><i data-lucide="user-plus"></i><span>Create Free Account</span></button>
+      </form>
+
+      <form id="forgotForm" class="auth-form hidden">
+        <p class="form-hint">Enter your registered email address to receive password reset instructions.</p>
+        <label>Email Address
+          <input id="forgotEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+        </label>
+        <button class="primary-btn" type="submit"><i data-lucide="mail"></i><span>Request Password Reset</span></button>
+      </form>
+
+      <form id="resetForm" class="auth-form hidden">
+        <label>Reset Token
+          <input id="resetToken" type="text" required placeholder="Paste token from email">
+        </label>
+        <label>New Password
+          <input id="resetPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="New secure password">
+        </label>
+        <button class="primary-btn" type="submit"><i data-lucide="key-round"></i><span>Set New Password</span></button>
+      </form>
+
+      <div class="auth-links">
+        <button type="button" data-auth-mode="login">Sign In</button>
+        <button type="button" data-auth-mode="register">Register</button>
+        <button type="button" data-auth-mode="forgot">Forgot Password</button>
+        <button type="button" data-auth-mode="reset">Reset Password</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN APP VIEW -->
+  <main id="appView" class="app-view hidden">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand-row compact">
+        <div class="brand-mark">SR</div>
+        <div class="brand-text">
+          <h1>SmartResume</h1>
+          <span class="badge-sub">v2.0 Pro</span>
+        </div>
+      </div>
+
+      <nav class="nav-tabs" aria-label="Main navigation">
+        <button class="active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+        <button data-tab="profile"><i data-lucide="user-check"></i><span>Career Profile</span></button>
+        <button data-tab="evidence-vault"><i data-lucide="database"></i><span>Evidence Vault</span></button>
+        <button data-tab="templates"><i data-lucide="layout-template"></i><span>Resume Templates</span></button>
+        <button data-tab="job-radar"><i data-lucide="compass"></i><span>Job Radar</span></button>
+        <button data-tab="fit"><i data-lucide="radar"></i><span>Job Match</span></button>
+        <button data-tab="tailor"><i data-lucide="sparkles"></i><span>Application Builder</span></button>
+        <button data-tab="smartapply"><i data-lucide="external-link"></i><span>SmartApply</span></button>
+        <button data-tab="applications"><i data-lucide="briefcase"></i><span>Applications</span></button>
+        <button data-tab="interview"><i data-lucide="messages-square"></i><span>Interview Copilot</span></button>
+        <button data-tab="career-insights"><i data-lucide="trending-up"></i><span>Career Insights</span></button>
+        <button data-tab="billing"><i data-lucide="credit-card"></i><span>Billing & Usage</span></button>
+        <button data-tab="settings"><i data-lucide="settings"></i><span>Settings</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="icon-btn" type="button" title="Toggle color theme"><i data-lucide="moon"></i></button>
+        <button id="logoutBtn" class="ghost-btn" type="button"><i data-lucide="log-out"></i><span>Logout</span></button>
+      </div>
+    </aside>
+
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- WORKSPACE -->
+    <section class="workspace">
+      <header class="topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button id="mobileMenuBtn" class="icon-btn mobile-menu-btn" type="button" title="Toggle navigation menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <div>
+            <p id="profileLine">Signed in</p>
+            <h2 id="pageTitle">Dashboard</h2>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div id="trialBanner" class="trial-banner-pill hidden">
+            <span>⚡ Pro Trial: <strong id="trialDaysLeft">7 days left</strong></span>
+          </div>
+          <div class="quota-pill" id="quickQuotaBadge" title="Monthly Usage Summary">
+            <span>Fits: <strong id="quickFitsUsage">0/2</strong></span>
+            <span>Tailor: <strong id="quickTailorUsage">0/2</strong></span>
+            <span>Exports: <strong id="quickExportUsage">0/2</strong></span>
+          </div>
+          <span id="planBadge" class="plan-badge">FREE</span>
+          <div class="notif-wrapper" style="position: relative;">
+            <button id="notifBellBtn" class="icon-btn" type="button" title="Notifications">
+              <i data-lucide="bell"></i>
+              <span id="notifBadge" class="notif-badge hidden">0</span>
+            </button>
+            <div id="notifDropdown" class="notif-dropdown hidden">
+              <div class="notif-head">
+                <strong>Notifications</strong>
+                <button id="markAllNotifsBtn" class="text-btn text-xs" type="button">Mark all read</button>
+              </div>
+              <div id="notifList" class="notif-items">
+                <p class="text-xs text-muted p-2 text-center">No unread notifications</p>
+              </div>
+            </div>
+          </div>
+          <button id="upgradeBtn" class="primary-btn sm" type="button"><i data-lucide="zap"></i><span>Upgrade</span></button>
+        </div>
+      </header>
+
+      <!-- TAB 0: DASHBOARD (HOME) -->
+      <!-- TAB 0: DASHBOARD (HOME SUMMARY) -->
+      <section id="tabDashboard" class="tab-panel active">
+        <!-- TOP: Greeting & Purpose -->
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2 id="dashWelcomeName">Welcome back!</h2>
+            <p>Your career operating system summary. Track profile health, active applications, and recommended next steps.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="ghost-btn sm" type="button" onclick="navigateToTab('templates')" title="Click to browse or change active resume template"><i data-lucide="layout-template"></i><span id="dashActiveTemplateName">Template: Classic ATS</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="file-plus"></i><span>Build Resume</span></button>
+            <button class="primary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="radar"></i><span>Analyze a Job</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Start Interview</span></button>
+          </div>
+        </div>
+
+        <!-- Dashboard Context Guide -->
+        <div class="context-guide" data-guide-id="dashboard">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="compass"></i>
+              <span>Dashboard Overview & Next Steps</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>Your central command center summarizing profile health, monthly usage quotas, active applications, and job matches.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Check profile grounding score, review recommended actions below, and track pending application submissions.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>A calm, focused view of your career pipeline with clear guidance on what to improve next.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECOND: Profile Health & Evidence Health -->
+        <div class="grid two mb-4">
+          <!-- Card 1: Profile Health (Answers Q1: "How healthy is my career profile?") -->
+          <div class="panel">
+            <div class="panel-head">
+              <h4><i data-lucide="shield-check"></i> Career Profile Health</h4>
+              <button class="text-btn text-xs" type="button" onclick="openHealthReportModal()">Health Report &rarr;</button>
+            </div>
+            <div class="flex-row align-center gap-4 mb-3">
+              <div class="meter-circle" id="dashMeterCircle" style="width: 72px; height: 72px; min-width: 72px;">
+                <span id="dashCompletenessPercent" style="font-size: 1.25rem;">0%</span>
+              </div>
+              <div>
+                <strong id="dashCompletenessLabel" class="text-sm">Evaluating Grounding...</strong>
+                <p id="dashQ1Answer" class="text-xs text-muted mt-1">Evaluating profile health and evidence coverage...</p>
+              </div>
+            </div>
+            <div class="button-row mt-auto">
+              <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>10-Dimension Health</span></button>
+              <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="user-check"></i><span>Edit Profile</span></button>
+            </div>
+          </div>
+
+          <!-- Card 2: Plan & Monthly Usage Summary -->
+          <div class="panel">
+            <div class="panel-head">
+              <h4><i data-lucide="gauge"></i> Plan & Monthly Quotas</h4>
+              <button class="text-btn text-xs" type="button" onclick="navigateToTab('billing')">Manage Billing &rarr;</button>
+            </div>
+            <div class="grid three mb-3">
+              <div class="quota-mini-stat">
+                <span class="text-xs text-muted">Job Fits</span>
+                <strong id="dashFitsUsage" class="text-sm">0 / 2</strong>
+                <div class="progress-bar mini mt-1"><span id="dashFitsBar" style="width: 0%"></span></div>
+              </div>
+              <div class="quota-mini-stat">
+                <span class="text-xs text-muted">Tailorings</span>
+                <strong id="dashTailorsUsage" class="text-sm">0 / 2</strong>
+                <div class="progress-bar mini mt-1"><span id="dashTailorsBar" style="width: 0%"></span></div>
+              </div>
+              <div class="quota-mini-stat">
+                <span class="text-xs text-muted">Exports</span>
+                <strong id="dashExportsUsage" class="text-sm">0 / 2</strong>
+                <div class="progress-bar mini mt-1"><span id="dashExportsBar" style="width: 0%"></span></div>
+              </div>
+            </div>
+            <div class="button-row mt-auto">
+              <button class="secondary-btn sm" type="button" onclick="navigateToTab('evidence-vault')"><i data-lucide="database"></i><span>Open Evidence Vault</span></button>
+              <button class="primary-btn sm" type="button" onclick="navigateToTab('billing')"><i data-lucide="zap"></i><span>View Plans & Credits</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- THIRD: Current Applications & Active Target Jobs (Answers Q2: "What jobs/applications am I working on?") -->
+        <div class="grid two mb-4">
+          <!-- Recent Tracked Applications -->
+          <div class="panel">
+            <div class="panel-head">
+              <h4><i data-lucide="briefcase"></i> Active Applications</h4>
+              <button class="ghost-btn sm" type="button" onclick="navigateToTab('applications')"><span>View All</span> &rarr;</button>
+            </div>
+            <div id="dashApplicationsList" class="cards-list">
+              <div class="empty-state-card mini">
+                <i data-lucide="briefcase"></i>
+                <p>No job applications tracked yet.</p>
+                <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')">Add Application</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Target Job Postings -->
+          <div class="panel">
+            <div class="panel-head">
+              <h4><i data-lucide="file-search"></i> Target Job Postings</h4>
+              <button class="ghost-btn sm" type="button" onclick="navigateToTab('fit')"><span>View All</span> &rarr;</button>
+            </div>
+            <div id="dashJobsList" class="cards-list">
+              <div class="empty-state-card mini">
+                <i data-lucide="file-search"></i>
+                <p>No target job postings analyzed yet.</p>
+                <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')">Analyze First Job</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOURTH: What Needs Attention & What Should I Do Next (Answers Q3 & Q4) -->
+        <div class="grid two">
+          <!-- Attention / Improvements Card (Q3) -->
+          <div class="panel">
+            <div class="panel-head">
+              <h4><i data-lucide="alert-circle"></i> What Needs Attention</h4>
+              <button class="text-btn text-xs" type="button" onclick="navigateToTab('evidence-vault')">Review Vault &rarr;</button>
+            </div>
+            <p id="dashQ3Answer" class="text-sm text-muted mb-3">Loading actionable evidence suggestions...</p>
+            <div class="button-row mt-auto">
+              <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="check-square"></i><span>Review Skill Consistency</span></button>
+              <button class="secondary-btn sm" type="button" onclick="navigateToTab('evidence-vault')"><i data-lucide="database"></i><span>Add Verifiable Metric</span></button>
+            </div>
+          </div>
+
+          <!-- Recommended Next Actions & Versions (Q4 & Q2) -->
+          <div class="panel">
+            <div class="panel-head">
+              <h4><i data-lucide="compass"></i> Recommended Next Action</h4>
+              <button class="text-btn text-xs" type="button" onclick="navigateToTab('tailor')">Application Builder &rarr;</button>
+            </div>
+            <p id="dashQ4Answer" class="text-sm text-muted mb-3">No tailored version snapshots linked to applications yet.</p>
+            <p id="dashQ2Answer" class="hidden">No target jobs analyzed yet.</p>
+            <div class="button-row mt-auto">
+              <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="bookmark-plus"></i><span>Create Tailored Version</span></button>
+              <button class="secondary-btn sm" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Mock Interview Practice</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 1: MASTER PROFILE -->
+      <section id="tabProfile" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Career Profile</h2>
+            <p>Your master career data store and single source of truth. Manage personal details, experience, skills, projects, and certifications grounded in verifiable evidence.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
+            <button class="primary-btn sm" type="button" onclick="$('#saveMasterProfileBtn').click()"><i data-lucide="save"></i><span>Save Master Profile</span></button>
+          </div>
+        </div>
+
+        <!-- Career Profile Context Guide -->
+        <div class="context-guide" data-guide-id="profile">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="user-check"></i>
+              <span>Building Your Career Profile</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>Your permanent, canonical career database. Everything you enter here serves as the ground truth for AI tailoring.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Add your employment history, key projects, and verified skills. Use measurable metrics (e.g., "$2M revenue", "40% latency reduction").</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>100% hallucination-free resumes. The AI engine will never fabricate skills or claims that aren't verified in your profile.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile Header / Completeness Card -->
+        <div class="panel completeness-panel">
+          <div class="completeness-info">
+            <div class="meter-circle" id="profileMeterCircle">
+              <span id="completenessPercent">0%</span>
+            </div>
+            <div>
+              <h3>Master Profile Grounding Score</h3>
+              <p id="completenessSubtitle">Your Single Source of Truth for evidence-grounded resume generation.</p>
+              <div id="missingSectionsList" class="missing-tags"></div>
+            </div>
+          </div>
+          <div class="button-row">
+            <button id="openHealthReportBtn" class="secondary-btn" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>Resume Health Report</span></button>
+            <button id="openRelevanceBtn" class="secondary-btn" type="button" onclick="openRelevanceModal()"><i data-lucide="filter"></i><span>Check Relevance</span></button>
+            <button id="openImportModalBtn" class="secondary-btn" type="button"><i data-lucide="file-up"></i><span>Import Resume</span></button>
+            <button id="saveMasterProfileBtn" class="primary-btn" type="button"><i data-lucide="save"></i><span>Save Master Profile</span></button>
+          </div>
+        </div>
+
+        <div class="grid two mt-4">
+          <!-- Left Column: Personal & Experience -->
+          <div class="column-stack">
+            <!-- Contact & Role Intelligence -->
+            <section class="panel">
+              <div class="panel-head">
+                <h3><i data-lucide="contact-round"></i> Profile & Career Intelligence</h3>
+              </div>
+              <div class="form-grid">
+                <label class="span-2">Professional Headline / Target Role
+                  <input id="profHeadline" type="text" placeholder="e.g. Senior Backend Engineer | Python & Cloud Systems">
+                </label>
+                <label>Primary Domain / Industry
+                  <select id="profDomain">
+                    <option value="Software Engineering">Software Engineering</option>
+                    <option value="Backend Development">Backend Development</option>
+                    <option value="Frontend Development">Frontend Development</option>
+                    <option value="Web Development">Web Development</option>
+                    <option value="Data Analytics">Data Analytics</option>
+                    <option value="Data Science">Data Science</option>
+                    <option value="AI / ML">AI / ML</option>
+                    <option value="Cloud / DevOps">Cloud / DevOps</option>
+                    <option value="Cybersecurity">Cybersecurity</option>
+                    <option value="UI/UX">UI/UX</option>
+                    <option value="Product Management">Product Management</option>
+                    <option value="Business Analysis">Business Analysis</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Operations">Operations</option>
+                    <option value="HR">HR</option>
+                    <option value="Consulting">Consulting</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Education">Education</option>
+                    <option value="Architecture / Design">Architecture / Design</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+                <label>Career Experience Level
+                  <select id="profCareerLevel">
+                    <option value="EARLY_CAREER">Early Career (Students / Freshers / 0–1 yr)</option>
+                    <option value="DEVELOPING_PROFESSIONAL" selected>Developing Professional (~1–4 yrs)</option>
+                    <option value="EXPERIENCED_PROFESSIONAL">Experienced Professional (Senior / Lead / 5+ yrs)</option>
+                  </select>
+                </label>
+                <label>Phone
+                  <input id="profPhone" type="tel" placeholder="+91 98765 43210">
+                </label>
+                <label>Location / Target Geography
+                  <input id="profLocation" type="text" placeholder="Bengaluru, India or Remote">
+                </label>
+                <label>LinkedIn Profile URL
+                  <input id="profLinkedIn" type="url" placeholder="https://linkedin.com/in/username">
+                </label>
+                <label>GitHub Profile URL
+                  <input id="profGitHub" type="url" placeholder="https://github.com/username">
+                </label>
+                <label class="span-2">Portfolio / Personal Website
+                  <input id="profWebsite" type="url" placeholder="https://yourportfolio.dev">
+                </label>
+                <label class="span-2">Professional Summary
+                  <textarea id="profSummary" rows="3" placeholder="Brief 2-3 sentence career summary grounded in verified experience."></textarea>
+                </label>
+              </div>
+            </section>
+
+            <!-- Work Experiences -->
+            <section class="panel">
+              <div class="panel-head">
+                <h3><i data-lucide="briefcase"></i> Work Experience</h3>
+                <button id="addExperienceBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>Add Experience</span></button>
+              </div>
+              <div id="experienceList" class="cards-list">
+                <div class="empty-state-card">
+                  <i data-lucide="briefcase"></i>
+                  <h4>No work experience added</h4>
+                  <p>Add your past roles, metrics, and achievements to back your resume bullets with verified evidence.</p>
+                  <button class="secondary-btn sm" type="button" onclick="$('#addExperienceBtn').click()"><i data-lucide="plus"></i><span>Add Work Experience</span></button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Right Column: Skills, Projects, Education, Certs -->
+          <div class="column-stack">
+            <!-- Skills -->
+            <section class="panel">
+              <div class="panel-head">
+                <h3><i data-lucide="badge-check"></i> Verified Skills</h3>
+              </div>
+              <form id="addSkillForm" class="inline-add-form">
+                <input id="newSkillName" type="text" placeholder="e.g. Python, Docker, PostgreSQL" required>
+                <select id="newSkillCategory">
+                  <option value="technical">Technical</option>
+                  <option value="framework">Framework / Lib</option>
+                  <option value="database">Database</option>
+                  <option value="devops">DevOps / Cloud</option>
+                  <option value="soft">Soft Skill</option>
+                </select>
+                <button class="secondary-btn" type="submit"><i data-lucide="plus"></i><span>Add</span></button>
+              </form>
+              <div id="skillsContainer" class="skills-chip-grid mt-3">
+                <div class="empty-state-card mini">
+                  <i data-lucide="badge-check"></i>
+                  <p>No skills added yet. Enter a skill name above and click Add.</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Projects -->
+            <section class="panel">
+              <div class="panel-head">
+                <h3><i data-lucide="folder-git-2"></i> Key Projects</h3>
+                <button id="addProjectBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>Add Project</span></button>
+              </div>
+              <div id="projectList" class="cards-list">
+                <div class="empty-state-card">
+                  <i data-lucide="folder-git-2"></i>
+                  <h4>No projects added</h4>
+                  <p>Showcase open source repositories, client deliverables, or portfolio projects.</p>
+                  <button class="secondary-btn sm" type="button" onclick="$('#addProjectBtn').click()"><i data-lucide="plus"></i><span>Add Project</span></button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Education -->
+            <section class="panel">
+              <div class="panel-head">
+                <h3><i data-lucide="graduation-cap"></i> Education</h3>
+                <button id="addEducationBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>Add Education</span></button>
+              </div>
+              <div id="educationList" class="cards-list">
+                <div class="empty-state-card">
+                  <i data-lucide="graduation-cap"></i>
+                  <h4>No education added</h4>
+                  <p>List your university degrees, diplomas, or academic institutions.</p>
+                  <button class="secondary-btn sm" type="button" onclick="$('#addEducationBtn').click()"><i data-lucide="plus"></i><span>Add Education</span></button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Certifications -->
+            <section class="panel">
+              <div class="panel-head">
+                <h3><i data-lucide="award"></i> Certifications</h3>
+                <button id="addCertBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>Add Certification</span></button>
+              </div>
+              <div id="certList" class="cards-list">
+                <div class="empty-state-card">
+                  <i data-lucide="award"></i>
+                  <h4>No certifications added</h4>
+                  <p>Include credentials from AWS, Google Cloud, Microsoft, or specialized institutes.</p>
+                  <button class="secondary-btn sm" type="button" onclick="$('#addCertBtn').click()"><i data-lucide="plus"></i><span>Add Certification</span></button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: JOB MATCH & FIT ENGINE -->
+      <section id="tabFit" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Job Match & Fit Analysis</h2>
+            <p>Evaluate your master profile against target job postings. Uncover keyword coverage, role competencies, hard vs soft skill gaps, and ATS readiness scores.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="primary-btn sm" type="button" onclick="$('#runFitAnalysisBtn').click()"><i data-lucide="wand-sparkles"></i><span>Analyze Job Fit</span></button>
+          </div>
+        </div>
+
+        <!-- Job Match Context Guide -->
+        <div class="context-guide" data-guide-id="fit">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="radar"></i>
+              <span>Understanding ATS Fit & Requirement Coverage</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>An algorithmic parser that compares a job description against your verified profile to map exact keyword and competency matches.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Paste the full job description on the left. Click "Analyze ATS Fit" to reveal hard vs soft requirements and evidence matches.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>A transparent breakdown of Strong, Partial, and Missing requirements before you apply, so you can tailor with precision.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <!-- Job Input Panel -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="file-search"></i> Target Job Posting</h3>
+              <select id="savedJobsSelect">
+                <option value="">Select a previously saved job</option>
+              </select>
+            </div>
+            <div class="form-grid">
+              <label>Target Role / Job Title
+                <input id="targetJobTitle" type="text" placeholder="e.g. Lead Backend Engineer" required>
+              </label>
+              <label>Company Name
+                <input id="targetCompany" type="text" placeholder="e.g. Razorpay, Swiggy, Stripe" required>
+              </label>
+              <label class="span-2">Job URL (Optional)
+                <input id="targetJobUrl" type="url" placeholder="https://careers.company.com/job/1234">
+              </label>
+              <label class="span-2">Job Description Text
+                <textarea id="targetJobDesc" rows="11" placeholder="Paste full job description text, requirements, and qualifications..." required></textarea>
+              </label>
+            </div>
+            <div class="button-row mt-3">
+              <button id="runFitAnalysisBtn" class="primary-btn" type="button"><i data-lucide="wand-sparkles"></i><span>Analyze ATS Fit</span></button>
+              <button id="deleteJobBtn" class="danger-btn sm hidden" type="button"><i data-lucide="trash-2"></i><span>Delete Job</span></button>
+            </div>
+          </section>
+
+          <!-- Fit Analysis Results & Scoreboard -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="bar-chart-3"></i> ATS Fit Scoreboard</h3>
+              <button id="proceedToTailorBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="sparkles"></i><span>Open in Tailoring Studio &rarr;</span></button>
+            </div>
+
+            <div id="fitScoreEmptyState" class="empty-state-card">
+              <i data-lucide="target"></i>
+              <h4>No fit analysis evaluated</h4>
+              <p>Paste a job description on the left and click "Analyze ATS Fit" to extract requirements and evaluate evidence grounding.</p>
+            </div>
+
+            <div id="fitScoreResults" class="hidden">
+              <div class="readiness-report-card">
+                <div class="readiness-verdict-row">
+                  <div>
+                    <span class="eyebrow-text">Application Readiness Report</span>
+                    <h3 id="readinessVerdictTitle" class="mt-1">Evaluating Alignment...</h3>
+                    <p id="readinessSummaryStatement" class="text-sm text-muted mt-1">Comparing verified profile evidence against target job requirements.</p>
+                  </div>
+                  <div class="readiness-disclaimer-pill">
+                    <span class="badge-sub"><i data-lucide="info"></i> Internal Guidance • Not a Hiring Prediction</span>
+                  </div>
+                </div>
+
+                <!-- 4 Status Counts Grid -->
+                <div class="readiness-status-counts-grid mt-3">
+                  <div class="status-count-card strong">
+                    <span class="count-val" id="countStrongMatches">0</span>
+                    <span class="count-lbl"><i data-lucide="check-circle-2"></i> Strong Match</span>
+                  </div>
+                  <div class="status-count-card partial">
+                    <span class="count-val" id="countPartialMatches">0</span>
+                    <span class="count-lbl"><i data-lucide="help-circle"></i> Partial Match</span>
+                  </div>
+                  <div class="status-count-card missing">
+                    <span class="count-val" id="countMissingReqs">0</span>
+                    <span class="count-lbl"><i data-lucide="alert-triangle"></i> Missing Evidence</span>
+                  </div>
+                  <div class="status-count-card unclear">
+                    <span class="count-val" id="countUnclearReqs">0</span>
+                    <span class="count-lbl"><i data-lucide="info"></i> Unclear / Soft</span>
+                  </div>
+                </div>
+
+                <!-- Independently Explainable Indicators -->
+                <div class="explainable-indicators-grid mt-3">
+                  <div class="indicator-box">
+                    <span>Format Health</span>
+                    <strong id="indicatorFormat">--/100</strong>
+                    <span class="text-xs text-muted">Single-column ATS parsability</span>
+                  </div>
+                  <div class="indicator-box">
+                    <span>Requirement Coverage</span>
+                    <strong id="indicatorReqCoverage">--</strong>
+                    <span class="text-xs text-muted">Must-haves represented</span>
+                  </div>
+                  <div class="indicator-box">
+                    <span>Evidence Coverage</span>
+                    <strong id="indicatorEvidenceCoverage">--</strong>
+                    <span class="text-xs text-muted">Backed by verified bullets</span>
+                  </div>
+                  <div class="indicator-box">
+                    <span>Content Quality</span>
+                    <strong id="indicatorContentQuality">--/100</strong>
+                    <span class="text-xs text-muted">Verifiable action verbs</span>
+                  </div>
+                </div>
+
+                <!-- Backward compatibility elements for automated tests -->
+                <div style="display:none;">
+                  <span id="scoreAppFit">--</span>
+                  <span id="scoreAppFitLabel">Analyzing...</span>
+                  <span id="scoreEvidence">--%</span>
+                  <span id="scoreKeywords">--%</span>
+                  <span id="scoreFormat">--%</span>
+                  <span id="scoreQuality">--%</span>
+                </div>
+              </div>
+
+              <!-- Actionable ATS Recommendations / Honest Gaps -->
+              <div class="action-card mt-3">
+                <h4><i data-lucide="lightbulb"></i> Actionable Readiness Guidance</h4>
+                <ul id="fitActionHints" class="clean-list"></ul>
+              </div>
+
+              <!-- Skill Gaps Action Panel -->
+              <div id="skillGapsActionPanel" class="panel mt-3 hidden">
+                <h4><i data-lucide="compass"></i> Missing Requirements — Next Steps</h4>
+                <p class="text-sm text-muted">SmartResume never fabricates claims. For missing requirements, choose how you want to proceed:</p>
+                <div id="missingReqActionsList" class="cards-list mt-2"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Evidence Map -->
+        <section class="panel mt-4" id="evidenceMapSection">
+          <div class="panel-head">
+            <div>
+              <h3><i data-lucide="shield-check"></i> Requirement Evidence Map</h3>
+              <p class="text-sm">Requirements extracted from job posting mapped to verified evidence in your Master Profile.</p>
+            </div>
+            <div class="filter-pills" id="evidenceFilterPills">
+              <button class="filter-pill active" data-filter="all">All</button>
+              <button class="filter-pill" data-filter="STRONG">Strong</button>
+              <button class="filter-pill" data-filter="PARTIAL">Partial</button>
+              <button class="filter-pill" data-filter="MISSING">Missing</button>
+            </div>
+          </div>
+          <div id="evidenceMapContainer" class="evidence-map-grid">
+            <div class="empty-state-card mini">
+              <i data-lucide="shield-check"></i>
+              <p>Run ATS Fit Analysis to generate the requirement-to-evidence matrix.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- TAB 3: APPLICATION BUILDER & TAILORING STUDIO -->
+      <section id="tabApplicationBuilder" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Application Builder & Tailoring Studio</h2>
+            <p>Generate role-grounded resume variations, review side-by-side bullet diffs, select ATS templates, and commit immutable version snapshots.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('templates')"><i data-lucide="layout-template"></i><span>Browse Templates</span></button>
+            <button class="primary-btn sm" type="button" onclick="$('#generateTailoringBtn').click()"><i data-lucide="wand-sparkles"></i><span>Generate Tailoring</span></button>
+          </div>
+        </div>
+
+        <!-- Application Builder Context Guide -->
+        <div class="context-guide" data-guide-id="application-builder">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="sparkles"></i>
+              <span>How AI Tailoring & Version Snapshots Work</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>A controlled tailoring workspace that generates targeted resume bullet points backed strictly by your verified evidence.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Click "Generate Tailoring Proposal", review diffs side-by-side, accept or reject changes, pick an ATS template, and save a snapshot.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>An immutable, timestamped resume version saved in your history and ready for instant PDF or DOCX download.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel mb-4">
+          <div class="panel-head">
+            <div>
+              <h3><i data-lucide="sparkles"></i> AI Tailoring Studio</h3>
+              <p id="tailorJobContext">Select a target job from "Job Match & Fit" first.</p>
+            </div>
+            <div class="button-row">
+              <button id="generateTailoringBtn" class="primary-btn" type="button"><i data-lucide="wand-sparkles"></i><span>Generate Tailoring Proposal</span></button>
+            </div>
+          </div>
+
+          <!-- Honest Gaps / Anti-Fabrication Notice -->
+          <div id="honestGapsBanner" class="alert-banner hidden">
+            <div class="alert-icon"><i data-lucide="shield-alert"></i></div>
+            <div class="alert-content">
+              <strong>Evidence-Grounded Guarantee (Zero Hallucination)</strong>
+              <p id="honestGapsSummary">The following job requirements lacked verified evidence in your Master Profile and were intentionally NOT fabricated into your resume bullets:</p>
+              <div id="honestGapsList" class="gaps-pills mt-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side by Side Diff Review -->
+        <div id="tailoringDiffContainer" class="panel hidden">
+          <div class="panel-head">
+            <div>
+              <h3>Side-by-Side Bullet Review</h3>
+              <p class="text-sm">Compare original bullets against tailored points. Accept or reject each change before snapshot creation.</p>
+            </div>
+            <div class="button-row">
+              <button id="acceptAllDiffsBtn" class="secondary-btn sm" type="button"><i data-lucide="check-check"></i><span>Accept All</span></button>
+              <button id="rejectAllDiffsBtn" class="secondary-btn sm" type="button"><i data-lucide="x"></i><span>Reject All</span></button>
+            </div>
+          </div>
+
+          <div id="diffItemsList" class="diff-list"></div>
+
+          <!-- Version Commit Controls -->
+          <div class="commit-bar mt-4">
+            <div class="form-row align-center gap-3">
+              <label>ATS Template:
+                <select id="templateSelector">
+                  <optgroup label="Free Templates">
+                    <option value="classic_ats" selected>Classic ATS (Single-Column Standard)</option>
+                    <option value="campus_fresher">Campus / Fresher (Education & Projects Focus)</option>
+                    <option value="clean_professional">Clean Professional (Minimalist Modern)</option>
+                  </optgroup>
+                  <optgroup label="Pro Templates">
+                    <option value="technical_ats">Technical ATS (Skills & Systems Projects)</option>
+                    <option value="business_professional">Business Professional (MBA & Strategic Impact)</option>
+                    <option value="finance_professional">Finance Professional (P&L & Accounting)</option>
+                    <option value="healthcare_pharmacy">Healthcare / Pharmacy (Clinical & Licensure)</option>
+                    <option value="consulting_management">Consulting / Management (Advisory & Case)</option>
+                    <option value="experienced_professional">Experienced Professional (Senior Chronological)</option>
+                    <option value="academic_research">Academic / Research (Publications & Grants)</option>
+                    <option value="creative_professional">Creative Professional (Portfolio & Design)</option>
+                    <option value="executive">Executive (Board Scale & Governance)</option>
+                  </optgroup>
+                </select>
+                <button class="text-btn text-xs mt-1" type="button" onclick="navigateToTab('templates')">Browse Template Library &rarr;</button>
+              </label>
+              <label>Changelog Note:
+                <input id="versionChangelog" type="text" placeholder="e.g. Tailored for backend API role">
+              </label>
+              <button id="commitVersionBtn" class="primary-btn" type="button"><i data-lucide="bookmark-plus"></i><span>Save Version Snapshot</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Version Snapshots & Live Preview Grid -->
+        <div class="grid two mt-4">
+          <!-- Saved Versions List -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="history"></i> Application Versions</h3>
+              <button id="refreshVersionsListBtn" class="icon-btn" type="button" title="Refresh versions list"><i data-lucide="refresh-cw"></i></button>
+            </div>
+            <div id="jobVersionsList" class="cards-list">
+              <div class="empty-state-card">
+                <i data-lucide="history"></i>
+                <h4>No version snapshots saved</h4>
+                <p>Generate a tailoring proposal and save a version snapshot to lock down an immutable copy for export.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Live Resume Preview Panel -->
+          <section class="panel preview-panel">
+            <div class="panel-head">
+              <h3><i data-lucide="eye"></i> Resume Preview</h3>
+              <div class="button-row" id="exportControlsRow">
+                <button id="downloadPdfBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="file-down"></i><span>Export PDF</span></button>
+                <button id="downloadDocxBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="file-text"></i><span>Export DOCX</span></button>
+              </div>
+            </div>
+            <div id="resumePreviewSheet" class="preview-sheet">
+              <div class="empty-state-card">
+                <i data-lucide="file-text"></i>
+                <h4>No preview active</h4>
+                <p>Select or create a version snapshot on the left to preview and export ATS-safe PDF or DOCX files.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- TAB 4: APPLICATIONS TRACKER -->
+      <section id="tabApplications" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Applications Tracker</h2>
+            <p>Organize and track your active job applications, interview pipelines, status transitions, and personal interview notes.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="$('#refreshApplicationsBtn').click()"><i data-lucide="refresh-cw"></i><span>Refresh List</span></button>
+          </div>
+        </div>
+
+        <!-- Applications Tracker Context Guide -->
+        <div class="context-guide" data-guide-id="applications">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="briefcase"></i>
+              <span>Managing Your Job Search Pipeline</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>A unified tracker to record everywhere you apply, linked directly to the tailored resume version you submitted.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Add a new job application on the left, link it to a target job posting, and update its stage (SAVED, APPLIED, INTERVIEW, OFFER, REJECTED).</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>A crystal-clear pipeline view so you never forget which version of your resume you submitted to which company.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <!-- Create / Edit Application -->
+          <form id="applicationForm" class="panel form-grid">
+            <h3 class="span-2"><i data-lucide="plus-circle"></i> Track Job Application</h3>
+            <label>Company Name
+              <input id="appCompany" required placeholder="e.g. Flipkart, Google, Uber">
+            </label>
+            <label>Role / Job Title
+              <input id="appJobTitle" required placeholder="e.g. Senior Backend Engineer">
+            </label>
+            <label>Job Posting URL
+              <input id="appJobUrl" type="url" placeholder="https://careers.company.com/job/1234">
+            </label>
+            <label>Application Status
+              <select id="appStatus">
+                <option value="SAVED">SAVED</option>
+                <option value="APPLIED">APPLIED</option>
+                <option value="INTERVIEW">INTERVIEW</option>
+                <option value="OFFER">OFFER</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </label>
+            <label class="span-2">Linked Job Posting (Fit Engine)
+              <select id="appJobPostingSelect">
+                <option value="">None (Standalone)</option>
+              </select>
+            </label>
+            <label class="span-2">Notes & Interview Timelines
+              <textarea id="appNotes" rows="4" placeholder="Recruiter contacts, referral information, round dates..."></textarea>
+            </label>
+            <button class="primary-btn span-2" type="submit"><i data-lucide="plus"></i><span>Save Application</span></button>
+          </form>
+
+          <!-- Tracked Applications List -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="kanban"></i> Tracked Applications</h3>
+              <button id="refreshApplicationsBtn" class="icon-btn" type="button" title="Refresh application list"><i data-lucide="refresh-cw"></i></button>
+            </div>
+            <div id="applicationList" class="cards-list">
+              <div class="empty-state-card">
+                <i data-lucide="briefcase"></i>
+                <h4>No tracked applications</h4>
+                <p>Track your job submissions, interview stages, and offers in one organized dashboard.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- TAB 5: BILLING & USAGE -->
+      <section id="tabBilling" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Billing, Subscriptions & Export Packs</h2>
+            <p>Review monthly quota allowances, upgrade your subscription tier, purchase non-expiring export packs, and view invoices.</p>
+          </div>
+        </div>
+
+        <!-- Billing Context Guide -->
+        <div class="context-guide" data-guide-id="billing">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="credit-card"></i>
+              <span>How Plans, Quotas & Export Packs Work</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>Transparent billing for your career OS. View monthly usage allowances, non-expiring export credits, and active plan features.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Activate your 7-Day Pro Trial to unlock Pro templates and higher quotas, purchase standalone booster packs, or cancel anytime.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Predictable pricing with zero hidden charges and instant 1-click subscription cancellation in full compliance with RBI guidelines.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage Counters -->
+        <div class="panel mb-4">
+          <div class="panel-head">
+            <div>
+              <h3><i data-lucide="gauge"></i> Monthly Usage Quotas</h3>
+              <p class="text-sm">Quotas reset on the 1st of every calendar month.</p>
+            </div>
+            <span id="billingCurrentPlanBadge" class="plan-badge">FREE</span>
+          </div>
+
+          <div class="results-grid mt-3">
+            <div class="quota-card">
+              <div class="quota-head">
+                <span>Fit Analyses</span>
+                <strong id="quotaFitsText">0 / 2</strong>
+              </div>
+              <div class="progress-bar"><span id="quotaFitsBar" style="width: 0%"></span></div>
+            </div>
+            <div class="quota-card">
+              <div class="quota-head">
+                <span>Tailored Versions</span>
+                <strong id="quotaTailorsText">0 / 2</strong>
+              </div>
+              <div class="progress-bar"><span id="quotaTailorsBar" style="width: 0%"></span></div>
+            </div>
+            <div class="quota-card">
+              <div class="quota-head">
+                <span>Resume Exports</span>
+                <strong id="quotaExportsText">0 / 2</strong>
+              </div>
+              <div class="progress-bar"><span id="quotaExportsBar" style="width: 0%"></span></div>
+            </div>
+            <div class="quota-card">
+              <div class="quota-head">
+                <span>Next Reset</span>
+                <strong id="quotaResetDate">--</strong>
+              </div>
+              <span class="text-xs text-muted">Monthly billing cycle</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pricing Header & Currency Selector -->
+        <div class="pricing-header-row mb-3">
+          <div>
+            <h3 class="section-heading"><i data-lucide="layers"></i> Subscription & Test Plans</h3>
+            <p class="text-sm">Transparent pricing in your local currency. All amounts centralized and verified.</p>
+          </div>
+          <div class="currency-picker-wrap">
+            <label for="currencySelector" class="text-xs">Currency:</label>
+            <select id="currencySelector" class="currency-dropdown">
+              <option value="INR" selected>INR (₹)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="AED">AED (AED)</option>
+              <option value="CAD">CAD (CA$)</option>
+              <option value="AUD">AUD (A$)</option>
+              <option value="SGD">SGD (S$)</option>
+              <option value="JPY">JPY (¥)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pricing Plans Grid (Including ₹1 Test Card) -->
+        <div class="pricing-grid mb-4">
+          <!-- ₹1 Sandbox / Single Export Card (Rule 11 & Rule 16) -->
+          <!-- 7-Day Pro Trial (₹0) -->
+          <div class="pricing-card trial-card">
+            <div class="featured-badge" style="background: var(--success); color: white;">ZERO RISK</div>
+            <h4>7-Day Pro Trial</h4>
+            <div class="price-tag">₹0 <span>/ 7 days</span></div>
+            <p class="plan-desc">Experience the complete AI Career OS with zero auto-charge and no credit card required.</p>
+            <ul class="plan-features">
+              <li><i data-lucide="check"></i> <strong>10</strong> Job Fit Analyses</li>
+              <li><i data-lucide="check"></i> <strong>5</strong> Tailored Versions</li>
+              <li><i data-lucide="check"></i> <strong>3</strong> Resume Exports (PDF & DOCX)</li>
+              <li><i data-lucide="check"></i> Evidence Vault & Application Pack</li>
+              <li><i data-lucide="check"></i> AI Interview Copilot</li>
+            </ul>
+            <button id="startTrialBtn" class="primary-btn w-full mt-auto" style="background: var(--success); border-color: var(--success);" type="button"><i data-lucide="sparkles"></i><span>Start 7-Day Pro Trial (₹0)</span></button>
+          </div>
+
+          <!-- Single Export Test (₹1) -->
+          <div class="pricing-card test-card">
+            <div class="test-badge">DEMO / SANDBOX</div>
+            <h4>Single Export Test</h4>
+            <div class="price-tag" id="priceSingleExport">₹1 <span>one-time</span></div>
+            <p class="plan-desc">Non-recurring test payment. Grants 1 export credit without any subscription.</p>
+            <div class="test-upi-info">
+              <span class="text-xs text-muted">Sandbox UPI ID:</span>
+              <code id="displayTestUpiId" class="upi-code">ladanivatsal8892@oksbi</code>
+            </div>
+            <ul class="plan-features">
+              <li><i data-lucide="check"></i> <strong>1</strong> Resume Export (PDF or DOCX)</li>
+              <li><i data-lucide="check"></i> <strong>No recurring charges</strong> ever</li>
+              <li><i data-lucide="check"></i> Test verification mode</li>
+            </ul>
+            <button id="checkoutSingleExportBtn" class="secondary-btn w-full mt-auto" type="button"><i data-lucide="check-circle-2"></i><span>Test Checkout (<span class="single-price-inline">₹1</span>)</span></button>
+          </div>
+
+          <!-- Free Plan -->
+          <div class="pricing-card">
+            <h4>Free Plan</h4>
+            <div class="price-tag" id="priceFreePlan">₹0 <span>/ month</span></div>
+            <p class="plan-desc">Essential tools to experience evidence-grounded resume matching.</p>
+            <ul class="plan-features">
+              <li><i data-lucide="check"></i> 2 Job Fit Analyses / mo</li>
+              <li><i data-lucide="check"></i> 2 Tailored Versions / mo</li>
+              <li><i data-lucide="check"></i> 2 PDF/DOCX Exports / mo</li>
+              <li><i data-lucide="check"></i> Classic ATS & Campus Fresher</li>
+            </ul>
+            <button class="secondary-btn w-full mt-auto" disabled>Current Active Plan</button>
+          </div>
+
+          <!-- Pro Monthly -->
+          <div class="pricing-card featured">
+            <div class="featured-badge">MOST POPULAR</div>
+            <h4>Pro Monthly</h4>
+            <div class="price-tag" id="priceProMonthly">₹49 <span>/ month</span></div>
+            <p class="plan-desc">For active job applicants who want tailored resumes for every role.</p>
+            <ul class="plan-features">
+              <li><i data-lucide="check"></i> <strong>50</strong> Job Fit Analyses / mo</li>
+              <li><i data-lucide="check"></i> <strong>30</strong> Tailored Version Snapshots / mo</li>
+              <li><i data-lucide="check"></i> <strong>20</strong> Resume Exports (PDF & DOCX)</li>
+              <li><i data-lucide="check"></i> All 4 ATS-Safe Templates</li>
+              <li><i data-lucide="check"></i> Evidence Map & Honest Gaps</li>
+            </ul>
+            <button id="upgradeProBtn" class="primary-btn w-full mt-auto" type="button"><i data-lucide="zap"></i><span>Upgrade to Pro</span></button>
+          </div>
+
+          <!-- Annual Plan -->
+          <div class="pricing-card">
+            <h4>Annual Power</h4>
+            <div class="price-tag" id="priceProAnnual">₹399 <span>/ year</span></div>
+            <p class="plan-desc">Save ~32% with full-year progression and priority processing.</p>
+            <ul class="plan-features">
+              <li><i data-lucide="check"></i> <strong>1,000</strong> Job Fit Analyses</li>
+              <li><i data-lucide="check"></i> <strong>500</strong> Tailored Versions</li>
+              <li><i data-lucide="check"></i> <strong>500</strong> Exports</li>
+              <li><i data-lucide="check"></i> Priority Gemini Flash Processing</li>
+            </ul>
+            <button id="upgradeAnnualBtn" class="secondary-btn w-full mt-auto" type="button">Get Annual Power</button>
+          </div>
+        </div>
+
+        <!-- Booster Packs -->
+        <h3 class="section-heading mb-3"><i data-lucide="package-plus"></i> Emergency Booster Packs</h3>
+        <div class="packs-grid mb-4">
+          <div class="pack-card">
+            <h5>Quick Apply Pack</h5>
+            <div class="pack-price" id="pricePack10">₹29</div>
+            <p>5 Fits + 3 Versions + 2 Exports</p>
+            <button class="secondary-btn sm" onclick="handleBoosterPack('pack_10')">Purchase</button>
+          </div>
+          <div class="pack-card">
+            <h5>Weekend Sprint</h5>
+            <div class="pack-price" id="pricePack20">₹49</div>
+            <p>15 Fits + 8 Versions + 5 Exports</p>
+            <button class="secondary-btn sm" onclick="handleBoosterPack('pack_20')">Purchase</button>
+          </div>
+          <div class="pack-card">
+            <h5>Interview Blast</h5>
+            <div class="pack-price" id="pricePack50">₹99</div>
+            <p>40 Fits + 20 Versions + 15 Exports</p>
+            <button class="secondary-btn sm" onclick="handleBoosterPack('pack_50')">Purchase</button>
+          </div>
+        </div>
+
+        <!-- Payment History Table -->
+        <div class="panel mb-4">
+          <div class="panel-head">
+            <h3><i data-lucide="receipt"></i> Payment & Billing History</h3>
+            <button id="refreshPaymentHistoryBtn" class="icon-btn" type="button" title="Refresh transactions"><i data-lucide="refresh-cw"></i></button>
+          </div>
+          <div class="table-wrap">
+            <table id="paymentHistoryTable" class="clean-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Event / Plan</th>
+                  <th>Amount</th>
+                  <th>Reference ID</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="paymentHistoryTbody">
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-3">No payment events recorded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- RBI Compliance & Cancellation Box -->
+        <div class="panel rbi-box">
+          <div class="rbi-header">
+            <i data-lucide="shield-alert"></i>
+            <div>
+              <h4>Reserve Bank of India (RBI) e-Mandate Regulatory Notice</h4>
+              <p class="text-sm">In compliance with RBI circulars on recurring e-mandates, recurring subscriptions require upfront Additional Factor of Authentication (AFA). Pre-debit notifications are sent 24 hours prior to billing. You may cancel recurring charges at any time with immediate effect.</p>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button id="cancelSubscriptionBtn" class="danger-btn sm" type="button"><i data-lucide="x-circle"></i><span>Cancel Subscription (1-Click Instant Cancellation)</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: SETTINGS -->
+      <section id="tabSettings" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Account Settings & International Standards</h2>
+            <p>Manage account security credentials, personal profile details, and country-specific resume / CV recruitment compliance rules.</p>
+          </div>
+          <div class="view-header-actions">
+            <button id="resetEducationalGuidesBtn" class="secondary-btn sm" type="button"><i data-lucide="help-circle"></i><span>Show Educational Tips Again</span></button>
+          </div>
+        </div>
+
+        <!-- Settings Context Guide -->
+        <div class="context-guide" data-guide-id="settings">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="settings"></i>
+              <span>Managing Security, Privacy & International Formats</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>Account credentials, password protection, and target recruitment country CV/resume standards.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Update personal credentials, reset dismissed page guides, and audit your resume against US, UK, Canada, Australia, or Europe rules.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Strict legal and cultural compliance with local hiring norms (e.g. knowing when photos are prohibited vs expected).</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <form id="profileForm" class="panel">
+            <h3><i data-lucide="user"></i> Account Profile</h3>
+            <label>Full Name
+              <input id="profileName" required placeholder="Your full name">
+            </label>
+            <label>Email Address
+              <input id="profileEmail" type="email" disabled>
+            </label>
+            <button class="primary-btn mt-3" type="submit"><i data-lucide="save"></i><span>Save Profile</span></button>
+          </form>
+
+          <form id="passwordForm" class="panel">
+            <h3><i data-lucide="lock"></i> Change Password</h3>
+            <label>Current Password
+              <input id="currentPassword" type="password" required placeholder="••••••••">
+            </label>
+            <label>New Password
+              <input id="newPassword" type="password" required minlength="8" placeholder="••••••••">
+            </label>
+            <button class="primary-btn mt-3" type="submit"><i data-lucide="key"></i><span>Update Password</span></button>
+          </form>
+
+          <div class="panel span-2 mt-3">
+            <h3><i data-lucide="globe"></i> International Resume & CV Standards</h3>
+            <p class="text-sm text-muted">Audit your resume against country-specific recruitment norms and legal requirements.</p>
+            <div class="form-grid mt-3">
+              <label>Target Country
+                <select id="countryRulesSelect">
+                  <option value="IN">India (Standard 1-2 pages, UK/Indian English)</option>
+                  <option value="US">United States (Strictly NO photo, NO DOB, 1 page standard)</option>
+                  <option value="UK">United Kingdom (2 pages CV, British English, No photo)</option>
+                  <option value="CA">Canada (No photo, strict Human Rights Code compliance)</option>
+                  <option value="AU">Australia (2-3 pages, No photo, key skills summary)</option>
+                  <option value="DE">Germany / DACH (Photo expected, Lebenslauf structure)</option>
+                  <option value="AE">Middle East / UAE (Photo customary, visa/nationality details)</option>
+                </select>
+              </label>
+            </div>
+            <div id="countryRulesDisplay" class="rules-summary-box mt-3 p-3 bg-surface-2 border rounded text-sm">
+              <p>Select a country to view formatting rules.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: EVIDENCE VAULT -->
+      <section id="tabEvidenceVault" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Career Evidence Vault</h2>
+            <p>Your verified repository of career accomplishments, metrics, project scope, and certifications. Ground every resume bullet in verifiable truth.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="$('#syncEvidenceBtn').click()"><i data-lucide="refresh-cw"></i><span>Sync from Profile</span></button>
+            <button class="primary-btn sm" type="button" onclick="$('#addEvidenceBtn').click()"><i data-lucide="plus"></i><span>Add Evidence</span></button>
+          </div>
+        </div>
+
+        <!-- Evidence Vault Context Guide -->
+        <div class="context-guide" data-guide-id="evidence-vault">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="database"></i>
+              <span>How the Evidence Vault Works</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>An indexed vault of all your quantifiable accomplishments, verified skill demonstrations, and professional deliverables.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Click "Sync from Profile" to auto-extract items, or add standalone evidence entries with tangible metrics and context.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Direct proof links that our AI resume engine uses to validate and defend your skills during ATS tailoring and interview prep.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel mb-4">
+          <div class="panel-head">
+            <div>
+              <h3><i data-lucide="database"></i> Career Evidence Vault</h3>
+              <p class="text-sm text-muted">Verified repository of career accomplishments, metrics, project scope, and certifications.</p>
+            </div>
+            <div class="panel-actions">
+              <button id="syncEvidenceBtn" class="primary-btn sm" type="button"><i data-lucide="refresh-cw"></i><span>Sync from Master Profile</span></button>
+              <button id="addEvidenceBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>Add Evidence</span></button>
+            </div>
+          </div>
+          <div class="filter-bar mt-3 mb-3">
+            <button class="filter-chip active" data-evidence-filter="ALL">All Evidence</button>
+            <button class="filter-chip" data-evidence-filter="EXPERIENCE">Experience</button>
+            <button class="filter-chip" data-evidence-filter="PROJECT">Projects</button>
+            <button class="filter-chip" data-evidence-filter="SKILL">Skills</button>
+            <button class="filter-chip" data-evidence-filter="CERTIFICATION">Certifications</button>
+          </div>
+          <div id="evidenceVaultList" class="cards-list">
+            <p class="text-muted text-center py-4">Loading evidence items...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: RESUME TEMPLATES -->
+      <section id="tabTemplates" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Resume Templates</h2>
+            <p>Choose an ATS-validated layout engineered for your role, experience level, and target recruitment market.</p>
+          </div>
+          <div class="view-header-actions">
+            <button id="openCompareModalBtn" class="secondary-btn sm" type="button"><i data-lucide="columns"></i><span>Compare Selected (<span id="compareCount">0</span>)</span></button>
+            <button id="resetTemplateFiltersBtn" class="ghost-btn sm" type="button"><i data-lucide="rotate-ccw"></i><span>Reset Filters</span></button>
+          </div>
+        </div>
+
+        <!-- Guided UX Component: How Resume Templates Work -->
+        <div class="context-guide" data-guide-id="templates">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="sparkles"></i>
+              <span>How Resume Templates Work</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>A library of 12 real, working ATS-compliant templates designed specifically for technical, corporate, academic, and executive roles.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Choose your current intent below or review our smart recommendation. Preview with realistic data, customize layout density, and select your template.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Guaranteed 100% text-parseable PDF and DOCX exports that present your verified accomplishments in the optimal visual hierarchy.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Intent Question Bar -->
+        <div class="intent-bar">
+          <div class="intent-bar-head">
+            <strong><i data-lucide="help-circle"></i> What kind of resume are you creating?</strong>
+            <span class="text-xs text-muted">Click an option to instantly filter matching templates</span>
+          </div>
+          <div class="intent-pills" id="intentPillsContainer">
+            <button type="button" class="intent-pill active" data-intent="ALL"><i data-lucide="layers"></i> All Templates</button>
+            <button type="button" class="intent-pill" data-intent="FIRST_JOB"><i data-lucide="graduation-cap"></i> For My First Job</button>
+            <button type="button" class="intent-pill" data-intent="SPECIFIC_JOB"><i data-lucide="target"></i> For a Specific Job</button>
+            <button type="button" class="intent-pill" data-intent="CURRENT_CAREER"><i data-lucide="briefcase"></i> For My Current Career</button>
+            <button type="button" class="intent-pill" data-intent="ACADEMIC"><i data-lucide="book-open"></i> Academic / Research</button>
+            <button type="button" class="intent-pill" data-intent="EXECUTIVE"><i data-lucide="crown"></i> Executive Leadership</button>
+          </div>
+        </div>
+
+        <!-- Recommended for You Hero Banner -->
+        <div id="recHeroCard" class="rec-hero-card">
+          <div class="rec-hero-content">
+            <div class="rec-hero-badge"><i data-lucide="sparkles"></i> Recommended for You</div>
+            <h3 id="recHeroTitle">Technical ATS</h3>
+            <p id="recHeroReason">Analyzing your career profile to recommend the optimal ATS structure...</p>
+            <p id="recHeroCountry" class="text-xs text-muted mt-1"><i data-lucide="globe"></i> <span id="recHeroCountryText">Checking international recruitment norms...</span></p>
+          </div>
+          <div class="rec-hero-actions">
+            <button id="recHeroUseBtn" class="primary-btn sm" type="button"><i data-lucide="check"></i><span>Use This Template</span></button>
+            <button id="recHeroPreviewBtn" class="secondary-btn sm" type="button"><i data-lucide="eye"></i><span>Preview</span></button>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="panel mb-4 p-3">
+          <div class="flex-row justify-between align-center gap-3 flex-wrap mb-3">
+            <div class="filter-bar" id="categoryFilterBar" style="margin: 0;">
+              <button class="filter-chip active" data-cat="ALL">All Categories</button>
+              <button class="filter-chip" data-cat="ATS-Friendly">ATS-Friendly</button>
+              <button class="filter-chip" data-cat="Technology">Technology</button>
+              <button class="filter-chip" data-cat="Early Career">Early Career</button>
+              <button class="filter-chip" data-cat="Professional">Professional</button>
+              <button class="filter-chip" data-cat="Business / MBA">Business / MBA</button>
+              <button class="filter-chip" data-cat="Finance">Finance</button>
+              <button class="filter-chip" data-cat="Healthcare / Pharmacy">Healthcare</button>
+              <button class="filter-chip" data-cat="Consulting / Management">Consulting</button>
+              <button class="filter-chip" data-cat="Academic / Research">Academic</button>
+              <button class="filter-chip" data-cat="Creative / Design">Creative</button>
+              <button class="filter-chip" data-cat="Executive">Executive</button>
+            </div>
+            <div class="flex-row align-center gap-2">
+              <span class="text-xs text-muted">Tier:</span>
+              <button class="filter-chip active" data-tier="ALL">All</button>
+              <button class="filter-chip" data-tier="FREE">Free</button>
+              <button class="filter-chip" data-tier="PRO">Pro</button>
+            </div>
+          </div>
+          <div>
+            <input id="templateSearchInput" type="text" placeholder="Search templates by role, domain or style (e.g. backend, fresher, executive, mba)..." class="w-full">
+          </div>
+        </div>
+
+        <!-- Templates Grid -->
+        <div id="templatesGrid" class="templates-grid">
+          <p class="text-center text-muted p-4 span-all">Loading template catalog...</p>
+        </div>
+      </section>
+
+      <!-- TAB: JOB RADAR -->
+      <section id="tabJobRadar" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Job Radar Market Discovery</h2>
+            <p>Discover tech job opportunities calibrated directly against your verified career evidence with match scoring.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="primary-btn sm" type="button" onclick="$('#radarSearchBtn').click()"><i data-lucide="search"></i><span>Scan Opportunities</span></button>
+          </div>
+        </div>
+
+        <!-- Job Radar Context Guide -->
+        <div class="context-guide" data-guide-id="job-radar">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="compass"></i>
+              <span>How Job Radar Market Discovery Works</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>A smart discovery scanner that ranks open market jobs based on how closely they match your verified career evidence.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Filter by role title or location. Review Match Categories (Strong Match, Reach, Stretch, Backup) and 1-click send to Fit Analysis.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>A prioritized shortlist of high-probability opportunities where you have verified proof of the required skills.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel mb-4">
+          <div class="panel-head">
+            <div>
+              <h3><i data-lucide="compass"></i> Job Radar Market Discovery</h3>
+              <p class="text-sm text-muted">Discover live tech opportunities calibrated against your verified career evidence.</p>
+            </div>
+          </div>
+          <div class="radar-search-bar mt-3 mb-4">
+            <div class="search-inputs-grid">
+              <input id="radarQueryInput" type="text" placeholder="Role or company (e.g. Backend, Razorpay)...">
+              <input id="radarLocationInput" type="text" placeholder="Location (e.g. Bengaluru, Remote)...">
+              <select id="radarDomainSelect">
+                <option value="">All Domains</option>
+                <option value="Software Engineering">Software Engineering</option>
+                <option value="Data Science & AI">Data Science & AI</option>
+                <option value="DevOps & Infrastructure">DevOps & Infrastructure</option>
+              </select>
+              <button id="radarSearchBtn" class="primary-btn" type="button"><i data-lucide="search"></i><span>Scan Radar</span></button>
+            </div>
+          </div>
+          <div class="filter-bar mb-3">
+            <button class="filter-chip active" data-radar-category="ALL">All Matches</button>
+            <button class="filter-chip" data-radar-category="STRONG_MATCH">Strong Match (80%+)</button>
+            <button class="filter-chip" data-radar-category="REACH">Reach (50-79%)</button>
+            <button class="filter-chip" data-radar-category="STRETCH">Stretch (25-49%)</button>
+            <button class="filter-chip" data-radar-category="BACKUP">Backup</button>
+          </div>
+          <div id="jobRadarList" class="cards-list">
+            <p class="text-muted text-center py-4">Scanning live opportunities...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: SMARTAPPLY COPILOT -->
+      <section id="tabSmartApply" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>SmartApply Copilot</h2>
+            <p>Non-invasive browser copilot for LinkedIn, Indeed, Greenhouse, and Lever application portals with evidence-grounded responses.</p>
+          </div>
+        </div>
+
+        <!-- SmartApply Context Guide -->
+        <div class="context-guide" data-guide-id="smartapply">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="external-link"></i>
+              <span>How SmartApply Application Copilot Works</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>A non-invasive Chrome extension that detects application portal forms and suggests verified answers from your profile.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Load the extension from <code>smartapply-extension/</code> into Chrome. When on an application page, click SmartApply to fill answers.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Faster form completion with zero bot scraping risk, fully grounded in your verified experiences and metrics.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two mb-4">
+          <div class="panel">
+            <h3><i data-lucide="chrome"></i> SmartApply Browser Extension</h3>
+            <p class="text-sm text-muted">Manifest V3 copilot for LinkedIn, Indeed, Greenhouse, and Lever portals.</p>
+            <div class="feature-steps mt-3">
+              <div class="feature-step">
+                <div class="step-num">1</div>
+                <div><strong>Install Extension:</strong> Load the unpacked extension from <code>smartapply-extension/</code> in Chrome Developer Mode.</div>
+              </div>
+              <div class="feature-step">
+                <div class="step-num">2</div>
+                <div><strong>Detect Job Openings:</strong> Navigate to any job post. SmartApply automatically extracts role requirements and matches your profile.</div>
+              </div>
+              <div class="feature-step">
+                <div class="step-num">3</div>
+                <div><strong>Autofill Verified Answers:</strong> 1-click paste your contact details, work authorization, notice period, and custom answers.</div>
+              </div>
+            </div>
+            <div class="alert-info mt-3">
+              <i data-lucide="shield-check"></i>
+              <span>Anti-bot guarantee: Non-invasive, user-initiated action only. No automated background scraping or account suspension risk.</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3><i data-lucide="clipboard-check"></i> Grounded Field Answers</h3>
+            <p class="text-sm text-muted">Pre-grounded answers generated from your verified evidence for application forms.</p>
+            <div id="smartapplyAnswersPreview" class="answers-stack mt-3">
+              <div class="answer-card">
+                <strong>Why this company?</strong>
+                <p class="text-sm text-muted" id="previewWhyCompany">Excited by the engineering rigor and scale challenges matching my background.</p>
+                <button class="text-btn text-xs copy-btn" data-copy-target="previewWhyCompany">Copy Answer</button>
+              </div>
+              <div class="answer-card mt-2">
+                <strong>Top Technical Accomplishment</strong>
+                <p class="text-sm text-muted" id="previewAccomplishment">Architected high-throughput service layer with automated tests and measurable performance gains.</p>
+                <button class="text-btn text-xs copy-btn" data-copy-target="previewAccomplishment">Copy Answer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: INTERVIEW COPILOT -->
+      <section id="tabInterview" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>AI Interview Copilot</h2>
+            <p>Practice realistic mock interview sessions calibrated directly against your verified resume claims and target job requirements.</p>
+          </div>
+        </div>
+
+        <!-- AI Interview Context Guide -->
+        <div class="context-guide" data-guide-id="interview">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="messages-square"></i>
+              <span>How AI Mock Interview Practice Works</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>An interactive technical and behavioral interviewer calibrated against your exact resume bullet claims.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Select your interview mode (Behavioral, Technical, or STAR text chat). Answer prompts using Situation, Task, Action, Result.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Actionable feedback on metric clarity, depth of technical explanation, and leadership delivery before real hiring manager rounds.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two mb-4">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3><i data-lucide="messages-square"></i> AI Interview Copilot</h3>
+                <p class="text-sm text-muted">Practice mock interviews grounded directly in your resume claims and target job requirements.</p>
+              </div>
+            </div>
+            <form id="startInterviewForm" class="mt-3">
+              <label>Target Role Title<input id="interviewRoleInput" placeholder="e.g. Senior Backend Engineer" required></label>
+              <label>Target Company<input id="interviewCompanyInput" placeholder="e.g. Razorpay or Acme Corp" required></label>
+              <label>Session Mode
+                <select id="interviewModeSelect">
+                  <option value="TEXT">Text Chat (STAR Focused)</option>
+                  <option value="BEHAVIORAL">Behavioral & Leadership</option>
+                  <option value="TECHNICAL">Technical Deep-Dive</option>
+                </select>
+              </label>
+              <button class="primary-btn mt-3" type="submit"><i data-lucide="play"></i><span>Start Interview Session</span></button>
+            </form>
+
+            <h4 class="mt-4 mb-2">Previous Practice Sessions</h4>
+            <div id="interviewSessionsList" class="cards-list">
+              <p class="text-muted text-xs">No previous interview sessions yet.</p>
+            </div>
+          </div>
+
+          <div class="panel interview-chat-panel">
+            <div class="panel-head border-b pb-2">
+              <div>
+                <h4 id="activeInterviewTitle">Live Interview Session</h4>
+                <span id="interviewStatusPill" class="badge-sub">Ready</span>
+              </div>
+              <button id="endInterviewBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="check-circle"></i><span>Complete & Evaluate</span></button>
+            </div>
+            <div id="interviewChatBox" class="chat-messages-box">
+              <p class="text-muted text-center py-4 text-sm">Start a session on the left to begin your mock interview.</p>
+            </div>
+            <form id="interviewTurnForm" class="chat-input-row hidden">
+              <textarea id="candidateAnswerInput" rows="3" placeholder="Type your answer using the STAR method..." required></textarea>
+              <button class="primary-btn sm" type="submit"><i data-lucide="send"></i><span>Submit Turn</span></button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: CAREER INSIGHTS -->
+      <section id="tabCareerInsights" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2>Career Insights & Market Demand</h2>
+            <p>Objective market demand intelligence, skill requirement gaps, and career leveling pathways.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="$('#refreshInsightsBtn').click()"><i data-lucide="refresh-cw"></i><span>Refresh Analysis</span></button>
+          </div>
+        </div>
+
+        <!-- Career Insights Context Guide -->
+        <div class="context-guide" data-guide-id="career-insights">
+          <div class="context-guide-head">
+            <div class="context-guide-title">
+              <i data-lucide="trending-up"></i>
+              <span>How Market Insights & Career Leveling Work</span>
+            </div>
+            <div class="context-guide-actions">
+              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
+              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="context-guide-body">
+            <div class="guide-col">
+              <h5>What is this?</h5>
+              <p>Aggregated hiring market analytics showing the most frequently demanded technologies and competencies in your domain.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What to do:</h5>
+              <p>Compare your verified skill coverage against market demand bars. Review leveling progression steps to reach Senior/Staff roles.</p>
+            </div>
+            <div class="guide-col">
+              <h5>What you get:</h5>
+              <p>Clarity on high-value skills to acquire next, keeping your career trajectory moving upward with measurable proof.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel mb-4">
+          <div class="panel-head">
+            <div>
+              <h3><i data-lucide="trending-up"></i> Career Insights & Market Demand</h3>
+              <p class="text-sm text-muted">Objective market analytics, skill demand gaps, and promotion/leveling pathways.</p>
+            </div>
+            <button id="refreshInsightsBtn" class="secondary-btn sm" type="button"><i data-lucide="refresh-cw"></i><span>Refresh Analysis</span></button>
+          </div>
+
+          <div class="grid three mt-3 mb-4">
+            <div class="metric-card panel">
+              <span class="text-xs text-muted">Target Domain</span>
+              <h4 id="insightsDomain">Software Engineering</h4>
+            </div>
+            <div class="metric-card panel">
+              <span class="text-xs text-muted">Career Level</span>
+              <h4 id="insightsLevel">Developing Professional</h4>
+            </div>
+            <div class="metric-card panel">
+              <span class="text-xs text-muted">Vault Verified Items</span>
+              <h4 id="insightsVerifiedCount">0 Verified</h4>
+            </div>
+          </div>
+
+          <h4 class="mb-2"><i data-lucide="bar-chart-2"></i> In-Demand Skills for Target Domain</h4>
+          <div id="skillsDemandGrid" class="skills-demand-grid mb-4">
+            <p class="text-muted text-center py-3">Analyzing market demand...</p>
+          </div>
+
+          <div class="pathway-card panel">
+            <h4><i data-lucide="milestone"></i> Career Growth Pathway</h4>
+            <div id="careerPathwayDetails">
+              <p class="text-sm text-muted">Loading growth pathway...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- MODAL: TEMPLATE PREVIEW & CUSTOMIZER -->
+  <div id="templatePreviewModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 960px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h3 id="previewModalTitle"><i data-lucide="layout-template"></i> Technical ATS</h3>
+          <div id="previewModalBadges" class="flex-row gap-2 align-center mt-1">
+            <span class="tier-badge free">FREE</span>
+            <span class="meta-pill ats"><i data-lucide="shield-check"></i> ATS: Excellent</span>
+          </div>
+        </div>
+        <button id="closeTemplatePreviewBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; flex: 1;">
+        <!-- Customizer Bar -->
+        <div class="customizer-bar">
+          <div class="customizer-field">
+            <label for="customizerFontSize"><i data-lucide="type"></i> Font Size:</label>
+            <select id="customizerFontSize">
+              <option value="small">Compact (9pt)</option>
+              <option value="medium" selected>Standard (10pt)</option>
+              <option value="large">Spacious (11pt)</option>
+            </select>
+          </div>
+          <div class="customizer-field">
+            <label for="customizerSpacing"><i data-lucide="align-justify"></i> Spacing:</label>
+            <select id="customizerSpacing">
+              <option value="compact">Tight</option>
+              <option value="standard" selected>Standard</option>
+              <option value="relaxed">Relaxed</option>
+            </select>
+          </div>
+          <div class="customizer-field">
+            <span class="meta-pill ats"><i data-lucide="lock"></i> ATS Structure Protected</span>
+          </div>
+        </div>
+
+        <!-- Live Resume Paper Canvas -->
+        <div id="templatePreviewCanvas" class="resume-preview-canvas">
+          <!-- Populated dynamically with realistic candidate data -->
+        </div>
+      </div>
+      <div class="modal-footer flex-row justify-between align-center p-3 border-t">
+        <div class="text-xs text-muted" id="previewModalFooterInfo">
+          Best for: Software & Cloud Engineering
+        </div>
+        <div class="button-row">
+          <button id="previewModalCompareBtn" class="secondary-btn sm" type="button"><i data-lucide="columns"></i><span>Compare</span></button>
+          <button id="previewModalUseBtn" class="primary-btn sm" type="button"><i data-lucide="check"></i><span>Use Template</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TEMPLATE COMPARISON -->
+  <div id="templateCompareModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 900px;">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="columns"></i> Compare Resume Templates</h3>
+          <p class="text-sm text-muted">Compare ATS strengths, page density, and target suitability.</p>
+        </div>
+        <button id="closeTemplateCompareBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="compare-table-wrapper" id="compareTableContainer">
+          <p class="text-muted text-center py-4">Select templates to compare by clicking the Compare checkbox on template cards.</p>
+        </div>
+      </div>
+      <div class="modal-footer flex-row justify-between align-center p-3 border-t">
+        <button id="clearCompareBtn" class="ghost-btn sm" type="button">Clear Selection</button>
+        <button class="primary-btn sm" type="button" onclick="$('#templateCompareModal').classList.add('hidden')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONTEXTUAL TEMPLATE UPGRADE -->
+  <div id="templateUpgradeModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="upgradeModalTitle"><i data-lucide="sparkles"></i> Pro Template</h3>
+          <p class="text-sm text-muted" id="upgradeModalSubtitle">This template is included in SmartResume Pro.</p>
+        </div>
+        <button id="closeTemplateUpgradeBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="upgradeModalDesc" class="text-sm mb-3">Engineered for specialized career depth with verified skills and systems project emphasis.</p>
+        <div class="panel p-3 bg-surface-2 mb-3">
+          <div class="flex-row align-center gap-2 mb-2">
+            <span class="tier-badge trial">PRO TRIAL</span>
+            <strong>7-Day Free Trial Available</strong>
+          </div>
+          <p class="text-xs text-muted">Unlock all 9 Pro templates, unlimited ATS tailoring, and full export credits. No automatic surprise charges.</p>
+        </div>
+      </div>
+      <div class="modal-footer flex-row justify-between align-center p-3 border-t">
+        <button class="secondary-btn sm" type="button" onclick="$('#templateUpgradeModal').classList.add('hidden')">Keep Browsing</button>
+        <div class="button-row">
+          <button id="upgradeModalPreviewBtn" class="secondary-btn sm" type="button"><i data-lucide="eye"></i><span>Preview Template</span></button>
+          <button id="upgradeModalActionBtn" class="primary-btn sm" type="button"><i data-lucide="zap"></i><span>Start 7-Day Trial</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: APPLICATION PACK (13 ASSETS) -->
+  <div id="applicationPackModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 800px;">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="package"></i> Complete Application Pack</h3>
+          <p class="text-sm text-muted">13 grounded assets generated for this target position.</p>
+        </div>
+        <button id="closeAppPackModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="pack-tabs mb-3" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+          <button class="pack-tab-btn active secondary-btn sm" data-pack-view="cover-letter">Cover Letter</button>
+          <button class="pack-tab-btn secondary-btn sm" data-pack-view="recruiter-email">Recruiter Email</button>
+          <button class="pack-tab-btn secondary-btn sm" data-pack-view="portal-answers">Portal Answers</button>
+          <button class="pack-tab-btn secondary-btn sm" data-pack-view="follow-up">Follow-Up & Thank You</button>
+          <button class="pack-tab-btn secondary-btn sm" data-pack-view="interview-prep">Interview Prep Brief</button>
+        </div>
+        <div id="packTabContent" class="pack-content-area p-3 bg-surface-2 border rounded"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissAppPackBtn" class="primary-btn" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RECURRING MANDATE CONSENT (RBI COMPLIANCE - RULE 16) -->
+  <div id="recurringConsentModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="shield-alert"></i> Subscription Authorization & Consent</h3>
+          <p class="text-sm">Mandatory regulatory disclosure prior to payment authorization.</p>
+        </div>
+        <button id="closeConsentModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="consent-summary-card">
+          <div class="consent-row">
+            <span>Selected Plan:</span>
+            <strong id="consentPlanName">Pro Monthly Plan</strong>
+          </div>
+          <div class="consent-row">
+            <span>Recurring Charge:</span>
+            <strong id="consentAmount">₹79 / month</strong>
+          </div>
+          <div class="consent-row">
+            <span>Billing Frequency:</span>
+            <span id="consentFrequency">Monthly</span>
+          </div>
+          <div class="consent-row">
+            <span>Next Renewal Date:</span>
+            <span id="consentRenewalDate">30 days from today</span>
+          </div>
+        </div>
+
+        <div class="alert-info mt-3">
+          <i data-lucide="info"></i>
+          <p class="text-xs" id="consentNoticeText">
+            Under RBI regulations, recurring payments require explicit authorization and advance pre-debit notification. You can cancel with 1 click at any time from your Billing dashboard.
+          </p>
+        </div>
+
+        <label class="consent-checkbox-row mt-3">
+          <input id="consentAcknowledgeCheck" type="checkbox" required>
+          <span class="text-xs">I understand and authorize recurring charges for this subscription. I acknowledge I can cancel anytime with immediate effect.</span>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelConsentBtn" class="secondary-btn" type="button">Cancel</button>
+        <button id="confirmConsentBtn" class="primary-btn" type="button" disabled><i data-lucide="lock"></i><span>Authorize & Proceed to Checkout</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SOCIAL OAUTH CONFIGURATION NOTICE -->
+  <div id="oauthModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3 id="oauthModalTitle"><i data-lucide="key"></i> OAuth Configuration</h3>
+          <p class="text-sm">Social sign-in status and environment settings.</p>
+        </div>
+        <button id="closeOAuthModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert-info mb-3">
+          <i data-lucide="info"></i>
+          <span id="oauthModalMessage">OAuth 2.0 backend endpoints are mounted. Configure your credentials in <code>.env</code> to activate 1-click social authentication.</span>
+        </div>
+        <div class="code-box">
+          <pre id="oauthEnvInstructions"># Add to .env:
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+LINKEDIN_CLIENT_ID=your-linkedin-client-id
+LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissOAuthModalBtn" class="primary-btn" type="button">Understood</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RESUME IMPORT HUMAN REVIEW -->
+  <div id="importModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="file-check"></i> Review Extracted Resume Data</h3>
+          <p class="text-sm">Human Review Mandatory: Verify parsed information before saving to your Master Profile.</p>
+        </div>
+        <button id="closeImportModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Input Upload Section if not yet parsed -->
+        <div id="importInputSection">
+          <div id="importDropZone" class="drop-zone" tabindex="0">
+            <i data-lucide="upload-cloud"></i>
+            <span>Drop existing resume PDF, DOCX, or TXT here</span>
+            <input id="importFileInput" type="file" accept=".pdf,.docx,.txt">
+          </div>
+          <p class="text-center text-muted mb-2">— OR paste raw resume text —</p>
+          <textarea id="importRawText" rows="6" placeholder="Paste full resume text here..."></textarea>
+          <button id="parseResumeBtn" class="primary-btn mt-3 w-full" type="button"><i data-lucide="wand-sparkles"></i><span>Parse & Extract Profile</span></button>
+        </div>
+
+        <!-- Review / Verification Draft Form -->
+        <div id="importDraftSection" class="hidden">
+          <div class="alert-info mb-3">
+            <i data-lucide="info"></i>
+            <span>Carefully review the extracted records below. You can edit any field before committing to your Master Profile.</span>
+          </div>
+          <div class="form-grid">
+            <label class="span-2">Headline<input id="draftHeadline" type="text"></label>
+            <label class="span-2">Summary<textarea id="draftSummary" rows="2"></textarea></label>
+            <label>Phone<input id="draftPhone" type="text"></label>
+            <label>Location<input id="draftLocation" type="text"></label>
+          </div>
+
+          <h4 class="mt-4 mb-2">Parsed Experiences (<span id="draftExpCount">0</span>)</h4>
+          <div id="draftExpList" class="cards-list"></div>
+
+          <h4 class="mt-4 mb-2">Parsed Skills (<span id="draftSkillsCount">0</span>)</h4>
+          <div id="draftSkillsList" class="skills-chip-grid"></div>
+
+          <h4 class="mt-4 mb-2">Parsed Projects (<span id="draftProjCount">0</span>)</h4>
+          <div id="draftProjList" class="cards-list"></div>
+
+          <h4 class="mt-4 mb-2">Parsed Education (<span id="draftEduCount">0</span>)</h4>
+          <div id="draftEduList" class="cards-list"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancelImportBtn" class="secondary-btn" type="button">Cancel</button>
+        <button id="commitImportBtn" class="primary-btn hidden" type="button"><i data-lucide="check-circle-2"></i><span>Verify & Save to Master Profile</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT EXPERIENCE -->
+  <div id="experienceModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="expModalTitle">Add Experience</h3>
+        <button id="closeExpModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <form id="experienceForm" class="modal-body form-grid">
+        <input type="hidden" id="expEditId">
+        <label>Company Name<input id="expCompany" required placeholder="e.g. Acme Corp"></label>
+        <label>Role / Title<input id="expRole" required placeholder="e.g. Senior Software Engineer"></label>
+        <label>Location<input id="expLocation" placeholder="e.g. Mumbai, India"></label>
+        <label>Employment Type<input id="expType" placeholder="Full-time"></label>
+        <label>Start Date<input id="expStart" placeholder="e.g. 2022-01"></label>
+        <label>End Date<input id="expEnd" placeholder="e.g. 2024-06 or Present"></label>
+        <label class="span-2 flex-row">
+          <input id="expIsCurrent" type="checkbox">
+          <span>Currently working in this role</span>
+        </label>
+        <label class="span-2">Technologies Used (comma-separated)
+          <input id="expTech" placeholder="Python, FastAPI, Docker, PostgreSQL">
+        </label>
+        <label class="span-2">Accomplishment Bullets (one per line)
+          <textarea id="expBullets" rows="6" placeholder="• Architected microservices with 99.9% uptime.&#10;• Reduced latency by 40% with Redis caching."></textarea>
+        </label>
+        <div class="span-2 modal-footer-inline">
+          <button id="cancelExpBtn" class="secondary-btn" type="button">Cancel</button>
+          <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>Save Experience</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT PROJECT -->
+  <div id="projectModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="projModalTitle">Add Key Project</h3>
+        <button id="closeProjModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <form id="projectForm" class="modal-body form-grid">
+        <input type="hidden" id="projEditId">
+        <label class="span-2">Project Name<input id="projName" required placeholder="e.g. Distributed Task Scheduler"></label>
+        <label class="span-2">Short Description<input id="projDesc" placeholder="e.g. Real-time background task processor in Go"></label>
+        <label>GitHub / Repo URL<input id="projRepo" type="url" placeholder="https://github.com/username/project"></label>
+        <label>Live Demo URL<input id="projLive" type="url" placeholder="https://demo.project.dev"></label>
+        <label class="span-2">Technologies Used (comma-separated)<input id="projTech" placeholder="Go, Redis, Kubernetes"></label>
+        <label class="span-2">Key Highlights / Bullets (one per line)<textarea id="projBullets" rows="4" placeholder="• Implemented Raft consensus algorithm."></textarea></label>
+        <div class="span-2 modal-footer-inline">
+          <button id="cancelProjBtn" class="secondary-btn" type="button">Cancel</button>
+          <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>Save Project</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT EDUCATION -->
+  <div id="educationModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Add Education</h3>
+        <button id="closeEduModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <form id="educationForm" class="modal-body form-grid">
+        <label class="span-2">Institution<input id="eduInstitution" required placeholder="e.g. Indian Institute of Technology"></label>
+        <label>Degree<input id="eduDegree" required placeholder="e.g. Bachelor of Technology"></label>
+        <label>Field of Study<input id="eduField" placeholder="e.g. Computer Science"></label>
+        <label>Start Date<input id="eduStart" placeholder="2018"></label>
+        <label>End Date<input id="eduEnd" placeholder="2022"></label>
+        <label>Grade / CGPA<input id="eduGpa" placeholder="e.g. 8.9 / 10"></label>
+        <div class="span-2 modal-footer-inline">
+          <button id="cancelEduBtn" class="secondary-btn" type="button">Cancel</button>
+          <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>Save Education</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CERTIFICATION -->
+  <div id="certModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Add Certification</h3>
+        <button id="closeCertModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <form id="certForm" class="modal-body form-grid">
+        <label class="span-2">Certification Name<input id="certName" required placeholder="e.g. AWS Certified Solutions Architect"></label>
+        <label>Issuing Organization<input id="certIssuer" required placeholder="e.g. Amazon Web Services"></label>
+        <label>Issue Date<input id="certDate" placeholder="e.g. 2023-08"></label>
+        <label class="span-2">Credential URL<input id="certUrl" type="url" placeholder="https://aws.amazon.com/verify/..."></label>
+        <div class="span-2 modal-footer-inline">
+          <button id="cancelCertBtn" class="secondary-btn" type="button">Cancel</button>
+          <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>Save Certification</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RESUME HEALTH REPORT (10 DIMENSIONS) -->
+  <div id="healthModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 780px;">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="activity"></i> 10-Dimension Resume Health Report</h3>
+          <p class="text-sm text-muted">Objective, evidence-backed evaluation with clear explanations of WHY each score was assigned.</p>
+        </div>
+        <button id="closeHealthModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="health-score-header">
+          <div>
+            <span class="eyebrow-text">Overall Health Score</span>
+            <div class="health-big-score" id="healthOverallScore">--/100</div>
+            <span class="text-xs text-muted" id="healthLevelBadge">Career Level: Assessing...</span>
+          </div>
+          <div style="text-align: right; max-width: 380px;">
+            <p class="text-xs text-muted" id="healthOverallSummary">SmartResume does not use generic vanity ATS scores. Each dimension below is evaluated independently based on verifiable facts.</p>
+          </div>
+        </div>
+        <div id="healthDimensionsList" class="cards-list">
+          <div class="empty-state-card mini">
+            <i data-lucide="loader"></i>
+            <p>Loading resume health evaluation...</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissHealthModalBtn" class="primary-btn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONTENT RELEVANCE REVIEW -->
+  <div id="relevanceModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="filter"></i> Content Relevance & Low-Value Review</h3>
+          <p class="text-sm text-muted">Identify low-value content (spoken languages, hobbies, outdated tools, vague objectives) that distract from core qualifications.</p>
+        </div>
+        <button id="closeRelevanceModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert-info mb-3">
+          <i data-lucide="info"></i>
+          <span id="relevanceDomainContext">Evaluating profile content against: <strong>Software Engineering</strong></span>
+        </div>
+        <div id="relevanceItemsList" class="cards-list">
+          <div class="empty-state-card mini">
+            <i data-lucide="loader"></i>
+            <p>Evaluating profile content relevance...</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissRelevanceModalBtn" class="primary-btn" type="button">Done Reviewing</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LEARNING GAP BLUEPRINT -->
+  <div id="learningGapModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 760px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="blueprintModalTitle"><i data-lucide="compass"></i> Mini-Project Blueprint</h3>
+          <p class="text-sm text-muted">Hands-on learning blueprint to bridge an honest skill gap with verified proof.</p>
+        </div>
+        <button id="closeLearningGapModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert-info mb-3">
+          <i data-lucide="shield-alert"></i>
+          <span><strong>Zero Fabrication Guarantee:</strong> Never claim a skill on your resume before building verifiable experience. Use this blueprint to gain real evidence first.</span>
+        </div>
+        <div id="blueprintContentContainer">
+          <div class="blueprint-card">
+            <div class="flex-row justify-between align-center mb-2">
+              <h4 id="blueprintProjectTitle">Microservice Caching Layer with Redis</h4>
+              <span class="badge-sub" id="blueprintEstHours">Est: 8–12 hours</span>
+            </div>
+            <p class="text-sm mb-3" id="blueprintOverview">Build and deploy an asynchronous caching microservice with automated benchmark metrics.</p>
+
+            <h5 class="mt-3">Architecture & Deliverables</h5>
+            <ul class="clean-list text-sm mb-3" id="blueprintDeliverables"></ul>
+
+            <h5 class="mt-3">Proposed Verifiable Resume Bullet (Add ONLY after completion)</h5>
+            <div class="code-box p-3 bg-surface-2 border rounded text-xs mb-3">
+              <code id="blueprintBullet">• Implemented Redis caching layer with Docker Compose, decreasing database query latency by 45% under load testing.</code>
+            </div>
+
+            <h5 class="mt-3">Verification & Completion Checklist</h5>
+            <div id="blueprintChecklist" class="checklist-box text-sm"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="copyBlueprintBtn" class="secondary-btn" type="button"><i data-lucide="copy"></i><span>Copy Blueprint</span></button>
+        <button id="dismissLearningGapModalBtn" class="primary-btn" type="button">Got It</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PRE-EXPORT CONSISTENCY CHECK -->
+  <div id="preExportModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 680px;">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="shield-alert"></i> Pre-Export Consistency Check</h3>
+          <p class="text-sm text-muted">Quality and consistency verification prior to generating export files.</p>
+        </div>
+        <button id="closePreExportModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert-warning mb-3">
+          <i data-lucide="alert-triangle"></i>
+          <span id="preExportNoticeText">We detected potential issues in this resume version that could affect recruiter impressions or ATS readability:</span>
+        </div>
+        <div id="preExportWarningsList" class="cards-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="preExportEditBtn" class="secondary-btn" type="button">Edit Version First</button>
+        <button id="preExportProceedBtn" class="primary-btn" type="button"><i data-lucide="download"></i><span>Download Anyway</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GUIDED FIRST-TIME ONBOARDING -->
+  <div id="onboardingModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="max-width: 740px;">
+      <div class="modal-header">
+        <div>
+          <h3><i data-lucide="sparkles"></i> Welcome to SmartResume.ai</h3>
+          <p class="text-sm text-muted">The Evidence-Grounded Career Intelligence Platform</p>
+        </div>
+        <button id="closeOnboardingModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm mb-3">
+          Unlike generic AI tools that hallucinate metrics or invent ATS scores, SmartResume operates on a strict <strong>Single Source of Truth</strong>: your Master Profile.
+        </p>
+        <div class="onboarding-grid">
+          <div class="onboarding-card" id="onboardImportCard">
+            <i data-lucide="upload-cloud"></i>
+            <strong>Import Resume</strong>
+            <p class="text-xs text-muted">Upload existing PDF/DOCX. Review extracted data before saving.</p>
+          </div>
+          <div class="onboarding-card" id="onboardManualCard">
+            <i data-lucide="edit-3"></i>
+            <strong>Build Profile</strong>
+            <p class="text-xs text-muted">Enter verified skills, experiences, and projects step-by-step.</p>
+          </div>
+          <div class="onboarding-card" id="onboardDemoCard">
+            <i data-lucide="play-circle"></i>
+            <strong>Explore Demo</strong>
+            <p class="text-xs text-muted">Test tailoring and fit analysis with a realistic sample software role.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissOnboardingBtn" class="primary-btn" type="button">Go to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

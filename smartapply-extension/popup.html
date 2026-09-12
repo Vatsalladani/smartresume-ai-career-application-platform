@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartApply Copilot</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="popup-header">
+    <div class="brand">
+      <span class="brand-icon">⚡</span>
+      <span class="brand-name">SmartApply Copilot</span>
+    </div>
+    <span id="connectionBadge" class="status-badge connected">Connected</span>
+  </header>
+
+  <main class="popup-content">
+    <!-- Active Job Detection Card -->
+    <section class="card job-card">
+      <div class="card-header">
+        <span class="card-title">Current Job Opening</span>
+        <button id="refreshJobBtn" class="btn-icon" title="Refresh detection">🔄</button>
+      </div>
+      <div id="detectedJobInfo">
+        <h4 id="jobTitle">Detecting job...</h4>
+        <p id="jobCompany" class="text-muted">Analyzing page content</p>
+      </div>
+      <div class="match-bar-container">
+        <div class="match-bar-label">
+          <span>Readiness / Fit</span>
+          <span id="matchPercent">85% Match</span>
+        </div>
+        <div class="match-progress">
+          <div id="matchBarFill" class="match-progress-fill" style="width: 85%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- One-Click Verified Autofill -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-title">Verified Field Autofill</span>
+        <span class="badge-pill">Evidence-Grounded</span>
+      </div>
+      <div class="autofill-grid">
+        <button class="autofill-btn" data-field="full_name">👤 Name</button>
+        <button class="autofill-btn" data-field="email">✉️ Email</button>
+        <button class="autofill-btn" data-field="phone">📞 Phone</button>
+        <button class="autofill-btn" data-field="linkedin">🔗 LinkedIn</button>
+        <button class="autofill-btn" data-field="github">🐙 GitHub</button>
+        <button class="autofill-btn" data-field="notice_period">⏱️ Notice Period</button>
+      </div>
+    </section>
+
+    <!-- Application Answers Copy -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-title">Portal Answers (Copy & Paste)</span>
+      </div>
+      <div class="answers-list">
+        <div class="answer-item">
+          <div class="answer-label">Why this company?</div>
+          <button class="btn-copy-answer" data-answer="why_company">Copy</button>
+        </div>
+        <div class="answer-item">
+          <div class="answer-label">Top Engineering Achievement</div>
+          <button class="btn-copy-answer" data-answer="achievement">Copy</button>
+        </div>
+        <div class="answer-item">
+          <div class="answer-label">Work Authorization Status</div>
+          <button class="btn-copy-answer" data-answer="auth">Copy</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Save & Open in SmartResume -->
+    <div class="action-footer">
+      <button id="saveApplicationBtn" class="btn btn-primary">Save to Application OS</button>
+      <a href="http://127.0.0.1:8000" target="_blank" class="btn btn-secondary">Open SmartResume.ai</a>
+    </div>
+  </main>
+
+  <div id="toast" class="toast hidden">Copied to clipboard!</div>
+
+  <script src="api_client.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
