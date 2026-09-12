@@ -61,26 +61,94 @@ document.addEventListener("DOMContentLoaded", () => {
   boot();
 });
 
+// Auth state variables (Tokens kept strictly private in memory)
+let _activeResetToken = null;
+let _activeVerifyToken = null;
+let _isAuthSubmitting = false;
+
+const AUTH_ROUTES = {
+  "#/signin": "login",
+  "#/login": "login",
+  "#/register": "register",
+  "#/create-account": "register",
+  "#/forgot-password": "forgot",
+  "#/reset-password": "reset",
+  "#/verify-email": "verify",
+};
+
 // Boot & Lifecycle
 async function boot() {
   document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
 
-  // Check for OAuth Callback query params in URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const oauthCode = urlParams.get("code");
-  const oauthProvider = urlParams.get("provider") || (window.location.pathname.includes("google") ? "google" : "linkedin");
+  // Check URL parameters for OAuth, Reset Token, Verify Token, or Auth routes
+  const authParam = checkAuthUrlParams();
 
-  if (oauthCode) {
-    await handleOAuthCallback(oauthCode, oauthProvider);
+  if (authParam && authParam.type === "oauth") {
+    await handleOAuthCallback(authParam.code, authParam.provider);
+    return;
+  }
+
+  if (authParam && authParam.type === "reset") {
+    showAuth("reset");
+    drawIcons();
+    return;
+  }
+
+  if (authParam && authParam.type === "verify") {
+    showAuth("verify");
+    drawIcons();
+    return;
+  }
+
+  if (authParam && authParam.type === "route") {
+    showAuth(authParam.mode);
+    drawIcons();
     return;
   }
 
   if (API.getAccessToken()) {
     await loadApp();
   } else {
-    showAuth();
+    showAuth("login");
   }
   drawIcons();
+}
+
+function checkAuthUrlParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let hash = window.location.hash || "";
+  let hashParams = new URLSearchParams();
+  if (hash.includes("?")) {
+    const queryPart = hash.substring(hash.indexOf("?") + 1);
+    hashParams = new URLSearchParams(queryPart);
+  }
+
+  // Token extraction
+  const resetToken = urlParams.get("token") || hashParams.get("token") || urlParams.get("reset_token") || hashParams.get("reset_token");
+  const verifyToken = urlParams.get("verify_token") || hashParams.get("verify_token") || (hash.includes("verify") ? (urlParams.get("token") || hashParams.get("token")) : null);
+  const oauthCode = urlParams.get("code") || hashParams.get("code");
+  const oauthProvider = urlParams.get("provider") || hashParams.get("provider") || (window.location.pathname.includes("google") ? "google" : "linkedin");
+
+  if (oauthCode) {
+    return { type: "oauth", code: oauthCode, provider: oauthProvider };
+  }
+  if (resetToken) {
+    _activeResetToken = resetToken;
+    // Sanitize URL to protect token secrecy
+    window.history.replaceState(null, "", window.location.pathname + "#/reset-password");
+    return { type: "reset", token: resetToken };
+  }
+  if (verifyToken) {
+    _activeVerifyToken = verifyToken;
+    window.history.replaceState(null, "", window.location.pathname + "#/verify-email");
+    return { type: "verify", token: verifyToken };
+  }
+
+  if (AUTH_ROUTES[hash]) {
+    return { type: "route", mode: AUTH_ROUTES[hash] };
+  }
+
+  return null;
 }
 
 function drawIcons() {
@@ -97,6 +165,25 @@ function toast(message, type = "info") {
   setTimeout(() => node.remove(), 4500);
 }
 
+function showAuthAlert(message, type = "error") {
+  const alert = $("#authAlert");
+  if (!alert) return;
+  alert.className = `auth-alert ${type}`;
+  const iconName = type === "success" ? "check-circle-2" : type === "info" ? "info" : type === "warning" ? "alert-triangle" : "alert-circle";
+  alert.innerHTML = `<i data-lucide="${iconName}"></i> <span>${escapeHtml(message)}</span>`;
+  alert.classList.remove("hidden");
+  drawIcons();
+}
+
+function clearAuthAlert() {
+  const alert = $("#authAlert");
+  if (alert) {
+    alert.className = "auth-alert hidden";
+    alert.classList.add("hidden");
+    alert.innerHTML = "";
+  }
+}
+
 function showAuth(mode = "login") {
   $("#authView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
@@ -109,27 +196,127 @@ function showApp() {
 }
 
 function setAuthMode(mode) {
-  const titles = {
+  clearAuthAlert();
+
+  const headings = {
+    login: "Sign In",
+    register: "Create Account",
+    forgot: "Forgot Password",
+    reset: "Reset Password",
+    verify: "Email Verification",
+  };
+  const subtitles = {
     login: "Welcome back",
     register: "Create your SmartResume account",
-    forgot: "Reset your password",
-    reset: "Set a new secure password",
+    forgot: "Enter your email to receive a secure reset link",
+    reset: "Enter a new secure password for your account",
+    verify: "Confirming your email address",
   };
-  $("#authSubtitle").textContent = titles[mode] || "Welcome back";
+
+  const headingEl = $("#authHeading");
+  if (headingEl) headingEl.textContent = headings[mode] || "Sign In";
+  const subtitleEl = $("#authSubtitle");
+  if (subtitleEl) subtitleEl.textContent = subtitles[mode] || "Welcome back";
+
+  // Hide all forms and state cards first
   ["login", "register", "forgot", "reset"].forEach((name) => {
     const form = $(`#${name}Form`);
-    if (form) form.classList.toggle("hidden", name !== mode);
+    if (form) {
+      form.classList.toggle("hidden", name !== mode);
+      form.querySelectorAll("input").forEach((inp) => inp.disabled = false);
+    }
+  });
+
+  const forgotSuccess = $("#forgotSuccessView");
+  if (forgotSuccess) forgotSuccess.classList.add("hidden");
+  const resetSuccess = $("#resetSuccessView");
+  if (resetSuccess) resetSuccess.classList.add("hidden");
+  const resetInvalid = $("#resetInvalidView");
+  if (resetInvalid) resetInvalid.classList.add("hidden");
+  const verifyView = $("#verifyEmailView");
+  if (verifyView) verifyView.classList.toggle("hidden", mode !== "verify");
+
+  // Specific state handling for reset mode
+  if (mode === "reset") {
+    if (!_activeResetToken) {
+      const authParam = checkAuthUrlParams();
+      if (!authParam || authParam.type !== "reset" || !_activeResetToken) {
+        // No token provided in URL or memory! Show invalid link state
+        const resetForm = $("#resetForm");
+        if (resetForm) resetForm.classList.add("hidden");
+        if (resetInvalid) resetInvalid.classList.remove("hidden");
+        if (headingEl) headingEl.textContent = "Reset Password";
+        if (subtitleEl) subtitleEl.textContent = "Link verification required";
+      }
+    }
+  }
+
+  // Specific state handling for verify mode
+  if (mode === "verify") {
+    if (_activeVerifyToken) {
+      executeEmailVerification(_activeVerifyToken);
+    }
+  }
+
+  // Footer prompts
+  ["login", "register", "forgot", "reset"].forEach((name) => {
     const footer = $(`#authFooter${capitalize(name)}`);
     if (footer) footer.classList.toggle("hidden", name !== mode);
   });
 
+  // OAuth buttons (only on login and register)
   const oauthGroup = $("#oauthActionGroup");
   const oauthDivider = $(".oauth-divider");
   const showOAuth = (mode === "login" || mode === "register");
   if (oauthGroup) oauthGroup.classList.toggle("hidden", !showOAuth);
   if (oauthDivider) oauthDivider.classList.toggle("hidden", !showOAuth);
 
+  // Synchronize URL hash
+  const modeToHash = {
+    login: "#/signin",
+    register: "#/register",
+    forgot: "#/forgot-password",
+    reset: "#/reset-password",
+    verify: "#/verify-email",
+  };
+  if (modeToHash[mode] && window.location.hash !== modeToHash[mode]) {
+    window.history.replaceState(null, "", modeToHash[mode]);
+  }
+
   drawIcons();
+}
+
+async function executeEmailVerification(token) {
+  const iconWrap = $("#verifyEmailIconWrap");
+  const icon = $("#verifyEmailIcon");
+  const title = $("#verifyEmailTitle");
+  const desc = $("#verifyEmailDescription");
+  const actionBtn = $("#verifyEmailActionBtn");
+
+  if (title) title.textContent = "Verifying email...";
+  if (desc) desc.textContent = "Please wait while we verify your email address...";
+
+  try {
+    await API.request("/auth/verify-email", {
+      method: "POST",
+      auth: false,
+      body: { token },
+    });
+    _activeVerifyToken = null;
+    if (iconWrap) iconWrap.className = "state-card-icon success";
+    if (icon) icon.setAttribute("data-lucide", "check-circle-2");
+    if (title) title.textContent = "Email verified";
+    if (desc) desc.textContent = "Your email address has been verified successfully. You can now access your account.";
+    if (actionBtn) actionBtn.classList.remove("hidden");
+    drawIcons();
+  } catch (error) {
+    _activeVerifyToken = null;
+    if (iconWrap) iconWrap.className = "state-card-icon warning";
+    if (icon) icon.setAttribute("data-lucide", "alert-triangle");
+    if (title) title.textContent = "Verification failed";
+    if (desc) desc.textContent = error.message || "This verification link is invalid or has expired.";
+    drawIcons();
+  }
 }
 
 function wireTheme() {
@@ -143,171 +330,440 @@ function wireTheme() {
   }
 }
 
+function wirePasswordToggles() {
+  $$(".password-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.dataset.toggleTarget;
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      btn.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+      btn.setAttribute("title", isPassword ? "Hide password" : "Show password");
+      btn.innerHTML = `<i data-lucide="${isPassword ? "eye-off" : "eye"}"></i>`;
+      drawIcons();
+    });
+  });
+}
+
+function evaluatePasswordRequirements(password, prefix = "req", meterId = "registerStrengthMeter") {
+  const hasLen = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasCase = hasUpper && hasLower;
+  const hasNum = /\d/.test(password);
+  const hasSym = /[^A-Za-z0-9]/.test(password);
+
+  const reqs = [
+    { el: $(`#${prefix}Len`), met: hasLen },
+    { el: $(`#${prefix}Case`), met: hasCase },
+    { el: $(`#${prefix}Num`), met: hasNum },
+    { el: $(`#${prefix}Sym`), met: hasSym },
+  ];
+
+  let metCount = 0;
+  reqs.forEach(({ el, met }) => {
+    if (!el) return;
+    el.classList.toggle("met", met);
+    const icon = el.querySelector("i, svg");
+    if (icon) {
+      el.innerHTML = `<i data-lucide="${met ? "check-circle-2" : "circle"}"></i> ${el.textContent.trim()}`;
+    }
+    if (met) metCount++;
+  });
+
+  const meter = $(`#${meterId}`);
+  if (meter) {
+    const percent = (metCount / 4) * 100;
+    meter.style.width = `${percent}%`;
+    if (metCount === 0) {
+      meter.style.width = "0%";
+    } else if (metCount <= 1) {
+      meter.style.backgroundColor = "var(--danger)";
+    } else if (metCount === 2) {
+      meter.style.backgroundColor = "var(--warning)";
+    } else if (metCount === 3) {
+      meter.style.backgroundColor = "#3b82f6";
+    } else {
+      meter.style.backgroundColor = "var(--success)";
+    }
+  }
+
+  drawIcons();
+  return metCount === 4;
+}
+
+function checkConfirmPasswordMatch(passwordId, confirmId, feedbackId) {
+  const pw = $(`#${passwordId}`)?.value || "";
+  const cpw = $(`#${confirmId}`)?.value || "";
+  const feedback = $(`#${feedbackId}`);
+  if (!feedback) return true;
+
+  if (!cpw) {
+    feedback.classList.add("hidden");
+    feedback.textContent = "";
+    return true;
+  }
+
+  feedback.classList.remove("hidden");
+  if (pw === cpw) {
+    feedback.className = "field-feedback success";
+    feedback.innerHTML = '<i data-lucide="check"></i> Passwords match';
+    drawIcons();
+    return true;
+  } else {
+    feedback.className = "field-feedback error";
+    feedback.innerHTML = '<i data-lucide="alert-circle"></i> Passwords do not match';
+    drawIcons();
+    return false;
+  }
+}
+
 // AUTHENTICATION & SOCIAL OAUTH 2.0
 function wireAuth() {
+  wirePasswordToggles();
+
+  // Contextual auth links
   $$("[data-auth-mode]").forEach((button) => {
     button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
   });
 
-  // Google OAuth button
-  $("#googleOAuthBtn").addEventListener("click", async () => {
-    try {
-      const config = await API.request("/auth/oauth/config", { auth: false });
-      state.oauthConfig = config;
-      if (config.google?.configured || config.google_enabled) {
-        const urlData = await API.request("/auth/oauth/google/url", { auth: false });
-        window.location.href = urlData.url;
-      } else {
-        openOAuthModal("Google OAuth Setup", config.google?.instructions || "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env to enable Google 1-click authentication.");
-      }
-    } catch (err) {
-      openOAuthModal("Google OAuth Notice", "Google OAuth 2.0 backend endpoints are mounted. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file to enable live sign-in.");
-    }
+  // Clear alerts on input
+  $$("#authView input").forEach((input) => {
+    input.addEventListener("input", () => clearAuthAlert());
   });
+
+  // Progressive password validation on Register
+  const regPw = $("#registerPassword");
+  if (regPw) {
+    regPw.addEventListener("input", (e) => {
+      evaluatePasswordRequirements(e.target.value, "req", "registerStrengthMeter");
+      checkConfirmPasswordMatch("registerPassword", "registerConfirmPassword", "registerMismatchHint");
+    });
+  }
+  const regCpw = $("#registerConfirmPassword");
+  if (regCpw) {
+    regCpw.addEventListener("input", () => {
+      checkConfirmPasswordMatch("registerPassword", "registerConfirmPassword", "registerMismatchHint");
+    });
+  }
+
+  // Progressive password validation on Reset
+  const resPw = $("#resetPassword");
+  if (resPw) {
+    resPw.addEventListener("input", (e) => {
+      evaluatePasswordRequirements(e.target.value, "resetReq", "resetStrengthMeter");
+      checkConfirmPasswordMatch("resetPassword", "resetConfirmPassword", "resetMismatchHint");
+    });
+  }
+  const resCpw = $("#resetConfirmPassword");
+  if (resCpw) {
+    resCpw.addEventListener("input", () => {
+      checkConfirmPasswordMatch("resetPassword", "resetConfirmPassword", "resetMismatchHint");
+    });
+  }
+
+  // Google OAuth button
+  const googleBtn = $("#googleOAuthBtn");
+  if (googleBtn) {
+    googleBtn.addEventListener("click", async () => {
+      try {
+        const config = await API.request("/auth/oauth/config", { auth: false });
+        state.oauthConfig = config;
+        if (config.google?.configured || config.google_enabled) {
+          const urlData = await API.request("/auth/oauth/google/url", { auth: false });
+          window.location.href = urlData.url;
+        } else {
+          openOAuthModal("Google Sign-In", "Google 1-click sign-in is currently unavailable in this environment. Please sign in with your email address.");
+        }
+      } catch (err) {
+        openOAuthModal("Google Sign-In", "Google sign-in is currently unavailable. Please continue with your email address.");
+      }
+    });
+  }
 
   // LinkedIn OAuth button
-  $("#linkedinOAuthBtn").addEventListener("click", async () => {
-    try {
-      const config = await API.request("/auth/oauth/config", { auth: false });
-      state.oauthConfig = config;
-      if (config.linkedin?.configured || config.linkedin_enabled) {
-        const urlData = await API.request("/auth/oauth/linkedin/url", { auth: false });
-        window.location.href = urlData.url;
-      } else {
-        openOAuthModal("LinkedIn OAuth Setup", config.linkedin?.instructions || "Set LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET in .env to enable LinkedIn 1-click authentication.");
+  const linkedinBtn = $("#linkedinOAuthBtn");
+  if (linkedinBtn) {
+    linkedinBtn.addEventListener("click", async () => {
+      try {
+        const config = await API.request("/auth/oauth/config", { auth: false });
+        state.oauthConfig = config;
+        if (config.linkedin?.configured || config.linkedin_enabled) {
+          const urlData = await API.request("/auth/oauth/linkedin/url", { auth: false });
+          window.location.href = urlData.url;
+        } else {
+          openOAuthModal("LinkedIn Sign-In", "LinkedIn 1-click sign-in is currently unavailable in this environment. Please sign in with your email address.");
+        }
+      } catch (err) {
+        openOAuthModal("LinkedIn Sign-In", "LinkedIn sign-in is currently unavailable. Please continue with your email address.");
       }
-    } catch (err) {
-      openOAuthModal("LinkedIn OAuth Notice", "LinkedIn OAuth 2.0 backend endpoints are mounted. Set LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET in your .env file to enable live sign-in.");
-    }
-  });
+    });
+  }
 
   // OAuth Modal close buttons
-  $("#closeOAuthModalBtn").addEventListener("click", () => $("#oauthModal").classList.add("hidden"));
-  $("#dismissOAuthModalBtn").addEventListener("click", () => $("#oauthModal").classList.add("hidden"));
+  const closeOAuthBtn = $("#closeOAuthModalBtn");
+  if (closeOAuthBtn) {
+    closeOAuthBtn.addEventListener("click", () => $("#oauthModal")?.classList.add("hidden"));
+  }
+  const dismissOAuthBtn = $("#dismissOAuthModalBtn");
+  if (dismissOAuthBtn) {
+    dismissOAuthBtn.addEventListener("click", () => $("#oauthModal")?.classList.add("hidden"));
+  }
 
   // Standard Email Login
-  $("#loginForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const btn = $("#loginForm button[type='submit']");
-    setButtonLoading(btn, true, "Signing in...");
-    try {
-      const data = await API.request("/auth/login", {
-        method: "POST",
-        auth: false,
-        body: { email: $("#loginEmail").value, password: $("#loginPassword").value },
-      });
-      API.setSession(data);
-      toast("Welcome back!");
-      await loadApp();
-    } catch (error) {
-      toast(error.message, "error");
-    } finally {
-      setButtonLoading(btn, false, "Sign In");
-    }
-  });
+  const loginForm = $("#loginForm");
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (_isAuthSubmitting) return;
+
+      const email = $("#loginEmail").value.trim();
+      const password = $("#loginPassword").value;
+
+      if (!email || !password) {
+        showAuthAlert("Please enter both your email address and password.");
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showAuthAlert("Please enter a valid email address.");
+        return;
+      }
+
+      const btn = loginForm.querySelector("button[type='submit']");
+      _isAuthSubmitting = true;
+      setButtonLoading(btn, true, "Signing in...");
+      loginForm.querySelectorAll("input").forEach((inp) => inp.disabled = true);
+      clearAuthAlert();
+
+      try {
+        const data = await API.request("/auth/login", {
+          method: "POST",
+          auth: false,
+          body: { email, password },
+        });
+        API.setSession(data);
+        toast("Welcome back!");
+        await loadApp();
+      } catch (error) {
+        showAuthAlert(error.message || "Incorrect email or password. Please try again.");
+      } finally {
+        _isAuthSubmitting = false;
+        setButtonLoading(btn, false, "Sign In");
+        loginForm.querySelectorAll("input").forEach((inp) => inp.disabled = false);
+      }
+    });
+  }
 
   // Register Form
-  $("#registerForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const btn = $("#registerForm button[type='submit']");
-    const password = $("#registerPassword").value;
-    const confirmPassword = $("#registerConfirmPassword") ? $("#registerConfirmPassword").value : password;
+  const registerForm = $("#registerForm");
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (_isAuthSubmitting) return;
 
-    if (password !== confirmPassword) {
-      toast("Passwords do not match. Please verify and try again.", "error");
-      return;
-    }
+      const fullName = $("#registerName").value.trim();
+      const email = $("#registerEmail").value.trim();
+      const password = $("#registerPassword").value;
+      const confirmPassword = $("#registerConfirmPassword").value;
 
-    setButtonLoading(btn, true, "Creating account...");
-    try {
-      await API.request("/auth/register", {
-        method: "POST",
-        auth: false,
-        body: {
-          full_name: $("#registerName").value,
-          email: $("#registerEmail").value,
-          password: password,
-        },
-      });
-      toast("Account created! Please sign in with your credentials.");
-      setAuthMode("login");
-    } catch (error) {
-      toast(error.message, "error");
-    } finally {
-      setButtonLoading(btn, false, "Create Free Account");
-    }
-  });
+      if (!fullName) {
+        showAuthAlert("Please enter your full name.");
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        showAuthAlert("Please enter a valid email address.");
+        return;
+      }
+
+      if (!evaluatePasswordRequirements(password, "req", "registerStrengthMeter")) {
+        showAuthAlert("Password must meet all 4 security requirements.");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showAuthAlert("Passwords do not match. Please verify your password.");
+        return;
+      }
+
+      const btn = registerForm.querySelector("button[type='submit']");
+      _isAuthSubmitting = true;
+      setButtonLoading(btn, true, "Creating account...");
+      registerForm.querySelectorAll("input").forEach((inp) => inp.disabled = true);
+      clearAuthAlert();
+
+      try {
+        await API.request("/auth/register", {
+          method: "POST",
+          auth: false,
+          body: {
+            full_name: fullName,
+            email: email,
+            password: password,
+          },
+        });
+        toast("Account created successfully!");
+        setAuthMode("login");
+        $("#loginEmail").value = email;
+        showAuthAlert("Account created successfully! Please sign in with your credentials.", "success");
+      } catch (error) {
+        showAuthAlert(error.message || "Unable to create account. Please check your information.");
+      } finally {
+        _isAuthSubmitting = false;
+        setButtonLoading(btn, false, "Create Account");
+        registerForm.querySelectorAll("input").forEach((inp) => inp.disabled = false);
+      }
+    });
+  }
 
   // Forgot Password
-  $("#forgotForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const btn = $("#forgotForm button[type='submit']");
-    setButtonLoading(btn, true, "Sending request...");
-    try {
-      await API.request("/auth/forgot-password", {
-        method: "POST",
-        auth: false,
-        body: { email: $("#forgotEmail").value },
-      });
-      toast("If that email exists, reset instructions were generated.");
-      setAuthMode("reset");
-    } catch (error) {
-      toast(error.message, "error");
-    } finally {
-      setButtonLoading(btn, false, "Request Password Reset");
-    }
-  });
+  const forgotForm = $("#forgotForm");
+  if (forgotForm) {
+    forgotForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (_isAuthSubmitting) return;
 
-  // Reset Password
-  $("#resetForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const btn = $("#resetForm button[type='submit']");
-    const newPassword = $("#resetPassword").value;
-    const confirmNewPassword = $("#resetConfirmPassword") ? $("#resetConfirmPassword").value : newPassword;
+      const email = $("#forgotEmail").value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        showAuthAlert("Please enter a valid email address.");
+        return;
+      }
 
-    if (newPassword !== confirmNewPassword) {
-      toast("Passwords do not match. Please verify and try again.", "error");
-      return;
-    }
+      const btn = forgotForm.querySelector("button[type='submit']");
+      _isAuthSubmitting = true;
+      setButtonLoading(btn, true, "Sending reset link...");
+      forgotForm.querySelectorAll("input").forEach((inp) => inp.disabled = true);
+      clearAuthAlert();
 
-    setButtonLoading(btn, true, "Resetting password...");
-    try {
-      await API.request("/auth/reset-password", {
-        method: "POST",
-        auth: false,
-        body: { token: $("#resetToken").value, new_password: newPassword },
-      });
-      toast("Password reset successfully. Sign in with your new password.");
-      setAuthMode("login");
-    } catch (error) {
-      toast(error.message, "error");
-    } finally {
-      setButtonLoading(btn, false, "Set New Password");
-    }
-  });
+      try {
+        await API.request("/auth/forgot-password", {
+          method: "POST",
+          auth: false,
+          body: { email },
+        });
+
+        // Show clean success card
+        forgotForm.classList.add("hidden");
+        const successCard = $("#forgotSuccessView");
+        if (successCard) {
+          const emailDisplay = $("#forgotSentEmail");
+          if (emailDisplay) emailDisplay.textContent = email;
+          successCard.classList.remove("hidden");
+        }
+        const heading = $("#authHeading");
+        if (heading) heading.textContent = "Check Your Email";
+        const subtitle = $("#authSubtitle");
+        if (subtitle) subtitle.textContent = "Password reset instructions sent";
+        drawIcons();
+      } catch (error) {
+        showAuthAlert(error.message || "Unable to send reset instructions. Please try again.");
+      } finally {
+        _isAuthSubmitting = false;
+        setButtonLoading(btn, false, "Send Reset Link");
+        forgotForm.querySelectorAll("input").forEach((inp) => inp.disabled = false);
+      }
+    });
+  }
+
+  // Reset Password (Token read silently in memory, never exposed as form field)
+  const resetForm = $("#resetForm");
+  if (resetForm) {
+    resetForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (_isAuthSubmitting) return;
+
+      if (!_activeResetToken) {
+        showAuthAlert("Password reset token is missing. Please request a new link.");
+        setAuthMode("reset");
+        return;
+      }
+
+      const newPassword = $("#resetPassword").value;
+      const confirmNewPassword = $("#resetConfirmPassword").value;
+
+      if (!evaluatePasswordRequirements(newPassword, "resetReq", "resetStrengthMeter")) {
+        showAuthAlert("Password must meet all 4 security requirements.");
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        showAuthAlert("Passwords do not match. Please verify your new password.");
+        return;
+      }
+
+      const btn = resetForm.querySelector("button[type='submit']");
+      _isAuthSubmitting = true;
+      setButtonLoading(btn, true, "Resetting password...");
+      resetForm.querySelectorAll("input").forEach((inp) => inp.disabled = true);
+      clearAuthAlert();
+
+      try {
+        await API.request("/auth/reset-password", {
+          method: "POST",
+          auth: false,
+          body: { token: _activeResetToken, new_password: newPassword },
+        });
+
+        _activeResetToken = null; // Clean from memory
+        resetForm.classList.add("hidden");
+        const successCard = $("#resetSuccessView");
+        if (successCard) successCard.classList.remove("hidden");
+        const heading = $("#authHeading");
+        if (heading) heading.textContent = "Password Updated";
+        const subtitle = $("#authSubtitle");
+        if (subtitle) subtitle.textContent = "You can now sign in with your new password";
+        drawIcons();
+      } catch (error) {
+        _activeResetToken = null;
+        resetForm.classList.add("hidden");
+        const invalidCard = $("#resetInvalidView");
+        if (invalidCard) {
+          const p = invalidCard.querySelector("p");
+          if (p) p.textContent = error.message || "This password reset link is no longer valid or has expired.";
+          invalidCard.classList.remove("hidden");
+        }
+        drawIcons();
+      } finally {
+        _isAuthSubmitting = false;
+        setButtonLoading(btn, false, "Reset Password");
+        resetForm.querySelectorAll("input").forEach((inp) => inp.disabled = false);
+      }
+    });
+  }
 
   // Logout
-  $("#logoutBtn").addEventListener("click", async () => {
-    try {
-      await API.request("/auth/logout", {
-        method: "POST",
-        body: { refresh_token: API.getRefreshToken() },
-      });
-    } catch (_) {}
-    API.clearSession();
-    showAuth();
-  });
+  const logoutBtn = $("#logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await API.request("/auth/logout", {
+          method: "POST",
+          body: { refresh_token: API.getRefreshToken() },
+        });
+      } catch (_) {}
+      API.clearSession();
+      showAuth("login");
+    });
+  }
 }
 
 function openOAuthModal(title, message) {
-  $("#oauthModalTitle").innerHTML = `<i data-lucide="key"></i> ${escapeHtml(title)}`;
-  $("#oauthModalMessage").textContent = message;
-  $("#oauthModal").classList.remove("hidden");
+  const modalTitle = $("#oauthModalTitle");
+  if (modalTitle) modalTitle.innerHTML = `<i data-lucide="key"></i> ${escapeHtml(title)}`;
+  const modalMsg = $("#oauthModalMessage");
+  if (modalMsg) modalMsg.textContent = message;
+  const modal = $("#oauthModal");
+  if (modal) modal.classList.remove("hidden");
   drawIcons();
 }
 
 async function handleOAuthCallback(code, provider) {
-  toast(`Exchanging authorization with ${capitalize(provider)}...`);
+  toast(`Authenticating with ${capitalize(provider)}...`);
   try {
     const endpoint = provider === "google" ? "/auth/oauth/google/callback" : "/auth/oauth/linkedin/callback";
     const data = await API.request(endpoint, {
@@ -320,9 +776,9 @@ async function handleOAuthCallback(code, provider) {
     toast("Authenticated successfully!");
     await loadApp();
   } catch (error) {
-    toast(`OAuth failed: ${error.message}`, "error");
+    toast(`Authentication failed: ${error.message}`, "error");
     window.history.replaceState({}, document.title, window.location.pathname);
-    showAuth();
+    showAuth("login");
   }
 }
 
@@ -438,6 +894,10 @@ function wireNavigation() {
   // Browser Back / Forward hash navigation
   window.addEventListener("hashchange", () => {
     const hash = window.location.hash;
+    if (AUTH_ROUTES[hash]) {
+      showAuth(AUTH_ROUTES[hash]);
+      return;
+    }
     const tabName = ROUTES[hash] || "dashboard";
     activateTab(tabName, false);
   });

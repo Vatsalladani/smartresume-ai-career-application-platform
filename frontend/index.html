@@ -14,17 +14,30 @@
   <!-- AUTH VIEW -->
   <section id="authView" class="auth-view">
     <div class="auth-panel">
-      <div class="brand-row">
+      <!-- BRAND HEADER -->
+      <div class="brand-row auth-brand-header">
         <div class="brand-mark">SR</div>
         <div>
-          <h1>SmartResume.ai</h1>
-          <p id="authSubtitle">Welcome back</p>
+          <h1 class="auth-brand-title">SmartResume.ai</h1>
+          <p class="auth-brand-tagline">AI Career & Application OS</p>
         </div>
       </div>
 
-      <!-- Social OAuth 2.0 Buttons -->
+      <!-- AUTH TITLE & SUBTITLE -->
+      <div class="auth-header-text">
+        <h2 id="authHeading">Sign In</h2>
+        <p id="authSubtitle">Welcome back</p>
+      </div>
+
+      <!-- INLINE ALERT BANNER -->
+      <div id="authAlert" class="auth-alert hidden" role="alert">
+        <i data-lucide="alert-circle" id="authAlertIcon"></i>
+        <span id="authAlertMessage"></span>
+      </div>
+
+      <!-- SOCIAL OAUTH BUTTONS -->
       <div id="oauthActionGroup" class="oauth-buttons-stack">
-        <button id="googleOAuthBtn" class="oauth-btn google-btn" type="button">
+        <button id="googleOAuthBtn" class="oauth-btn google-btn" type="button" aria-label="Continue with Google">
           <svg class="oauth-icon" viewBox="0 0 24 24" width="18" height="18">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -34,7 +47,7 @@
           <span>Continue with Google</span>
         </button>
 
-        <button id="linkedinOAuthBtn" class="oauth-btn linkedin-btn" type="button">
+        <button id="linkedinOAuthBtn" class="oauth-btn linkedin-btn" type="button" aria-label="Continue with LinkedIn">
           <svg class="oauth-icon" viewBox="0 0 24 24" width="18" height="18" fill="#0A66C2">
             <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
           </svg>
@@ -42,62 +55,173 @@
         </button>
       </div>
 
+      <!-- DIVIDER -->
       <div class="oauth-divider">
         <span>or continue with email</span>
       </div>
 
-      <form id="loginForm" class="auth-form">
-        <label>Email Address
-          <input id="loginEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+      <!-- 1. SIGN IN FORM -->
+      <form id="loginForm" class="auth-form" novalidate>
+        <label for="loginEmail">Email address
+          <input id="loginEmail" type="email" autocomplete="email" required placeholder="you@company.com">
         </label>
         <div>
           <div class="label-with-action">
             <label for="loginPassword" style="margin-bottom: 0;">Password</label>
             <button type="button" class="inline-link-btn" data-auth-mode="forgot">Forgot password?</button>
           </div>
-          <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••">
+          <div class="password-input-wrap">
+            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••••••">
+            <button type="button" class="password-toggle-btn" data-toggle-target="loginPassword" aria-label="Show password" title="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
         </div>
-        <button class="primary-btn" type="submit"><i data-lucide="log-in"></i><span>Sign In</span></button>
+        <button class="primary-btn w-full" type="submit">
+          <i data-lucide="log-in"></i><span>Sign In</span>
+        </button>
       </form>
 
-      <form id="registerForm" class="auth-form hidden">
-        <label>Full Name
+      <!-- 2. CREATE ACCOUNT / REGISTER FORM -->
+      <form id="registerForm" class="auth-form hidden" novalidate>
+        <label for="registerName">Full name
           <input id="registerName" type="text" autocomplete="name" required placeholder="Alex Sharma">
         </label>
-        <label>Email Address
-          <input id="registerEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+        <label for="registerEmail">Email address
+          <input id="registerEmail" type="email" autocomplete="email" required placeholder="you@company.com">
         </label>
-        <label>Password
-          <input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
-          <span class="field-hint">Must contain at least 1 digit and 1 special symbol.</span>
-        </label>
-        <label>Confirm Password
-          <input id="registerConfirmPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Re-enter your password">
-        </label>
-        <button class="primary-btn" type="submit"><i data-lucide="user-plus"></i><span>Create Free Account</span></button>
+        <div>
+          <label for="registerPassword">Password</label>
+          <div class="password-input-wrap">
+            <input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Create a strong password">
+            <button type="button" class="password-toggle-btn" data-toggle-target="registerPassword" aria-label="Show password" title="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <!-- Progressive password requirements checklist -->
+          <div class="password-requirements" id="registerPasswordReqs">
+            <div class="pw-strength-bar"><span id="registerStrengthMeter" class="strength-bar-fill"></span></div>
+            <div class="pw-req-grid">
+              <span class="pw-req-item" id="reqLen"><i data-lucide="circle"></i> 8+ chars</span>
+              <span class="pw-req-item" id="reqCase"><i data-lucide="circle"></i> Upper & lower</span>
+              <span class="pw-req-item" id="reqNum"><i data-lucide="circle"></i> Number</span>
+              <span class="pw-req-item" id="reqSym"><i data-lucide="circle"></i> Special symbol</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label for="registerConfirmPassword">Confirm password</label>
+          <div class="password-input-wrap">
+            <input id="registerConfirmPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Re-enter password">
+            <button type="button" class="password-toggle-btn" data-toggle-target="registerConfirmPassword" aria-label="Show password" title="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <p id="registerMismatchHint" class="field-feedback hidden"></p>
+        </div>
+        <button class="primary-btn w-full" type="submit">
+          <i data-lucide="user-plus"></i><span>Create Account</span>
+        </button>
       </form>
 
-      <form id="forgotForm" class="auth-form hidden">
-        <p class="form-hint">Enter your registered email address to receive password reset instructions.</p>
-        <label>Email Address
-          <input id="forgotEmail" type="email" autocomplete="email" required placeholder="name@company.com">
+      <!-- 3. FORGOT PASSWORD FORM -->
+      <form id="forgotForm" class="auth-form hidden" novalidate>
+        <label for="forgotEmail">Email address
+          <input id="forgotEmail" type="email" autocomplete="email" required placeholder="you@company.com">
         </label>
-        <button class="primary-btn" type="submit"><i data-lucide="mail"></i><span>Request Password Reset</span></button>
+        <button class="primary-btn w-full" type="submit">
+          <i data-lucide="mail"></i><span>Send Reset Link</span>
+        </button>
       </form>
 
-      <form id="resetForm" class="auth-form hidden">
-        <label>Reset Token
-          <input id="resetToken" type="text" required placeholder="Paste token from email">
-        </label>
-        <label>New Password
-          <input id="resetPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="New secure password">
-        </label>
-        <label>Confirm New Password
-          <input id="resetConfirmPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Re-enter new password">
-        </label>
-        <button class="primary-btn" type="submit"><i data-lucide="key-round"></i><span>Set New Password</span></button>
+      <!-- 3B. FORGOT PASSWORD SUCCESS VIEW -->
+      <div id="forgotSuccessView" class="auth-state-card hidden">
+        <div class="state-card-icon success">
+          <i data-lucide="mail-check"></i>
+        </div>
+        <h3>Check your email</h3>
+        <p>If an account exists for <strong id="forgotSentEmail">that address</strong>, we've sent instructions to reset your password.</p>
+        <p class="text-xs text-muted mt-2">Didn't receive the email? Check your spam folder or request another link.</p>
+        <div class="button-row mt-4 w-full">
+          <button type="button" class="primary-btn w-full" data-auth-mode="login">Back to Sign In</button>
+        </div>
+      </div>
+
+      <!-- 4. RESET PASSWORD FORM (TOKEN NEVER EXPOSED) -->
+      <form id="resetForm" class="auth-form hidden" novalidate>
+        <div>
+          <label for="resetPassword">Create new password</label>
+          <div class="password-input-wrap">
+            <input id="resetPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="New secure password">
+            <button type="button" class="password-toggle-btn" data-toggle-target="resetPassword" aria-label="Show password" title="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <!-- Progressive password requirements checklist -->
+          <div class="password-requirements" id="resetPasswordReqs">
+            <div class="pw-strength-bar"><span id="resetStrengthMeter" class="strength-bar-fill"></span></div>
+            <div class="pw-req-grid">
+              <span class="pw-req-item" id="resetReqLen"><i data-lucide="circle"></i> 8+ chars</span>
+              <span class="pw-req-item" id="resetReqCase"><i data-lucide="circle"></i> Upper & lower</span>
+              <span class="pw-req-item" id="resetReqNum"><i data-lucide="circle"></i> Number</span>
+              <span class="pw-req-item" id="resetReqSym"><i data-lucide="circle"></i> Special symbol</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label for="resetConfirmPassword">Confirm new password</label>
+          <div class="password-input-wrap">
+            <input id="resetConfirmPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Re-enter new password">
+            <button type="button" class="password-toggle-btn" data-toggle-target="resetConfirmPassword" aria-label="Show password" title="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <p id="resetMismatchHint" class="field-feedback hidden"></p>
+        </div>
+        <button class="primary-btn w-full" type="submit">
+          <i data-lucide="key-round"></i><span>Reset Password</span>
+        </button>
       </form>
 
+      <!-- 4B. RESET PASSWORD SUCCESS VIEW -->
+      <div id="resetSuccessView" class="auth-state-card hidden">
+        <div class="state-card-icon success">
+          <i data-lucide="check-circle-2"></i>
+        </div>
+        <h3>Password updated</h3>
+        <p>Your password has been changed successfully. You can now sign in with your new credentials.</p>
+        <div class="button-row mt-4 w-full">
+          <button type="button" class="primary-btn w-full" data-auth-mode="login">Sign In</button>
+        </div>
+      </div>
+
+      <!-- 4C. RESET LINK INVALID / EXPIRED VIEW -->
+      <div id="resetInvalidView" class="auth-state-card hidden">
+        <div class="state-card-icon warning">
+          <i data-lucide="alert-triangle"></i>
+        </div>
+        <h3>Link invalid or expired</h3>
+        <p>This password reset link is missing, no longer valid, or has expired.</p>
+        <div class="button-row mt-4 w-full" style="display: grid; gap: 8px;">
+          <button type="button" class="primary-btn w-full" data-auth-mode="forgot">Request a New Link</button>
+          <button type="button" class="secondary-btn w-full" data-auth-mode="login">Back to Sign In</button>
+        </div>
+      </div>
+
+      <!-- 5. EMAIL VERIFICATION STATE VIEW -->
+      <div id="verifyEmailView" class="auth-state-card hidden">
+        <div class="state-card-icon" id="verifyEmailIconWrap">
+          <i data-lucide="mail" id="verifyEmailIcon"></i>
+        </div>
+        <h3 id="verifyEmailTitle">Verify your email</h3>
+        <p id="verifyEmailDescription">Check your inbox for a verification link to confirm your account.</p>
+        <div class="button-row mt-4 w-full" style="display: grid; gap: 8px;">
+          <button type="button" class="primary-btn w-full hidden" id="verifyEmailActionBtn" data-auth-mode="login">Continue to Sign In</button>
+          <button type="button" class="secondary-btn w-full" data-auth-mode="login">Back to Sign In</button>
+        </div>
+      </div>
+
+      <!-- CONTEXTUAL BOTTOM LINKS -->
       <div class="auth-links">
         <div id="authFooterLogin" class="auth-footer-prompt">
           <span>Don't have an account?</span>
@@ -112,7 +236,7 @@
           <button type="button" data-auth-mode="login">Back to Sign In</button>
         </div>
         <div id="authFooterReset" class="auth-footer-prompt hidden">
-          <span>Finished resetting?</span>
+          <span>Remember your password?</span>
           <button type="button" data-auth-mode="login">Back to Sign In</button>
         </div>
       </div>
@@ -2368,6 +2492,24 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
       </div>
       <div class="modal-footer">
         <button id="dismissOnboardingBtn" class="primary-btn" type="button">Go to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: OAUTH CONFIGURATION NOTICE -->
+  <div id="oauthModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="oauthModalTitle">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="oauthModalTitle"><i data-lucide="key"></i> Social Sign-In Notice</h3>
+        </div>
+        <button id="closeOAuthModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="oauthModalMessage" class="text-sm text-muted mb-3"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="dismissOAuthModalBtn" class="primary-btn sm w-full" type="button">Understood</button>
       </div>
     </div>
   </div>
