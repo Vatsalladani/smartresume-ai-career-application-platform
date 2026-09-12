@@ -110,16 +110,25 @@ function showApp() {
 
 function setAuthMode(mode) {
   const titles = {
-    login: "Sign in to your account",
-    register: "Create your free account",
+    login: "Welcome back",
+    register: "Create your SmartResume account",
     forgot: "Reset your password",
     reset: "Set a new secure password",
   };
-  $("#authSubtitle").textContent = titles[mode] || "Sign in";
+  $("#authSubtitle").textContent = titles[mode] || "Welcome back";
   ["login", "register", "forgot", "reset"].forEach((name) => {
     const form = $(`#${name}Form`);
     if (form) form.classList.toggle("hidden", name !== mode);
+    const footer = $(`#authFooter${capitalize(name)}`);
+    if (footer) footer.classList.toggle("hidden", name !== mode);
   });
+
+  const oauthGroup = $("#oauthActionGroup");
+  const oauthDivider = $(".oauth-divider");
+  const showOAuth = (mode === "login" || mode === "register");
+  if (oauthGroup) oauthGroup.classList.toggle("hidden", !showOAuth);
+  if (oauthDivider) oauthDivider.classList.toggle("hidden", !showOAuth);
+
   drawIcons();
 }
 
@@ -201,6 +210,14 @@ function wireAuth() {
   $("#registerForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const btn = $("#registerForm button[type='submit']");
+    const password = $("#registerPassword").value;
+    const confirmPassword = $("#registerConfirmPassword") ? $("#registerConfirmPassword").value : password;
+
+    if (password !== confirmPassword) {
+      toast("Passwords do not match. Please verify and try again.", "error");
+      return;
+    }
+
     setButtonLoading(btn, true, "Creating account...");
     try {
       await API.request("/auth/register", {
@@ -209,7 +226,7 @@ function wireAuth() {
         body: {
           full_name: $("#registerName").value,
           email: $("#registerEmail").value,
-          password: $("#registerPassword").value,
+          password: password,
         },
       });
       toast("Account created! Please sign in with your credentials.");
@@ -245,12 +262,20 @@ function wireAuth() {
   $("#resetForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const btn = $("#resetForm button[type='submit']");
+    const newPassword = $("#resetPassword").value;
+    const confirmNewPassword = $("#resetConfirmPassword") ? $("#resetConfirmPassword").value : newPassword;
+
+    if (newPassword !== confirmNewPassword) {
+      toast("Passwords do not match. Please verify and try again.", "error");
+      return;
+    }
+
     setButtonLoading(btn, true, "Resetting password...");
     try {
       await API.request("/auth/reset-password", {
         method: "POST",
         auth: false,
-        body: { token: $("#resetToken").value, new_password: $("#resetPassword").value },
+        body: { token: $("#resetToken").value, new_password: newPassword },
       });
       toast("Password reset successfully. Sign in with your new password.");
       setAuthMode("login");
@@ -646,6 +671,72 @@ function renderDashboard() {
       });
       jobsContainer.appendChild(card);
     });
+  }
+
+  // Recent Activity Stream on Dashboard
+  const actContainer = $("#dashRecentActivityList");
+  if (actContainer) {
+    actContainer.innerHTML = "";
+    const activities = [];
+    if (state.applications && state.applications.length > 0) {
+      state.applications.slice(0, 3).forEach((app) => {
+        activities.push({
+          icon: "briefcase",
+          title: `Application: ${app.job_title} at ${app.company}`,
+          subtitle: `Status: ${app.status || "Applied"}`,
+          date: app.applied_date || app.created_at ? new Date(app.applied_date || app.created_at).toLocaleDateString() : "Recent",
+          actionTab: "applications",
+        });
+      });
+    }
+    if (state.jobs && state.jobs.length > 0) {
+      state.jobs.slice(0, 3).forEach((job) => {
+        activities.push({
+          icon: "radar",
+          title: `Target Job: ${job.title} at ${job.company}`,
+          subtitle: `Analyzed with match intelligence`,
+          date: job.created_at ? new Date(job.created_at).toLocaleDateString() : "Recent",
+          actionTab: "fit",
+        });
+      });
+    }
+    if (state.profile?.updated_at) {
+      activities.push({
+        icon: "user-check",
+        title: "Career Profile Updated",
+        subtitle: `Profile health score: ${score}%`,
+        date: new Date(state.profile.updated_at).toLocaleDateString(),
+        actionTab: "profile",
+      });
+    }
+
+    if (activities.length === 0) {
+      actContainer.innerHTML = `
+        <div class="empty-state-card mini">
+          <i data-lucide="clock"></i>
+          <p>No activity yet. Analyze a job or build your profile to see recent activity here.</p>
+        </div>`;
+    } else {
+      activities.slice(0, 4).forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "card-item";
+        row.style.cursor = "pointer";
+        row.innerHTML = `
+          <div class="card-item-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="${item.icon}"></i>
+              <div>
+                <strong>${escapeHtml(item.title)}</strong>
+                <p class="text-xs text-muted">${escapeHtml(item.subtitle)}</p>
+              </div>
+            </div>
+            <span class="text-xs text-muted">${escapeHtml(item.date)}</span>
+          </div>
+        `;
+        row.addEventListener("click", () => navigateToTab(item.actionTab));
+        actContainer.appendChild(row);
+      });
+    }
   }
 
   syncActiveTemplateDisplay();

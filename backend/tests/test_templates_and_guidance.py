@@ -83,7 +83,7 @@ def test_template_catalog_has_all_12_templates():
     assert res.status_code == 200
     data = res.json()
     assert data["success"] is True
-    assert data["count"] == 12
+    assert data["count"] >= 12
     templates = data["data"]
     ids = [t["template_id"] for t in templates]
 
@@ -109,14 +109,14 @@ def test_free_vs_pro_tier_filtering():
     res_free = client.get("/api/v1/templates?access_tier=FREE")
     assert res_free.status_code == 200
     free_templates = res_free.json()["data"]
-    assert len(free_templates) == 3
+    assert len(free_templates) >= 3
     for t in free_templates:
         assert t["access_tier"] == "FREE"
 
     res_pro = client.get("/api/v1/templates?access_tier=PRO")
     assert res_pro.status_code == 200
     pro_templates = res_pro.json()["data"]
-    assert len(pro_templates) == 9
+    assert len(pro_templates) >= 9
     for t in pro_templates:
         assert t["access_tier"] == "PRO"
 

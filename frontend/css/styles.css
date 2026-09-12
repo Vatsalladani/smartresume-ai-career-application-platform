@@ -187,6 +187,30 @@ textarea {
   line-height: 1.5;
 }
 
+.label-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.inline-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.inline-link-btn:hover {
+  text-decoration: underline;
+}
+
 .auth-links {
   display: flex;
   justify-content: center;
@@ -195,6 +219,30 @@ textarea {
   border-top: 1px solid var(--border);
   padding-top: 16px;
   flex-wrap: wrap;
+}
+
+.auth-footer-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  width: 100%;
+}
+
+.auth-footer-prompt button {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-footer-prompt button:hover {
+  text-decoration: underline;
 }
 
 .auth-links button {

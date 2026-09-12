@@ -18,7 +18,7 @@
         <div class="brand-mark">SR</div>
         <div>
           <h1>SmartResume.ai</h1>
-          <p id="authSubtitle">Sign in to your account</p>
+          <p id="authSubtitle">Welcome back</p>
         </div>
       </div>
 
@@ -50,9 +50,13 @@
         <label>Email Address
           <input id="loginEmail" type="email" autocomplete="email" required placeholder="name@company.com">
         </label>
-        <label>Password
+        <div>
+          <div class="label-with-action">
+            <label for="loginPassword" style="margin-bottom: 0;">Password</label>
+            <button type="button" class="inline-link-btn" data-auth-mode="forgot">Forgot password?</button>
+          </div>
           <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••">
-        </label>
+        </div>
         <button class="primary-btn" type="submit"><i data-lucide="log-in"></i><span>Sign In</span></button>
       </form>
 
@@ -66,6 +70,9 @@
         <label>Password
           <input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
           <span class="field-hint">Must contain at least 1 digit and 1 special symbol.</span>
+        </label>
+        <label>Confirm Password
+          <input id="registerConfirmPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Re-enter your password">
         </label>
         <button class="primary-btn" type="submit"><i data-lucide="user-plus"></i><span>Create Free Account</span></button>
       </form>
@@ -85,14 +92,29 @@
         <label>New Password
           <input id="resetPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="New secure password">
         </label>
+        <label>Confirm New Password
+          <input id="resetConfirmPassword" type="password" autocomplete="new-password" required minlength="8" placeholder="Re-enter new password">
+        </label>
         <button class="primary-btn" type="submit"><i data-lucide="key-round"></i><span>Set New Password</span></button>
       </form>
 
       <div class="auth-links">
-        <button type="button" data-auth-mode="login">Sign In</button>
-        <button type="button" data-auth-mode="register">Register</button>
-        <button type="button" data-auth-mode="forgot">Forgot Password</button>
-        <button type="button" data-auth-mode="reset">Reset Password</button>
+        <div id="authFooterLogin" class="auth-footer-prompt">
+          <span>Don't have an account?</span>
+          <button type="button" data-auth-mode="register">Create free account</button>
+        </div>
+        <div id="authFooterRegister" class="auth-footer-prompt hidden">
+          <span>Already have an account?</span>
+          <button type="button" data-auth-mode="login">Sign in</button>
+        </div>
+        <div id="authFooterForgot" class="auth-footer-prompt hidden">
+          <span>Remember your password?</span>
+          <button type="button" data-auth-mode="login">Back to Sign In</button>
+        </div>
+        <div id="authFooterReset" class="auth-footer-prompt hidden">
+          <span>Finished resetting?</span>
+          <button type="button" data-auth-mode="login">Back to Sign In</button>
+        </div>
       </div>
     </div>
   </section>
@@ -110,7 +132,7 @@
       </div>
 
       <nav class="nav-tabs" aria-label="Main navigation">
-        <button class="active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+        <button class="active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
         <button data-tab="profile"><i data-lucide="user-check"></i><span>Career Profile</span></button>
         <button data-tab="evidence-vault"><i data-lucide="database"></i><span>Evidence Vault</span></button>
         <button data-tab="templates"><i data-lucide="layout-template"></i><span>Resume Templates</span></button>
@@ -142,7 +164,7 @@
           </button>
           <div>
             <p id="profileLine">Signed in</p>
-            <h2 id="pageTitle">Dashboard</h2>
+            <h2 id="pageTitle">Home</h2>
           </div>
         </div>
         <div class="topbar-actions">
@@ -174,7 +196,6 @@
         </div>
       </header>
 
-      <!-- TAB 0: DASHBOARD (HOME) -->
       <!-- TAB 0: DASHBOARD (HOME SUMMARY) -->
       <section id="tabDashboard" class="tab-panel active">
         <!-- TOP: Greeting & Purpose -->
@@ -185,7 +206,7 @@
           </div>
           <div class="view-header-actions">
             <button class="ghost-btn sm" type="button" onclick="navigateToTab('templates')" title="Click to browse or change active resume template"><i data-lucide="layout-template"></i><span id="dashActiveTemplateName">Template: Classic ATS</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="file-plus"></i><span>Build Resume</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="file-plus"></i><span>Build My Resume</span></button>
             <button class="primary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="radar"></i><span>Analyze a Job</span></button>
             <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
             <button class="secondary-btn sm" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Start Interview</span></button>
@@ -332,6 +353,20 @@
             <div class="button-row mt-auto">
               <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="bookmark-plus"></i><span>Create Tailored Version</span></button>
               <button class="secondary-btn sm" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Mock Interview Practice</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIFTH: Recent Activity Stream (What happened recently?) -->
+        <div class="panel mt-4">
+          <div class="panel-head">
+            <h4><i data-lucide="clock"></i> Recent Activity</h4>
+            <span class="text-xs text-muted">What happened recently across your career pipeline</span>
+          </div>
+          <div id="dashRecentActivityList" class="cards-list">
+            <div class="empty-state-card mini">
+              <i data-lucide="activity"></i>
+              <p>No recent activity recorded yet.</p>
             </div>
           </div>
         </div>
