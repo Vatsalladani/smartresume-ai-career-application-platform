@@ -418,8 +418,23 @@ def calculate_resume_health(profile: Profile, target_job: JobPosting | None = No
         dim_writing, dim_relevance, dim_missing, dim_contradictions, dim_risks
     ]
 
+    numeric_scores = [format_health_score, graph.get("consistency_score", 70)]
+    if isinstance(dim_coverage.get("score"), (int, float)):
+        numeric_scores.append(dim_coverage["score"])
+    if isinstance(dim_evidence.get("score"), (int, float)):
+        numeric_scores.append(dim_evidence["score"])
+    if isinstance(dim_alignment.get("score"), (int, float)):
+        numeric_scores.append(dim_alignment["score"])
+    if isinstance(dim_writing.get("score"), (int, float)):
+        numeric_scores.append(dim_writing["score"])
+
+    overall_score = int(sum(numeric_scores) / len(numeric_scores)) if numeric_scores else 75
+
     return {
-        "overall_health": "STRONG" if format_health_score >= 80 and graph["consistency_score"] >= 70 else "ACTION_RECOMMENDED",
+        "overall_score": overall_score,
+        "overall_health": "STRONG" if format_health_score >= 80 and graph.get("consistency_score", 70) >= 70 else "ACTION_RECOMMENDED",
+        "career_level": getattr(profile, "career_level", "DEVELOPING_PROFESSIONAL") or "DEVELOPING_PROFESSIONAL",
+        "overall_summary": f"Resume evaluated across 10 deterministic dimensions. Overall health score: {overall_score}/100.",
         "dimensions": dimensions,
         "disclaimer": "Resume Health Report — internal career diagnostic, not a hiring prediction.",
     }
