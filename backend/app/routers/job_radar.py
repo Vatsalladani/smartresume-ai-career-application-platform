@@ -18,6 +18,7 @@ def search_radar(
     country: Optional[str] = "",
     domain: Optional[str] = "",
     experience_level: Optional[str] = "",
+    include_seeds: bool = True,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -29,5 +30,6 @@ def search_radar(
         country=country or "",
         domain=domain or "",
         experience_level=experience_level or "",
+        include_seeds=include_seeds,
     )
     return success_response(result.model_dump())

@@ -104,6 +104,12 @@ class Settings:
     linkedin_client_secret: str | None = None
     linkedin_redirect_uri: str = "http://127.0.0.1:3000"
 
+    # External Job Sources Configuration (Optional)
+    adzuna_app_id: str | None = None
+    adzuna_app_key: str | None = None
+    adzuna_country: str = "in"
+    rapidapi_job_search_key: str | None = None
+
     # Tier 2 Global proposed test prices (Configured, inactive until Tier 2 launches)
     plan_pro_monthly_price_usd: float = 1.99
     plan_pro_annual_price_usd: float = 14.99
@@ -190,6 +196,10 @@ def get_settings() -> Settings:
         linkedin_client_id=_optional("LINKEDIN_CLIENT_ID"),
         linkedin_client_secret=_optional("LINKEDIN_CLIENT_SECRET"),
         linkedin_redirect_uri=_str("LINKEDIN_REDIRECT_URI", "http://127.0.0.1:3000"),
+        adzuna_app_id=_optional("ADZUNA_APP_ID"),
+        adzuna_app_key=_optional("ADZUNA_APP_KEY"),
+        adzuna_country=_str("ADZUNA_COUNTRY", "in"),
+        rapidapi_job_search_key=_optional("RAPIDAPI_JOB_SEARCH_KEY") or _optional("RAPIDAPI_KEY"),
         plan_free_price_inr=_int("PLAN_FREE_PRICE_INR", 0),
         plan_single_export_price_inr=_int("PLAN_SINGLE_EXPORT_PRICE_INR", 1),
         plan_pro_monthly_price_inr=_int("PLAN_PRO_MONTHLY_PRICE_INR", 49),

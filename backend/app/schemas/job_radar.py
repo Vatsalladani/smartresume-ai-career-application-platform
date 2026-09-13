@@ -26,9 +26,13 @@ class JobRadarListing(BaseModel):
     match_score: int = 0
     direct_apply_url: str = ""
     source: str = "Job Radar Network"
+    is_seed: bool = False
 
 
 class JobRadarResponse(BaseModel):
     total_found: int
     listings: list[JobRadarListing]
     filter_categories: dict = Field(default_factory=dict)
+    provider_status: str = "CONFIGURED"
+    provider_message: Optional[str] = None
+    includes_demo_seeds: bool = False

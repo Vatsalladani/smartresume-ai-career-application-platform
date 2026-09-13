@@ -7,8 +7,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.security import create_jwt_token
 from app.database import Base, get_db
-from app.main import app
 import app.models
+from app.main import app
 from app.models import JobPosting, Profile, User
 from app.services.auth_service import hash_password
 
