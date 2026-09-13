@@ -110,6 +110,10 @@ if frontend_dir.exists():
         "/contact": "contact.html",
         "/privacy": "privacy.html",
         "/terms": "terms.html",
+        # Programmatic SEO entry paths
+        "/ats-resume-checker": "job-match.html",
+        "/resume-builder-for-engineers": "resume-builder.html",
+        "/faang-resume-guide": "interview-prep.html",
     }
 
     for route_path, page_file in seo_routes.items():
