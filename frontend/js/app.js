@@ -1275,13 +1275,16 @@ function renderDashboard() {
 
 function openActiveResumePreview() {
   const tplId = state.activeTemplateId || "classic_ats";
-  if (typeof openTemplatePreviewModal === "function") {
+  if (typeof openTemplatePreview === "function") {
+    openTemplatePreview(tplId);
+  } else if (typeof openTemplatePreviewModal === "function") {
     openTemplatePreviewModal(tplId);
   } else {
     navigateToTab("resume-builder");
   }
 }
 window.openActiveResumePreview = openActiveResumePreview;
+window.openTemplatePreviewModal = openActiveResumePreview;
 
 // ==========================================================================
 // RESUME BUILDER CONTROLLER (Two-column interactive editor + live canvas)
@@ -5319,7 +5322,7 @@ async function openTemplatePreview(templateId) {
   }
 
   const canvas = $("#templatePreviewCanvas");
-  canvas.innerHTML = `<div class="p-5 text-center text-muted"><i data-lucide="loader"></i><p class="mt-2">Rendering simulated ATS candidate layout...</p></div>`;
+  canvas.innerHTML = `<div class="p-5 text-center text-muted"><i data-lucide="loader"></i><p class="mt-2">Loading template preview...</p></div>`;
   modal.classList.remove("hidden");
   drawIcons();
 
