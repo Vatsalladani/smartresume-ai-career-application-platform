@@ -198,6 +198,40 @@ async def import_resume_for_review(
     )
 
 
+@router.post("/import/parse-file", response_model=dict)
+async def parse_file_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    file_text = await extract_upload_text(file)
+    final_text = clean_text(file_text)
+    if len(final_text) < 30:
+        raise AppError("Uploaded file contained insufficient text for profile parsing.", status.HTTP_400_BAD_REQUEST)
+
+    draft = profile_service.parse_resume_to_draft_profile(final_text)
+    return success_response(
+        draft.model_dump(),
+        "Resume file parsed. Review and confirm extracted sections.",
+    )
+
+
+@router.post("/import/parse-text", response_model=dict)
+def parse_text_endpoint(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    raw_text = payload.get("raw_text", "")
+    final_text = clean_text(raw_text)
+    if len(final_text) < 30:
+        raise AppError("Provided resume text is too short to import (minimum 30 characters).", status.HTTP_400_BAD_REQUEST)
+
+    draft = profile_service.parse_resume_to_draft_profile(final_text)
+    return success_response(
+        draft.model_dump(),
+        "Resume text parsed. Review and confirm extracted sections.",
+    )
+
+
 @router.post("/import/commit", response_model=dict)
 def commit_imported_profile(
     draft: ProfileImportDraft,

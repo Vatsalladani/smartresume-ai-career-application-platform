@@ -31,6 +31,8 @@ class TailoringProposalOut(BaseModel):
     tailored_experiences: list[TailoredSection]
     tailored_projects: list[TailoredSection]
     honest_gaps_hints: list[str]
+    unmatched_requirements_honest_gaps: list[str] = Field(default_factory=list)
+    tailored_bullets: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class VersionCommitRequest(BaseModel):

@@ -61,7 +61,15 @@ def analyze_job_fit(job_id: int, current_user: User = Depends(get_current_user),
     return success_response(result.model_dump(), "Application fit analysis completed.")
 
 
+@router.get("/{job_id}/fit-score", response_model=dict)
+@router.get("/{job_id}/fit-analysis", response_model=dict)
+def get_job_fit_score(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    result = fit_service.run_fit_analysis(db, job_id, current_user.id)
+    return success_response(result.model_dump(), "Job fit analysis retrieved.")
+
+
 @router.post("/{job_id}/tailor", response_model=dict)
+@router.post("/{job_id}/tailor-proposal", response_model=dict)
 def tailor_for_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
     from app.services import tailoring_service
     proposal = tailoring_service.generate_tailoring_proposal(db, job_id, current_user.id)

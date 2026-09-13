@@ -231,6 +231,19 @@ def _deterministic_tailoring_proposal(job: JobPosting, profile: Profile) -> Tail
         f"Target role emphasizes '{job.title}'. Ensure relevant experience is placed near the top.",
     ]
 
+    flat_bullets = []
+    for exp in tailored_experiences:
+        for d in exp.diffs:
+            flat_bullets.append({
+                "experience_id": exp.section_id,
+                "bullet_index": d.bullet_index,
+                "original_bullet": d.original,
+                "tailored_bullet": d.suggested,
+                "rationale": d.reason,
+                "matched_keyword": d.matched_keyword,
+                "accepted": d.accepted,
+            })
+
     return TailoringProposalOut(
         job_id=job.id,
         job_title=job.title,
@@ -242,6 +255,8 @@ def _deterministic_tailoring_proposal(job: JobPosting, profile: Profile) -> Tail
         tailored_experiences=tailored_experiences,
         tailored_projects=tailored_projects,
         honest_gaps_hints=hints,
+        unmatched_requirements_honest_gaps=hints,
+        tailored_bullets=flat_bullets,
     )
 
 

@@ -61,6 +61,16 @@ class Settings:
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
     razorpay_webhook_secret: str | None = None
+    razorpay_monthly_plan_id: str | None = None
+    razorpay_annual_plan_id: str | None = None
+
+    # SMTP / Email Configuration
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str = "noreply@smartresume.ai"
+    smtp_tls: bool = True
 
     # Pricing (All amounts centralized, never hardcoded in routes)
     plan_free_price_inr: int = 0
@@ -166,6 +176,14 @@ def get_settings() -> Settings:
         razorpay_key_id=_optional("RAZORPAY_KEY_ID"),
         razorpay_key_secret=_optional("RAZORPAY_KEY_SECRET"),
         razorpay_webhook_secret=_optional("RAZORPAY_WEBHOOK_SECRET"),
+        razorpay_monthly_plan_id=_optional("RAZORPAY_MONTHLY_PLAN_ID"),
+        razorpay_annual_plan_id=_optional("RAZORPAY_ANNUAL_PLAN_ID"),
+        smtp_host=_optional("SMTP_HOST"),
+        smtp_port=_int("SMTP_PORT", 587),
+        smtp_username=_optional("SMTP_USERNAME"),
+        smtp_password=_optional("SMTP_PASSWORD"),
+        smtp_from_email=_str("SMTP_FROM_EMAIL", "noreply@smartresume.ai"),
+        smtp_tls=_bool("SMTP_TLS", True),
         google_client_id=_optional("GOOGLE_CLIENT_ID"),
         google_client_secret=_optional("GOOGLE_CLIENT_SECRET"),
         google_redirect_uri=_str("GOOGLE_REDIRECT_URI", "http://127.0.0.1:3000"),
@@ -174,8 +192,8 @@ def get_settings() -> Settings:
         linkedin_redirect_uri=_str("LINKEDIN_REDIRECT_URI", "http://127.0.0.1:3000"),
         plan_free_price_inr=_int("PLAN_FREE_PRICE_INR", 0),
         plan_single_export_price_inr=_int("PLAN_SINGLE_EXPORT_PRICE_INR", 1),
-        plan_pro_monthly_price_inr=_int("PLAN_PRO_MONTHLY_PRICE_INR", 79),
-        plan_pro_annual_price_inr=_int("PLAN_PRO_ANNUAL_PRICE_INR", 699),
+        plan_pro_monthly_price_inr=_int("PLAN_PRO_MONTHLY_PRICE_INR", 49),
+        plan_pro_annual_price_inr=_int("PLAN_PRO_ANNUAL_PRICE_INR", 399),
         credit_pack_10_price_inr=_int("CREDIT_PACK_10_PRICE_INR", 29),
         credit_pack_20_price_inr=_int("CREDIT_PACK_20_PRICE_INR", 49),
         credit_pack_50_price_inr=_int("CREDIT_PACK_50_PRICE_INR", 99),
