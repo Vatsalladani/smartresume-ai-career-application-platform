@@ -28,6 +28,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register")
 def register(payload: UserRegister, request: Request, db: Session = Depends(get_db)) -> dict:
     user, verification_token = auth_service.register_user(db, payload)
+    from app.services import email_service
+    email_service.send_verification_email(user.email, verification_token, user.full_name)
     write_audit_log(
         db,
         action="auth.register",
@@ -91,7 +93,10 @@ def logout(
 
 @router.post("/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)) -> dict:
-    auth_service.create_password_reset(db, payload.email)
+    reset_token = auth_service.create_password_reset(db, payload.email)
+    if reset_token:
+        from app.services import email_service
+        email_service.send_password_reset_email(payload.email, reset_token)
     db.commit()
     return success_response({}, "If that email exists, reset instructions have been prepared.")
 
