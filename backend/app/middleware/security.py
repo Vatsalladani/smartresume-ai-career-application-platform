@@ -37,6 +37,8 @@ class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
     _hits: dict[str, deque[float]] = defaultdict(deque)
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        if request.method == "OPTIONS":
+            return await call_next(request)
         settings = get_settings()
         if settings.environment == "test" or os.environ.get("TESTING") == "1":
             return await call_next(request)

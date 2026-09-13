@@ -53,11 +53,18 @@ const API = (() => {
       headers.Authorization = `Bearer ${getAccessToken()}`;
     }
 
-    const response = await fetch(`${baseUrl}${path}`, {
-      method: options.method || "GET",
-      headers,
-      body: isForm || typeof body === "string" ? body : body ? JSON.stringify(body) : undefined,
-    });
+    let response;
+    try {
+      response = await fetch(`${baseUrl}${path}`, {
+        method: options.method || "GET",
+        headers,
+        body: isForm || typeof body === "string" ? body : body ? JSON.stringify(body) : undefined,
+      });
+    } catch (networkErr) {
+      const err = new Error("Unable to connect to the server. Please ensure the backend is running and reachable.");
+      err.isNetworkError = true;
+      throw err;
+    }
 
     if (response.status === 401 && retry && options.auth !== false) {
       const refreshed = await refreshSession();
@@ -69,11 +76,39 @@ const API = (() => {
       return response.blob();
     }
 
-    const payload = await response.json().catch(() => ({ success: false, message: "Invalid server response." }));
-    if (!response.ok || payload.success === false) {
-      throw new Error(payload.message || "Request failed.");
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || (payload && payload.success === false)) {
+      let errMsg = "";
+      if (payload) {
+        if (typeof payload.message === "string" && payload.message.trim()) {
+          errMsg = payload.message;
+        } else if (typeof payload.detail === "string" && payload.detail.trim()) {
+          errMsg = payload.detail;
+        } else if (Array.isArray(payload.detail) && payload.detail.length > 0) {
+          errMsg = payload.detail.map((d) => d.msg || (typeof d === "string" ? d : JSON.stringify(d))).join("; ");
+        }
+      }
+      if (!errMsg) {
+        if (response.status === 401) {
+          errMsg = "Incorrect email or password. Please try again.";
+        } else if (response.status === 403) {
+          errMsg = "You do not have permission to perform this action.";
+        } else if (response.status === 404) {
+          errMsg = "The requested resource was not found.";
+        } else if (response.status === 429) {
+          errMsg = "Too many requests. Please wait a moment before trying again.";
+        } else if (response.status >= 500) {
+          errMsg = "Server error occurred. Please try again shortly.";
+        } else {
+          errMsg = "Request failed. Please try again.";
+        }
+      }
+      const err = new Error(errMsg);
+      err.status = response.status;
+      err.payload = payload;
+      throw err;
     }
-    return payload.data;
+    return payload ? payload.data : null;
   }
 
   return {

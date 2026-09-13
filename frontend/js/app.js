@@ -169,9 +169,13 @@ function toast(message, type = "info") {
 function showAuthAlert(message, type = "error") {
   const alert = $("#authAlert");
   if (!alert) return;
+  let safeMessage = message;
+  if (typeof safeMessage === "string" && (safeMessage === "Failed to fetch" || safeMessage.includes("Failed to fetch") || safeMessage.includes("NetworkError"))) {
+    safeMessage = "Unable to connect to the server. Please ensure the backend is running and reachable.";
+  }
   alert.className = `auth-alert ${type}`;
   const iconName = type === "success" ? "check-circle-2" : type === "info" ? "info" : type === "warning" ? "alert-triangle" : "alert-circle";
-  alert.innerHTML = `<i data-lucide="${iconName}"></i> <span>${escapeHtml(message)}</span>`;
+  alert.innerHTML = `<i data-lucide="${iconName}"></i> <span>${escapeHtml(safeMessage)}</span>`;
   alert.classList.remove("hidden");
   drawIcons();
 }
