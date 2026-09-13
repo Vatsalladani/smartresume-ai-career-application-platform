@@ -99,15 +99,14 @@ def get_billing_summary(db: Session, user_id: int) -> dict:
     settings = get_settings()
     limits = get_user_plan_and_limits(db, user_id)
     counter = get_or_create_usage_counter(db, user_id)
+    sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+
+    from app.services.payment_service import compute_subscription_summary
+    sub_summary = compute_subscription_summary(sub)
+    sub_summary["is_pro"] = limits["is_pro"]
 
     return {
-        "subscription": {
-            "plan_name": limits["plan_name"],
-            "is_pro": limits["is_pro"],
-            "status": "ACTIVE" if limits["is_pro"] or limits["plan_name"] == "FREE" else "INACTIVE",
-            "expires_at": limits["expires_at"],
-            "currency": settings.default_currency,
-        },
+        "subscription": sub_summary,
         "quotas": {
             "period": counter.period_month,
             "fit_analyses": {"used": counter.fit_analyses_used, "limit": limits["fit_limit"]},
@@ -119,12 +118,12 @@ def get_billing_summary(db: Session, user_id: int) -> dict:
         "pricing_table": {
             "free": {"price": settings.plan_free_price_inr, "period": "month"},
             "pro_monthly": {"price": settings.plan_pro_monthly_price_inr, "period": "month"},
-            "pro_annual": {"price": settings.plan_pro_annual_price_inr, "period": "year", "savings": "Save 26%"},
+            "pro_annual": {"price": settings.plan_pro_annual_price_inr, "period": "year", "savings": "Save 32%"},
             "credit_packs": [
                 {"credits": 10, "price": settings.credit_pack_10_price_inr},
                 {"credits": 20, "price": settings.credit_pack_20_price_inr},
                 {"credits": 50, "price": settings.credit_pack_50_price_inr},
             ],
         },
-        "rbi_e_mandate_notice": "Under RBI regulations, recurring payments require explicit authorization and advance pre-debit notification. You can cancel with 1 click at any time.",
+        "rbi_e_mandate_notice": "Recurring subscriptions require explicit upfront authorization. You can manage or cancel renewals at any time.",
     }

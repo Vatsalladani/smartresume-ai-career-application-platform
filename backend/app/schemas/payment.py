@@ -6,12 +6,27 @@ from pydantic import BaseModel, Field, model_validator
 class SubscriptionOut(BaseModel):
     plan_name: str
     status: str
-    expires_at: datetime | None
+    expires_at: Optional[datetime] = None
+    starts_at: Optional[datetime] = None
+    is_trial: bool = False
+    days_remaining: Optional[int] = None
+    payment_method_type: str = "none"
+    payment_method_detail: Optional[str] = None
+    upi_app: Optional[str] = None
+    recurring_amount: Optional[float] = None
+    currency: str = "INR"
+    billing_frequency: str = "none"
+    cancellation_scheduled: bool = False
+    next_renewal_date: Optional[str] = None
+    can_cancel_in_app: bool = False
+    last_payment_error: Optional[str] = None
 
 
 class CreateOrderRequest(BaseModel):
     plan: str = "PRO_MONTHLY"
     currency: str = "INR"
+    payment_method_type: Optional[str] = "card"
+    upi_app: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -41,6 +56,8 @@ class VerifyPaymentRequest(BaseModel):
     payment_id: str
     signature: Optional[str] = None
     plan: str = "PRO_MONTHLY"
+    payment_method_type: Optional[str] = "card"
+    upi_app: Optional[str] = None
 
 
 class PlanConsentInfo(BaseModel):

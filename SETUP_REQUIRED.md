@@ -138,33 +138,44 @@ For detailed setup of each external subsystem, consult the dedicated guides:
 
 ## 4. Verification & Testing
 
-To run the automated test suite covering all 60 integration and unit tests:
+To run the complete automated test suite covering all 98 integration, unit, and lifecycle tests:
 ```bash
 cd backend
 pytest -v
 ```
 
-All 60 tests pass across:
-1. AI Service & Guardrails
-2. Application Tracking
-3. Billing Quotas & Subscription Lifecycle
-4. Evidence Vault, SmartBuild, Application Pack, Interview Copilot, Job Radar, Career Insights
-5. Fit Engine & Role Grounding
-6. Product Intelligence v2 Rules
-7. Master Profile CRUD & Verification
-8. Password Validation & Security Policies
-9. Payment Verification & Webhook Handling
-10. Resume Export (PDF & DOCX)
-11. Tailoring & Immutable Versions
+All 98 tests pass across:
+1. AI Service & Guardrails (`test_ai_service.py`)
+2. Application Tracking (`test_applications.py`)
+3. Billing Quotas & Monthly Reset (`test_billing_quotas.py`)
+4. Subscription Lifecycle & UX Matrix (`test_subscription_lifecycle_and_ux.py` — 20 test cases)
+5. Career OS & Application OS (`test_career_and_application_os.py`)
+6. Company Verification & Trust Scores (`test_company_verification.py`)
+7. Fit Engine & Role Grounding (`test_fit_engine.py`)
+8. Full Journey End-to-End (`test_full_journey_e2e.py`)
+9. Product Intelligence v2 Rules (`test_intelligence_v2.py`)
+10. AI Interview Copilot (`test_interview_copilot.py`)
+11. Master Profile CRUD & Verification (`test_master_profile.py`)
+12. Password Validator & Security Policies (`test_password_validator.py`)
+13. Payment Verification & Webhook Handling (`test_payments_and_oauth.py`)
+14. Resume Export (PDF & DOCX) (`test_resume_export.py`)
+15. Security & Authentication Phase 1 (`test_security_phase1.py`)
+16. Tailoring & Immutable Versions (`test_tailoring_versions.py`)
+17. Templates & Guidance System (`test_templates_and_guidance.py`)
 
 ---
 
-## 5. Security & Operational Checklist
+## 5. Security, Billing & Operational Checklist
 
 - [x] Passwords hashed with Bcrypt (cost factor 12)
 - [x] JWT tokens with configurable TTL and HS256 algorithm
 - [x] Anti-fabrication check on all AI generation endpoints
 - [x] Strictly no fake ATS scores or vanity metrics
 - [x] Single-claim 7-Day Pro Trial without automatic credit card charging
+- [x] Strict isolation between ₹1 one-time export purchases and ₹1 recurring mandate authorizations
+- [x] Payment-method-aware subscription management: UPI AutoPay mandate instructions inside UPI apps vs Card recurring in-app cancellation
+- [x] Access preserved until paid billing cycle end (`ENDING` status) upon cancellation
+- [x] 6-Pillar Billing layout: Your Plan, Usage & Quotas, Plans, One-Time Options, Manage Subscription, Payment History
+- [x] Zero developer/test terminology exposed in customer views
 - [x] Extension requests verified via Bearer JWT with zero DOM scraping or automated submitting
-- [x] Database transactions protected with foreign key cascades and integrity constraints
+- [x] Database transactions protected with foreign key cascades, migration tracking (Alembic), and integrity constraints

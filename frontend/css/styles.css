@@ -3699,4 +3699,146 @@ svg {
   color: var(--text-secondary);
 }
 
+/* Billing & Subscription Modernization */
+.sub-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+}
+
+.sub-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sub-manage-box {
+  padding: 16px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-1, #ffffff);
+}
+
+.method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.method-badge.upi {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.method-badge.card {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.one-time-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.one-time-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.price-tag-sm {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary, #2563eb);
+}
+
+.booster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booster-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.upi-instructions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upi-step-card {
+  padding: 10px 14px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.upi-step-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  font-size: 0.85rem;
+}
+
+.badge-status.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.badge-status.ending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.badge-status.failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.badge-status.trial {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.badge-status.cancelled {
+  background: rgba(148, 163, 184, 0.2);
+  color: #64748b;
+}
+
+.badge-test-subtle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
 

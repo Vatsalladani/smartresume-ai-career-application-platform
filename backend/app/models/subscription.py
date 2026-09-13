@@ -19,6 +19,12 @@ class Subscription(Base):
     trial_starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     trial_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_trial: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    payment_method_type: Mapped[str] = mapped_column(String(30), nullable=False, default="none")
+    payment_method_detail: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    upi_app: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    cancellation_scheduled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cancellation_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_payment_error: Mapped[str | None] = mapped_column(String(255), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="subscription")

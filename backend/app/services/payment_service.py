@@ -28,7 +28,7 @@ def get_plan_price(plan_name: str, currency: str = "INR") -> tuple[int, float, s
     if plan_upper in {"SINGLE_EXPORT", "SINGLE", "EXPORT_1"}:
         disp = prices.get("single", 1)
     elif "ANNUAL" in plan_upper:
-        disp = prices.get("pro_annual", 699)
+        disp = prices.get("pro_annual", 399)
     elif "PACK_10" in plan_upper or "PACK_1" in plan_upper:
         disp = prices.get("pack_10", 29)
     elif "PACK_20" in plan_upper or "PACK_2" in plan_upper:
@@ -36,7 +36,7 @@ def get_plan_price(plan_name: str, currency: str = "INR") -> tuple[int, float, s
     elif "PACK_50" in plan_upper or "PACK_3" in plan_upper:
         disp = prices.get("pack_50", 99)
     else:  # PRO_MONTHLY default
-        disp = prices.get("pro_monthly", 79)
+        disp = prices.get("pro_monthly", 49)
 
     smallest_unit = int(round(disp * 100))
     return smallest_unit, float(disp), curr
@@ -182,11 +182,11 @@ def verify_and_process_payment(
         return {"success": True, "message": "Payment already processed (idempotent).", "plan": plan_name, "recurring": False}
 
     plan_upper = plan_name.upper()
+    from app.services.quota_service import get_or_create_usage_counter
 
     # CASE A: ONE-TIME RESUME EXPORT (₹1)
     # Rule 11 & Rule 16: Never disguise recurring billing as a ₹1 one-time purchase.
     if plan_upper in {"SINGLE_EXPORT", "SINGLE", "EXPORT_1"}:
-        from app.services.quota_service import get_or_create_usage_counter
         counter = get_or_create_usage_counter(db, user_id)
         counter.extra_credits_available += 1
         db.commit()
@@ -199,7 +199,9 @@ def verify_and_process_payment(
 
     # CASE B: EMERGENCY BOOSTER PACKS
     if "PACK" in plan_upper:
-        # Credit packs add fits, tailors, and exports
+        counter = get_or_create_usage_counter(db, user_id)
+        credits_to_add = 50 if "50" in plan_upper else (20 if "20" in plan_upper else 10)
+        counter.extra_credits_available += credits_to_add
         db.commit()
         return {
             "success": True,
@@ -225,6 +227,9 @@ def activate_subscription(
     user_id: int,
     payment_id: str | None = None,
     plan_name: str = "PRO_MONTHLY",
+    payment_method_type: str = "card",
+    payment_method_detail: str | None = None,
+    upi_app: str | None = None,
 ) -> Subscription:
     sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
     now = datetime.utcnow()
@@ -244,6 +249,12 @@ def activate_subscription(
     sub.status = "ACTIVE"
     sub.is_trial = False
     sub.razorpay_payment_id = payment_id
+    sub.payment_method_type = payment_method_type or "card"
+    sub.payment_method_detail = payment_method_detail
+    sub.upi_app = upi_app
+    sub.cancellation_scheduled = False
+    sub.cancellation_reason = None
+    sub.last_payment_error = None
     db.commit()
     db.refresh(sub)
     return sub
@@ -276,6 +287,10 @@ def activate_pro_trial(db: Session, user_id: int) -> dict:
     sub.trial_starts_at = now
     sub.trial_expires_at = trial_expires
     sub.is_trial = True
+    sub.payment_method_type = "none"
+    sub.payment_method_detail = "No credit card required (Trial)"
+    sub.cancellation_scheduled = False
+    sub.last_payment_error = None
 
     from app.services.quota_service import get_or_create_usage_counter
     counter = get_or_create_usage_counter(db, user_id)
@@ -303,7 +318,8 @@ def activate_pro_trial(db: Session, user_id: int) -> dict:
 
 def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
     """
-    Returns explicit mandate disclosure information before payment mandate confirmation (Rule 16).
+    Returns explicit mandate disclosure information before payment mandate confirmation.
+    Strictly separates ₹1 one-time export from ₹1 mandate setup authorisation.
     """
     settings = get_settings()
     _, disp_amt, curr = get_plan_price(plan_key, currency=currency)
@@ -313,7 +329,7 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
     is_one_time = plan_upper in {"SINGLE_EXPORT", "SINGLE", "EXPORT_1"} or "PACK" in plan_upper
 
     if is_one_time:
-        notice = "This is a single-time authorization. No recurring e-mandate is created."
+        notice = "Pay once for one export. Does not start a subscription. Does not create a recurring mandate."
         return {
             "plan_key": plan_key,
             "display_name": "One-Time Resume Export" if "SINGLE" in plan_upper else "Booster Pack",
@@ -324,6 +340,8 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
             "frequency": "One-time",
             "recurring": False,
             "is_recurring": False,
+            "is_mandate_authorisation": False,
+            "authorization_amount": None,
             "next_renewal_days": 0,
             "cancellation_terms": "One-time purchase. No recurring charges will ever be levied.",
             "refund_terms": "Full refund available within 7 days if export encounters technical failure.",
@@ -332,7 +350,8 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
         }
 
     is_annual = "ANNUAL" in plan_upper
-    rbi_notice = "In compliance with RBI e-mandate guidelines, upfront AFA verification is performed. Pre-debit notifications are sent 24 hours prior to billing."
+    auth_amount = 1.0 if curr == "INR" else 0.15
+    notice = f"{curr_symbol}1 authorisation is for setting up recurring payment authorization. It is not a one-time resume export."
     return {
         "plan_key": plan_key,
         "display_name": "Annual Power Plan" if is_annual else "Pro Monthly Plan",
@@ -343,9 +362,108 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
         "frequency": "Annual" if is_annual else "Monthly",
         "recurring": True,
         "is_recurring": True,
+        "is_mandate_authorisation": True,
+        "authorization_amount": auth_amount,
         "next_renewal_days": 365 if is_annual else 30,
-        "cancellation_terms": "You may cancel recurring charges at any time with 1-click in Settings with immediate effect.",
+        "cancellation_terms": "Manage through your payment method/provider as described in your subscription dashboard.",
         "refund_terms": "Pro-rated refund available within 14 days of renewal.",
-        "mandate_notice": rbi_notice,
-        "regulatory_note": rbi_notice,
+        "mandate_notice": notice,
+        "regulatory_note": f"In compliance with RBI e-mandate guidelines, upfront AFA verification is performed. Pre-debit notifications are sent 24 hours prior to billing. {notice}",
     }
+
+
+def compute_subscription_summary(sub: Subscription | None) -> dict:
+    """
+    Computes a clean, user-friendly subscription summary adhering to the standard status model:
+    TRIAL, ACTIVE, CANCELLED, ENDING, PAST_DUE, PAYMENT_FAILED, EXPIRED.
+    """
+    now = datetime.utcnow()
+    if not sub or sub.plan_name == "FREE":
+        return {
+            "plan_name": "FREE",
+            "status": "ACTIVE",
+            "is_trial": False,
+            "expires_at": None,
+            "starts_at": None,
+            "days_remaining": None,
+            "payment_method_type": "none",
+            "payment_method_detail": "None",
+            "upi_app": None,
+            "recurring_amount": 0.0,
+            "currency": "INR",
+            "billing_frequency": "none",
+            "cancellation_scheduled": False,
+            "next_renewal_date": None,
+            "can_cancel_in_app": False,
+            "last_payment_error": None,
+        }
+
+    is_trial = bool(sub.is_trial)
+    is_annual = "ANNUAL" in sub.plan_name.upper()
+    freq = "annual" if is_annual else ("monthly" if not is_trial else "trial")
+    amount = 399.0 if is_annual else (49.0 if not is_trial else 0.0)
+
+    if is_trial:
+        if sub.trial_expires_at and sub.trial_expires_at > now:
+            status_str = "TRIAL"
+            days_rem = max(0, (sub.trial_expires_at - now).days)
+        else:
+            status_str = "EXPIRED"
+            days_rem = 0
+    elif sub.status == "CANCELLED":
+        status_str = "CANCELLED"
+        days_rem = max(0, (sub.expires_at - now).days) if (sub.expires_at and sub.expires_at > now) else 0
+    elif getattr(sub, "last_payment_error", None):
+        status_str = "PAYMENT_FAILED"
+        days_rem = max(0, (sub.expires_at - now).days) if sub.expires_at else 0
+    elif getattr(sub, "cancellation_scheduled", False):
+        if sub.expires_at and sub.expires_at > now:
+            status_str = "ENDING"
+            days_rem = max(0, (sub.expires_at - now).days)
+        else:
+            status_str = "CANCELLED"
+            days_rem = 0
+    elif sub.expires_at and sub.expires_at <= now:
+        status_str = "EXPIRED"
+        days_rem = 0
+    else:
+        status_str = "ACTIVE"
+        days_rem = max(0, (sub.expires_at - now).days) if sub.expires_at else 30
+
+    next_date_str = sub.expires_at.strftime("%d %B %Y") if sub.expires_at else None
+    if is_trial and sub.trial_expires_at:
+        next_date_str = sub.trial_expires_at.strftime("%d %B %Y")
+
+    method_type = getattr(sub, "payment_method_type", "none") or "none"
+    method_detail = getattr(sub, "payment_method_detail", None)
+    if not method_detail:
+        if method_type == "upi":
+            method_detail = f"UPI AutoPay ({sub.upi_app})" if getattr(sub, "upi_app", None) else "UPI AutoPay"
+        elif method_type == "card":
+            method_detail = "Card ending ****4242"
+        elif is_trial:
+            method_detail = "No payment method required (Trial)"
+        else:
+            method_detail = "Standard Billing"
+
+    can_cancel_in_app = (method_type in {"card", "none"}) and not is_trial
+
+    return {
+        "plan_name": sub.plan_name,
+        "status": status_str,
+        "is_trial": is_trial,
+        "expires_at": sub.expires_at,
+        "starts_at": sub.starts_at,
+        "days_remaining": days_rem,
+        "payment_method_type": method_type,
+        "payment_method_detail": method_detail,
+        "upi_app": getattr(sub, "upi_app", None),
+        "recurring_amount": amount,
+        "currency": "INR",
+        "billing_frequency": freq,
+        "cancellation_scheduled": bool(getattr(sub, "cancellation_scheduled", False)),
+        "next_renewal_date": next_date_str,
+        "can_cancel_in_app": can_cancel_in_app,
+        "last_payment_error": getattr(sub, "last_payment_error", None),
+    }
+

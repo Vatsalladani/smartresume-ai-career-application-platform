@@ -3029,60 +3029,68 @@ async function deleteApplication(id) {
 
 // TAB 5: BILLING, PRICING & PAYMENT ORCHESTRATION
 function wireBilling() {
-  $("#upgradeBtn").addEventListener("click", () => navigateToTab("billing"));
+  $("#upgradeBtn")?.addEventListener("click", () => navigateToTab("billing"));
 
   // Currency Selector
-  $("#currencySelector").addEventListener("change", (e) => {
+  $("#currencySelector")?.addEventListener("change", (e) => {
     state.selectedCurrency = e.target.value;
     updateCurrencyDisplay();
   });
 
-  // ₹1 One-Time Test Export (Rule 11 & Rule 16)
-  $("#checkoutSingleExportBtn").addEventListener("click", handleSingleExportTestPayment);
+  // ₹1 One-Time Export (Separate from recurring mandate)
+  $("#checkoutSingleExportBtn")?.addEventListener("click", handleOneTimeExportPayment);
 
   // Pro Upgrade buttons
-  $("#upgradeProBtn").addEventListener("click", () => openRecurringConsentModal("PRO_MONTHLY"));
-  $("#upgradeAnnualBtn").addEventListener("click", () => openRecurringConsentModal("PRO_ANNUAL"));
+  $("#upgradeProBtn")?.addEventListener("click", () => openRecurringConsentModal("PRO_MONTHLY"));
+  $("#upgradeAnnualBtn")?.addEventListener("click", () => openRecurringConsentModal("PRO_ANNUAL"));
 
   // Recurring Consent Modal interactions
-  $("#closeConsentModalBtn").addEventListener("click", closeRecurringConsentModal);
-  $("#cancelConsentBtn").addEventListener("click", closeRecurringConsentModal);
-  $("#consentAcknowledgeCheck").addEventListener("change", (e) => {
-    $("#confirmConsentBtn").disabled = !e.target.checked;
+  $("#closeConsentModalBtn")?.addEventListener("click", closeRecurringConsentModal);
+  $("#cancelConsentBtn")?.addEventListener("click", closeRecurringConsentModal);
+  $("#consentAcknowledgeCheck")?.addEventListener("change", (e) => {
+    const confirmBtn = $("#confirmConsentBtn");
+    if (confirmBtn) confirmBtn.disabled = !e.target.checked;
   });
-  $("#confirmConsentBtn").addEventListener("click", () => {
+  $("#confirmConsentBtn")?.addEventListener("click", () => {
     const planKey = state.pendingPlanKey;
     closeRecurringConsentModal();
     if (planKey) handleUpgrade(planKey);
   });
 
-  // Cancel Subscription button
-  $("#cancelSubscriptionBtn").addEventListener("click", handleCancelSubscription);
-  $("#refreshPaymentHistoryBtn").addEventListener("click", loadPaymentHistory);
+  // Manage Subscription: UPI AutoPay Modal
+  $("#manageAutoPayBtn")?.addEventListener("click", openUpiAutoPayModal);
+  $("#closeUpiModalBtn")?.addEventListener("click", closeUpiAutoPayModal);
+  $("#closeUpiModalFooterBtn")?.addEventListener("click", closeUpiAutoPayModal);
+
+  // Manage Subscription: Card Renewal Cancellation
+  $("#cancelCardRenewalBtn")?.addEventListener("click", handleCancelCardRenewal);
+
+  // Payment Failure: Retry Payment
+  $("#retryPaymentBtn")?.addEventListener("click", handleRetryPayment);
+
+  // Payment History Refresh
+  $("#refreshPaymentHistoryBtn")?.addEventListener("click", loadPaymentHistory);
 }
 
 async function loadPricingData() {
   try {
     const data = await API.request("/payments/pricing");
     state.pricingData = data;
-    if (data.test_upi_id) {
-      $("#displayTestUpiId").textContent = data.test_upi_id;
-    }
     updateCurrencyDisplay();
   } catch (_) {}
 }
 
 function updateCurrencyDisplay() {
   const curr = state.selectedCurrency || "INR";
-  const p = state.pricingData?.currencies?.[curr] || { symbol: "₹", single: 1, pro_monthly: 79, pro_annual: 699, pack_10: 29, pack_20: 49, pack_50: 99 };
+  const p = state.pricingData?.currencies?.[curr] || { symbol: "₹", single: 1, pro_monthly: 49, pro_annual: 399, pack_10: 29, pack_20: 49, pack_50: 99 };
 
-  $("#priceSingleExport").innerHTML = `${p.symbol}${p.single} <span>one-time</span>`;
+  if ($("#priceSingleExport")) $("#priceSingleExport").innerHTML = `${p.symbol}${p.single}`;
   $$(".single-price-inline").forEach((el) => { el.textContent = `${p.symbol}${p.single}`; });
-  $("#priceProMonthly").innerHTML = `${p.symbol}${p.pro_monthly} <span>/ month</span>`;
-  $("#priceProAnnual").innerHTML = `${p.symbol}${p.pro_annual} <span>/ year</span>`;
-  $("#pricePack10").textContent = `${p.symbol}${p.pack_10}`;
-  $("#pricePack20").textContent = `${p.symbol}${p.pack_20}`;
-  $("#pricePack50").textContent = `${p.symbol}${p.pack_50}`;
+  if ($("#priceProMonthly")) $("#priceProMonthly").innerHTML = `${p.symbol}${p.pro_monthly} <span>/ month</span>`;
+  if ($("#priceProAnnual")) $("#priceProAnnual").innerHTML = `${p.symbol}${p.pro_annual} <span>/ year</span>`;
+  if ($("#pricePack10")) $("#pricePack10").textContent = `${p.symbol}${p.pack_10}`;
+  if ($("#pricePack20")) $("#pricePack20").textContent = `${p.symbol}${p.pack_20}`;
+  if ($("#pricePack50")) $("#pricePack50").textContent = `${p.symbol}${p.pack_50}`;
 }
 
 async function openRecurringConsentModal(planKey) {
@@ -3090,55 +3098,72 @@ async function openRecurringConsentModal(planKey) {
   const curr = state.selectedCurrency || "INR";
   try {
     const info = await API.request(`/payments/consent-info?plan=${planKey}&currency=${curr}`);
-    $("#consentPlanName").textContent = info.display_name;
-    $("#consentAmount").textContent = `${info.currency_symbol}${info.amount} / ${info.frequency || "period"}`;
-    $("#consentFrequency").textContent = capitalize(info.billing_frequency || info.frequency);
-    $("#consentRenewalDate").textContent = `${info.next_renewal_days} days from today`;
-    $("#consentNoticeText").textContent = info.regulatory_note || info.mandate_notice;
+    if ($("#consentPlanName")) $("#consentPlanName").textContent = info.display_name;
+    if ($("#consentAmount")) $("#consentAmount").textContent = `${info.currency_symbol}${info.amount} / ${info.frequency || "period"}`;
+    if ($("#consentFrequency")) $("#consentFrequency").textContent = capitalize(info.billing_frequency || info.frequency);
+    if ($("#consentRenewalDate")) $("#consentRenewalDate").textContent = `${info.next_renewal_days} days from today`;
+    if ($("#consentAuthAmount")) $("#consentAuthAmount").textContent = `${info.currency_symbol}1 (recurring mandate setup)`;
+    if ($("#consentNoticeText")) $("#consentNoticeText").textContent = info.regulatory_note || info.mandate_notice;
   } catch (_) {
-    $("#consentPlanName").textContent = planKey === "PRO_ANNUAL" ? "Annual Power Plan" : "Pro Monthly Plan";
+    if ($("#consentPlanName")) $("#consentPlanName").textContent = planKey === "PRO_ANNUAL" ? "Annual Power Plan" : "Pro Monthly Plan";
+    if ($("#consentAmount")) $("#consentAmount").textContent = planKey === "PRO_ANNUAL" ? "₹399 / year" : "₹49 / month";
+    if ($("#consentFrequency")) $("#consentFrequency").textContent = planKey === "PRO_ANNUAL" ? "Annual" : "Monthly";
+    if ($("#consentRenewalDate")) $("#consentRenewalDate").textContent = planKey === "PRO_ANNUAL" ? "365 days from today" : "30 days from today";
+    if ($("#consentAuthAmount")) $("#consentAuthAmount").textContent = "₹1 (recurring mandate setup)";
+    if ($("#consentNoticeText")) $("#consentNoticeText").textContent = "₹1 authorisation is for setting up recurring payment authorization. It is not a one-time resume export. You can manage or cancel renewals at any time from your subscription dashboard.";
   }
 
-  $("#consentAcknowledgeCheck").checked = false;
-  $("#confirmConsentBtn").disabled = true;
-  $("#recurringConsentModal").classList.remove("hidden");
+  if ($("#consentAcknowledgeCheck")) $("#consentAcknowledgeCheck").checked = false;
+  if ($("#confirmConsentBtn")) $("#confirmConsentBtn").disabled = true;
+  const modal = $("#recurringConsentModal");
+  if (modal) modal.classList.remove("hidden");
   drawIcons();
 }
 
 function closeRecurringConsentModal() {
-  $("#recurringConsentModal").classList.add("hidden");
+  const modal = $("#recurringConsentModal");
+  if (modal) modal.classList.add("hidden");
   state.pendingPlanKey = null;
 }
 
-// ₹1 Single Export Test Payment (Rule 11 & Rule 16)
-async function handleSingleExportTestPayment() {
+function openUpiAutoPayModal() {
+  const modal = $("#upiAutoPayModal");
+  if (modal) modal.classList.remove("hidden");
+  drawIcons();
+}
+
+function closeUpiAutoPayModal() {
+  const modal = $("#upiAutoPayModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// ₹1 Standalone One-Time Export (Non-recurring, No mandate)
+async function handleOneTimeExportPayment() {
   const btn = $("#checkoutSingleExportBtn");
-  setButtonLoading(btn, true, "Creating test order...");
+  const origHtml = btn ? btn.innerHTML : `<span>Purchase 1 Export (₹1)</span>`;
+  setButtonLoading(btn, true, "Processing order...");
   try {
     const order = await API.request("/payments/create-order", {
       method: "POST",
-      body: { plan: "SINGLE_EXPORT", currency: state.selectedCurrency },
+      body: { plan: "SINGLE_EXPORT", currency: state.selectedCurrency || "INR" },
     });
 
     if (order.is_test || order.provider === "mock" || order.payment_mode === "test") {
-      // Simulate direct instant test verification
-      toast("Test mode active: simulating instant payment capture...");
       const verifyRes = await API.request("/payments/verify", {
         method: "POST",
         body: {
           order_id: order.order_id,
-          payment_id: `pay_test_${order.order_id}`,
+          payment_id: `pay_order_${order.order_id}`,
           plan: "SINGLE_EXPORT",
         },
       });
-      toast(verifyRes.message || "Test payment verified! 1 resume export credit added.");
+      toast(verifyRes.message || "1 resume export credit added to your account.", "success");
       await loadBillingSummary();
       await loadPaymentHistory();
       renderDashboard();
       return;
     }
 
-    // Live Razorpay Checkout for ₹1
     if (!window.Razorpay) {
       return toast("Payment gateway is initializing. Please try again.", "error");
     }
@@ -3148,7 +3173,7 @@ async function handleSingleExportTestPayment() {
       currency: order.currency,
       order_id: order.order_id,
       name: "SmartResume.ai",
-      description: "Single Export Test Payment (Non-recurring)",
+      description: "One-Time Resume Export (Non-recurring)",
       handler: async (response) => {
         try {
           await API.request("/payments/verify", {
@@ -3173,7 +3198,10 @@ async function handleSingleExportTestPayment() {
   } catch (error) {
     toast(error.message, "error");
   } finally {
-    setButtonLoading(btn, false, "Test Checkout");
+    if (btn) {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }
   }
 }
 
@@ -3181,13 +3209,13 @@ async function handleUpgrade(planKey) {
   try {
     const order = await API.request("/payments/create-order", {
       method: "POST",
-      body: { plan: planKey, currency: state.selectedCurrency },
+      body: { plan: planKey, currency: state.selectedCurrency || "INR" },
     });
 
     if (order.provider === "mock" || order.is_test) {
       state.user = await API.request("/users/profile");
       renderUserBar();
-      toast("Plan upgraded successfully in development mode!");
+      toast("Plan upgraded successfully!");
       await loadBillingSummary();
       await loadPaymentHistory();
       renderDashboard();
@@ -3195,7 +3223,7 @@ async function handleUpgrade(planKey) {
     }
 
     if (!window.Razorpay) {
-      return toast("Razorpay checkout is unavailable.", "error");
+      return toast("Payment gateway is initializing. Please try again.", "error");
     }
     const rzp = new window.Razorpay({
       key: order.razorpay_key_id,
@@ -3233,7 +3261,6 @@ async function handleUpgrade(planKey) {
 }
 
 function handleBoosterPack(packKey) {
-  toast(`Purchasing ${packKey.toUpperCase()} via gateway...`);
   handleUpgrade(packKey.toUpperCase());
 }
 
@@ -3247,27 +3274,205 @@ async function loadBillingSummary() {
 
 function renderBillingSummary(data) {
   if (!data) return;
+  const sub = data.subscription || {};
   const q = data.quotas || {};
   const fits = q.fit_analyses || { used: 0, limit: 2 };
   const tailors = q.tailored_versions || { used: 0, limit: 2 };
   const exports_ = q.exports || { used: 0, limit: 2 };
+  const extraCredits = q.extra_credits || 0;
 
   // Topbar quick quota badge
-  $("#quickFitsUsage").textContent = `${fits.used}/${fits.limit}`;
-  $("#quickTailorUsage").textContent = `${tailors.used}/${tailors.limit}`;
-  $("#quickExportUsage").textContent = `${exports_.used}/${exports_.limit}`;
+  if ($("#quickFitsUsage")) $("#quickFitsUsage").textContent = `${fits.used}/${fits.limit}`;
+  if ($("#quickTailorUsage")) $("#quickTailorUsage").textContent = `${tailors.used}/${tailors.limit}`;
+  if ($("#quickExportUsage")) $("#quickExportUsage").textContent = `${exports_.used}/${exports_.limit}`;
 
-  // Billing tab cards
-  $("#quotaFitsText").textContent = `${fits.used} / ${fits.limit}`;
-  $("#quotaFitsBar").style.width = `${Math.min(100, Math.round((fits.used / (fits.limit || 1)) * 100))}%`;
+  // Dashboard quotas
+  if ($("#dashFitsUsage")) $("#dashFitsUsage").textContent = `${fits.used} / ${fits.limit}`;
+  if ($("#dashFitsBar")) $("#dashFitsBar").style.width = `${Math.min(100, Math.round((fits.used / (fits.limit || 1)) * 100))}%`;
+  if ($("#dashTailorsUsage")) $("#dashTailorsUsage").textContent = `${tailors.used} / ${tailors.limit}`;
+  if ($("#dashTailorsBar")) $("#dashTailorsBar").style.width = `${Math.min(100, Math.round((tailors.used / (tailors.limit || 1)) * 100))}%`;
+  if ($("#dashExportsUsage")) $("#dashExportsUsage").textContent = `${exports_.used} / ${exports_.limit}`;
+  if ($("#dashExportsBar")) $("#dashExportsBar").style.width = `${Math.min(100, Math.round((exports_.used / (exports_.limit || 1)) * 100))}%`;
 
-  $("#quotaTailorsText").textContent = `${tailors.used} / ${tailors.limit}`;
-  $("#quotaTailorsBar").style.width = `${Math.min(100, Math.round((tailors.used / (tailors.limit || 1)) * 100))}%`;
+  // Billing tab: Quota cards
+  if ($("#quotaFitsText")) $("#quotaFitsText").textContent = `${fits.used} / ${fits.limit}`;
+  if ($("#quotaFitsBar")) $("#quotaFitsBar").style.width = `${Math.min(100, Math.round((fits.used / (fits.limit || 1)) * 100))}%`;
+  if ($("#quotaTailorsText")) $("#quotaTailorsText").textContent = `${tailors.used} / ${tailors.limit}`;
+  if ($("#quotaTailorsBar")) $("#quotaTailorsBar").style.width = `${Math.min(100, Math.round((tailors.used / (tailors.limit || 1)) * 100))}%`;
+  if ($("#quotaExportsText")) $("#quotaExportsText").textContent = `${exports_.used} / ${exports_.limit}`;
+  if ($("#quotaExportsBar")) $("#quotaExportsBar").style.width = `${Math.min(100, Math.round((exports_.used / (exports_.limit || 1)) * 100))}%`;
+  if ($("#quotaExtraCreditsText")) $("#quotaExtraCreditsText").textContent = extraCredits;
+  if ($("#quotaResetDate")) $("#quotaResetDate").textContent = data.quota_resets_at || "1st of next month";
 
-  $("#quotaExportsText").textContent = `${exports_.used} / ${exports_.limit}`;
-  $("#quotaExportsBar").style.width = `${Math.min(100, Math.round((exports_.used / (exports_.limit || 1)) * 100))}%`;
+  // Section 1: Your Plan Details
+  const planName = sub.plan_name || "FREE";
+  const subStatus = (sub.status || "ACTIVE").toUpperCase();
 
-  $("#quotaResetDate").textContent = data.quota_resets_at || "1st of next month";
+  // Header plan badge
+  if ($("#billingCurrentPlanBadge")) {
+    let badgeText = "FREE";
+    if (planName === "PRO_TRIAL" || sub.is_trial) badgeText = "7-DAY TRIAL";
+    else if (planName === "PRO_ANNUAL") badgeText = "PRO ANNUAL";
+    else if (planName === "PRO_MONTHLY" || planName === "PRO") badgeText = "PRO";
+    $("#billingCurrentPlanBadge").textContent = badgeText;
+  }
+
+  // Friendly Plan Name
+  if ($("#billingPlanNameText")) {
+    let friendlyName = "Free Plan";
+    if (planName === "PRO_TRIAL" || sub.is_trial) friendlyName = "7-Day Pro Trial";
+    else if (planName === "PRO_ANNUAL") friendlyName = "Pro Annual";
+    else if (planName === "PRO_MONTHLY" || planName === "PRO") friendlyName = "Pro Monthly";
+    $("#billingPlanNameText").textContent = friendlyName;
+  }
+
+  // Status Badge
+  if ($("#billingStatusBadge")) {
+    $("#billingStatusBadge").textContent = subStatus;
+    $("#billingStatusBadge").className = "badge-status";
+    const statusClass = subStatus.toLowerCase().replace(/_/g, "-");
+    $("#billingStatusBadge").classList.add(statusClass);
+  }
+
+  // Recurring Amount
+  if ($("#billingRecurringAmountText")) {
+    const amt = sub.recurring_amount || 0;
+    const curr = sub.currency === "USD" ? "$" : "₹";
+    if (amt <= 0 || planName === "FREE" || sub.is_trial) {
+      $("#billingRecurringAmountText").textContent = "₹0 / month";
+    } else {
+      const freq = sub.billing_frequency === "annual" ? "year" : "month";
+      $("#billingRecurringAmountText").textContent = `${curr}${amt} / ${freq}`;
+    }
+  }
+
+  // Next Renewal / Expiry
+  if ($("#billingNextRenewalText")) {
+    if (subStatus === "ENDING" || subStatus === "CANCELLED") {
+      $("#billingNextRenewalText").textContent = sub.next_renewal_date ? `Access ends ${sub.next_renewal_date}` : "None (Cancelled)";
+    } else if (subStatus === "EXPIRED") {
+      $("#billingNextRenewalText").textContent = "Expired";
+    } else if (sub.next_renewal_date) {
+      $("#billingNextRenewalText").textContent = sub.next_renewal_date;
+    } else {
+      $("#billingNextRenewalText").textContent = "--";
+    }
+  }
+
+  // Payment Method text
+  if ($("#billingPaymentMethodText")) {
+    $("#billingPaymentMethodText").textContent = sub.payment_method_detail || (sub.payment_method_type === "upi" ? "UPI AutoPay" : sub.payment_method_type === "card" ? "Card" : "None");
+  }
+
+  // Subscription Alerts
+  const endingAlert = $("#subEndingAlert");
+  if (endingAlert) {
+    if (subStatus === "ENDING" || (sub.cancellation_scheduled && subStatus !== "EXPIRED")) {
+      endingAlert.classList.remove("hidden");
+      if ($("#subEndingDate")) $("#subEndingDate").textContent = sub.next_renewal_date || "end of billing cycle";
+    } else {
+      endingAlert.classList.add("hidden");
+    }
+  }
+
+  const failedAlert = $("#subPaymentFailedAlert");
+  if (failedAlert) {
+    if (subStatus === "PAYMENT_FAILED" || subStatus === "PAST_DUE" || sub.last_payment_error) {
+      failedAlert.classList.remove("hidden");
+    } else {
+      failedAlert.classList.add("hidden");
+    }
+  }
+
+  // Section 5: Payment-Method-Aware Subscription Management
+  const upiCard = $("#manageUpiCard");
+  const cardBox = $("#manageCardBox");
+  const freeBox = $("#manageFreeBox");
+
+  const methodType = sub.payment_method_type || "none";
+  const isPaidActive = (planName !== "FREE" && !sub.is_trial && subStatus !== "EXPIRED");
+
+  if (upiCard) upiCard.classList.add("hidden");
+  if (cardBox) cardBox.classList.add("hidden");
+  if (freeBox) freeBox.classList.add("hidden");
+
+  if (isPaidActive && methodType === "upi") {
+    if (upiCard) {
+      upiCard.classList.remove("hidden");
+      if ($("#upiAppLabel")) {
+        $("#upiAppLabel").textContent = sub.upi_app ? `Authorized in ${sub.upi_app}` : (sub.payment_method_detail || "Authorized in UPI App");
+      }
+    }
+  } else if (isPaidActive && methodType === "card") {
+    if (cardBox) {
+      cardBox.classList.remove("hidden");
+      if ($("#cardDetailsLabel")) {
+        $("#cardDetailsLabel").textContent = sub.payment_method_detail || "Card ending ****4242";
+      }
+      const cancelBtn = $("#cancelCardRenewalBtn");
+      if (cancelBtn) {
+        if (sub.cancellation_scheduled || subStatus === "ENDING" || subStatus === "CANCELLED") {
+          cancelBtn.disabled = true;
+          cancelBtn.innerHTML = `<i data-lucide="check-circle"></i><span>Renewal Cancelled</span>`;
+        } else {
+          cancelBtn.disabled = false;
+          cancelBtn.innerHTML = `<i data-lucide="x-circle"></i><span>Cancel Renewal</span>`;
+        }
+      }
+    }
+  } else {
+    if (freeBox) {
+      freeBox.classList.remove("hidden");
+      const p = freeBox.querySelector("p");
+      if (p) {
+        if (sub.is_trial && subStatus === "TRIAL") {
+          p.textContent = `You are on the 7-Day Pro Trial (access until ${sub.next_renewal_date || "trial end"}). No recurring charges or payment mandates exist.`;
+        } else if (subStatus === "EXPIRED") {
+          p.textContent = "Your previous plan has expired. You are currently on the Free tier with standard quotas.";
+        } else {
+          p.textContent = "You are currently on the Free plan. No recurring payment mandates or cards are linked.";
+        }
+      }
+    }
+  }
+
+  // Active Plan Buttons toggle
+  if ($("#freePlanBtn")) {
+    $("#freePlanBtn").textContent = (planName === "FREE" && !sub.is_trial) ? "Current Active Plan" : "Free Plan";
+    $("#freePlanBtn").disabled = (planName === "FREE" && !sub.is_trial);
+  }
+  if ($("#startTrialBtn")) {
+    if (sub.is_trial || planName === "PRO_TRIAL") {
+      $("#startTrialBtn").disabled = true;
+      $("#startTrialBtn").innerHTML = `<i data-lucide="check"></i><span>Trial Active</span>`;
+    } else if (planName !== "FREE") {
+      $("#startTrialBtn").disabled = true;
+      $("#startTrialBtn").innerHTML = `<span>Included in Pro</span>`;
+    } else {
+      $("#startTrialBtn").disabled = false;
+      $("#startTrialBtn").innerHTML = `<i data-lucide="sparkles"></i><span>Start 7-Day Pro Trial (₹0)</span>`;
+    }
+  }
+  if ($("#upgradeProBtn")) {
+    if (planName === "PRO_MONTHLY" && subStatus === "ACTIVE") {
+      $("#upgradeProBtn").disabled = true;
+      $("#upgradeProBtn").textContent = "Current Active Plan";
+    } else {
+      $("#upgradeProBtn").disabled = false;
+      $("#upgradeProBtn").innerHTML = `<i data-lucide="zap"></i><span>Upgrade to Pro</span>`;
+    }
+  }
+  if ($("#upgradeAnnualBtn")) {
+    if (planName === "PRO_ANNUAL" && subStatus === "ACTIVE") {
+      $("#upgradeAnnualBtn").disabled = true;
+      $("#upgradeAnnualBtn").textContent = "Current Active Plan";
+    } else {
+      $("#upgradeAnnualBtn").disabled = false;
+      $("#upgradeAnnualBtn").textContent = "Get Pro Annual";
+    }
+  }
+
+  drawIcons();
 }
 
 async function loadPaymentHistory() {
@@ -3280,6 +3485,7 @@ async function loadPaymentHistory() {
 
 function renderPaymentHistory(history) {
   const tbody = $("#paymentHistoryTbody");
+  if (!tbody) return;
   tbody.innerHTML = "";
   if (!history || !history.length) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No payment events recorded.</td></tr>`;
@@ -3302,17 +3508,37 @@ function renderPaymentHistory(history) {
   });
 }
 
-async function handleCancelSubscription() {
-  if (!confirm("Cancel recurring subscription? You will remain on the Free plan without automatic renewals.")) return;
+async function handleCancelCardRenewal() {
+  if (!confirm("Cancel recurring renewal? You will retain Pro access until the end of your current billing period, after which no further charges will occur.")) return;
+  const btn = $("#cancelCardRenewalBtn");
+  setButtonLoading(btn, true, "Cancelling...");
   try {
-    await API.request("/payments/cancel", { method: "POST" });
-    toast("Subscription cancelled immediately.");
+    const res = await API.request("/payments/cancel", { method: "POST" });
+    toast(res.message || "Renewal cancelled. Your Pro access remains active until the end of your billing cycle.", "success");
     state.user = await API.request("/users/profile");
     renderUserBar();
     await loadBillingSummary();
+    await loadPaymentHistory();
     renderDashboard();
   } catch (error) {
     toast(error.message, "error");
+  } finally {
+    setButtonLoading(btn, false, "Cancel Renewal");
+  }
+}
+
+async function handleRetryPayment() {
+  const btn = $("#retryPaymentBtn");
+  setButtonLoading(btn, true, "Retrying...");
+  try {
+    const res = await API.request("/payments/retry-failed", { method: "POST" });
+    toast(res.message || "Payment status refreshed successfully.", "success");
+    await loadBillingSummary();
+    await loadPaymentHistory();
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    setButtonLoading(btn, false, "Retry Payment");
   }
 }
 
