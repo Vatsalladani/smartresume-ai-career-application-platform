@@ -19,3 +19,6 @@ Thumbs.db
 uploads/
 exports/
 *.log
+
+.vercel
+.env*

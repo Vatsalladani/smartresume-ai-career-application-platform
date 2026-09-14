@@ -8,6 +8,19 @@ from pathlib import Path
 
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
+
+def normalize_database_url(url: str) -> str:
+    """Normalize postgres:// and postgresql:// prefixes to postgresql+psycopg:// for psycopg3."""
+    if not url:
+        return url
+    cleaned = url.strip()
+    if cleaned.startswith("postgres://"):
+        return "postgresql+psycopg://" + cleaned[len("postgres://"):]
+    if cleaned.startswith("postgresql://"):
+        return "postgresql+psycopg://" + cleaned[len("postgresql://"):]
+    return cleaned
+
+
 @dataclass
 class Settings:
     app_name: str = "SmartResume.ai"
@@ -130,6 +143,8 @@ class Settings:
     default_currency: str = "INR"
 
     def __post_init__(self) -> None:
+        if self.database_url:
+            self.database_url = normalize_database_url(self.database_url)
         if self.environment == "production":
             if self.jwt_secret_key in {"dev-secret-change-before-production-64-characters-minimum", "SUPER_SECRET_KEY_CHANGE_IN_PRODUCTION_12345"}:
                 raise ValueError("Insecure default JWT_SECRET_KEY cannot be used in production.")
