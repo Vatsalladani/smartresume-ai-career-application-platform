@@ -40,6 +40,7 @@ def get_google_authorization_url() -> str:
         "scope": "openid email profile",
         "access_type": "offline",
         "prompt": "select_account",
+        "state": "google",
     }
     return f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
 

@@ -128,7 +128,20 @@ function checkAuthUrlParams() {
   const resetToken = urlParams.get("token") || hashParams.get("token") || urlParams.get("reset_token") || hashParams.get("reset_token");
   const verifyToken = urlParams.get("verify_token") || hashParams.get("verify_token") || (hash.includes("verify") ? (urlParams.get("token") || hashParams.get("token")) : null);
   const oauthCode = urlParams.get("code") || hashParams.get("code");
-  const oauthProvider = urlParams.get("provider") || hashParams.get("provider") || (window.location.pathname.includes("google") ? "google" : "linkedin");
+  const stateParam = urlParams.get("state") || hashParams.get("state");
+  const storedProvider = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("oauth_provider") : null;
+  const scopeParam = urlParams.get("scope") || hashParams.get("scope") || "";
+
+  let oauthProvider = urlParams.get("provider") || hashParams.get("provider");
+  if (!oauthProvider) {
+    if (stateParam === "google" || storedProvider === "google" || urlParams.has("authuser") || scopeParam.includes("google") || window.location.pathname.includes("google")) {
+      oauthProvider = "google";
+    } else if (stateParam === "linkedin" || storedProvider === "linkedin" || window.location.pathname.includes("linkedin")) {
+      oauthProvider = "linkedin";
+    } else {
+      oauthProvider = storedProvider || "google";
+    }
+  }
 
   if (oauthCode) {
     return { type: "oauth", code: oauthCode, provider: oauthProvider };
@@ -473,6 +486,10 @@ function wireAuth() {
   if (googleBtn) {
     googleBtn.addEventListener("click", async () => {
       try {
+        clearAuthAlert();
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("oauth_provider", "google");
+        }
         const config = await API.request("/auth/oauth/config", { auth: false });
         state.oauthConfig = config;
         if (config.google?.configured || config.google_enabled) {
@@ -492,6 +509,10 @@ function wireAuth() {
   if (linkedinBtn) {
     linkedinBtn.addEventListener("click", async () => {
       try {
+        clearAuthAlert();
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("oauth_provider", "linkedin");
+        }
         const config = await API.request("/auth/oauth/config", { auth: false });
         state.oauthConfig = config;
         if (config.linkedin?.configured || config.linkedin_enabled) {
@@ -768,6 +789,10 @@ function openOAuthModal(title, message) {
 }
 
 async function handleOAuthCallback(code, provider) {
+  clearAuthAlert();
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem("oauth_provider");
+  }
   toast(`Authenticating with ${capitalize(provider)}...`);
   try {
     const endpoint = provider === "google" ? "/auth/oauth/google/callback" : "/auth/oauth/linkedin/callback";
