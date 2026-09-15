@@ -31,8 +31,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 settings = get_settings()
 
+app_title = (getattr(settings, "app_name", None) or "").strip() or "SmartResume.ai"
+
 app = FastAPI(
-    title=settings.app_name,
+    title=app_title,
     description="AI-powered ATS resume optimization, Career OS, Application OS, and Interview Copilot API.",
     version="2.0.0",
     debug=settings.debug,
@@ -73,7 +75,7 @@ app.include_router(templates.router, prefix=settings.api_prefix)
 
 @app.get("/health")
 def health() -> dict:
-    return {"success": True, "message": "OK", "data": {"service": settings.app_name}}
+    return {"success": True, "message": "OK", "data": {"service": app_title}}
 
 
 # Mount frontend static assets and clean SEO routes

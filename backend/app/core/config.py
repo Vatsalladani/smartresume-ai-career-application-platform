@@ -1,12 +1,14 @@
 from functools import lru_cache
 import os
 from dataclasses import dataclass, field
-from typing import Literal
-from dotenv import load_dotenv
 from pathlib import Path
+from typing import Literal
 
-
-load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+except ImportError:
+    pass
 
 
 def normalize_database_url(url: str) -> str:
@@ -143,6 +145,11 @@ class Settings:
     default_currency: str = "INR"
 
     def __post_init__(self) -> None:
+        if not self.app_name or not self.app_name.strip():
+            self.app_name = "SmartResume.ai"
+        else:
+            self.app_name = self.app_name.strip()
+
         if self.database_url:
             self.database_url = normalize_database_url(self.database_url)
         if self.environment == "production":
@@ -234,28 +241,39 @@ def get_settings() -> Settings:
 
 
 def _str(name: str, default: str) -> str:
-    return os.getenv(name, default)
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    return value.strip()
 
 
 def _optional(name: str) -> str | None:
     value = os.getenv(name)
-    return value or None
+    if not value or not value.strip():
+        return None
+    return value.strip()
 
 
 def _int(name: str, default: int) -> int:
     value = os.getenv(name)
-    return int(value) if value else default
+    if not value or not value.strip():
+        return default
+    try:
+        return int(value.strip())
+    except ValueError:
+        return default
 
 
 def _bool(name: str, default: bool) -> bool:
     value = os.getenv(name)
-    if value is None:
+    if value is None or not value.strip():
         return default
-    return value.lower() in {"1", "true", "yes", "on"}
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _list(name: str, default: list[str]) -> list[str]:
     value = os.getenv(name)
-    if not value:
+    if not value or not value.strip():
         return default
-    return [item.strip() for item in value.split(",") if item.strip()]
+    items = [item.strip() for item in value.split(",") if item.strip()]
+    return items if items else default
