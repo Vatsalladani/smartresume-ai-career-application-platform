@@ -117,3 +117,30 @@ def test_oauth_account_linking_existing_user():
     assert oauth_user.id == existing_user.id
     assert oauth_user.email == "linked_user@example.com"
     db.close()
+
+
+def test_oauth_new_user_creation_and_password_hashing():
+    db = TestingSessionLocal()
+    # Create brand new OAuth user (triggers uuid4().hex + 'OAuth123!' password hashing via bcrypt)
+    new_user = auth_service.get_or_create_oauth_user(
+        db=db,
+        email="new_oauth_user@example.com",
+        full_name="New Google User",
+        provider="google",
+        provider_id="google_sub_99999",
+    )
+    db.commit()
+    assert new_user.id is not None
+    assert new_user.email == "new_oauth_user@example.com"
+    assert new_user.full_name == "New Google User"
+    assert new_user.is_verified is True
+    assert new_user.is_active is True
+    assert new_user.password_hash is not None
+    assert new_user.password_hash.startswith("$2b$") or new_user.password_hash.startswith("$2a$")
+    # Verify subscription was created
+    sub = db.query(Subscription).filter(Subscription.user_id == new_user.id).first()
+    assert sub is not None
+    assert sub.plan_name == "FREE"
+    assert sub.status == "ACTIVE"
+    db.close()
+
