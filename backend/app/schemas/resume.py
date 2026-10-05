@@ -41,3 +41,34 @@ class ResumeCompareOut(BaseModel):
     compared_version: int
     additions: list[str]
     removals: list[str]
+
+
+class ResumeScoreRequest(BaseModel):
+    resume_id: int | None = None
+    resume_data: dict[str, Any] | None = None
+    target_role: str = Field(default="Software Engineer", max_length=150)
+    target_company: str | None = Field(default=None, max_length=150)
+    job_description: str | None = None
+    career_level: str | None = None
+    previous_score: int | None = None
+
+
+class ResumeScoreOut(BaseModel):
+    overall_score: int
+    target_role: str
+    target_company: str
+    career_level: str
+    is_fresher_calibrated: bool
+    what_is_helping: list[str] = Field(default_factory=list)
+    what_is_holding_back: list[str] = Field(default_factory=list)
+    top_improvements: list[dict[str, Any]] = Field(default_factory=list)
+    dimensions: dict[str, Any] = Field(default_factory=dict)
+    buzzwords_detected: list[dict[str, Any]] = Field(default_factory=list)
+    unsupported_skills: list[dict[str, Any]] = Field(default_factory=list)
+    supported_skills_count: int = 0
+    summary_consistency_notes: list[str] = Field(default_factory=list)
+    eligibility_gaps: list[dict[str, Any]] = Field(default_factory=list)
+    previous_score: int | None = None
+    score_delta: int | None = None
+    delta_explanation: str | None = None
+

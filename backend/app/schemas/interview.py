@@ -10,6 +10,8 @@ class InterviewSessionCreate(BaseModel):
     target_company: str = Field(default="", max_length=150)
     session_mode: str = Field(default="TEXT", max_length=20)  # TEXT, LIVE
     career_level: Optional[str] = Field(default="DEVELOPING", max_length=30)  # EARLY_CAREER, DEVELOPING, EXPERIENCED
+    difficulty: str = Field(default="MEDIUM", max_length=30)  # EASY, MEDIUM, HARD, VERY_HARD, ADAPTIVE
+    practice_mode: str = Field(default="STANDARD", max_length=30)  # QUICK, STANDARD, DEEP, FULL_PRESSURE
 
 
 class ClaimsToDefendOut(BaseModel):
@@ -49,16 +51,27 @@ class InterviewMessageOut(BaseModel):
 class InterviewEvaluationOut(BaseModel):
     id: int
     session_id: int
+    overall_score: int = 70
+    technical_score: int = 70
+    problem_solving_score: int = 70
+    communication_score: int = 70
+    resume_knowledge_score: int = 70
+    role_readiness_score: int = 70
+    holding_back: str = ""
     strong_areas: list[str] = Field(default_factory=list)
     needs_practice: list[str] = Field(default_factory=list)
     technical_gaps: list[str] = Field(default_factory=list)
     communication_improvements: list[str] = Field(default_factory=list)
     resume_claims_to_defend: list[dict] = Field(default_factory=list)
     suggested_questions: list[str] = Field(default_factory=list)
+    weak_questions: list[dict] = Field(default_factory=list)
+    technical_topics_to_revise: list[str] = Field(default_factory=list)
+    suggested_next_practice: str = ""
     readiness_level: str = "NEEDS_PRACTICE"
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
 
 
 class InterviewSessionOut(BaseModel):

@@ -4522,10 +4522,417 @@ svg {
 }
 
 /* ==========================================================================
+   EVIDENCE-BASED RESUME SCORE & REAL INTERVIEW SIMULATOR STYLES
+   ========================================================================== */
+
+/* Resume Score Modal */
+.score-modal-dialog {
+  max-width: 840px !important;
+  max-height: 92vh !important;
+}
+
+.score-hero-banner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, var(--surface), var(--surface-2, #f1f5f9));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  padding: 18px 24px;
+  margin-bottom: 20px;
+}
+
+.score-circle-display {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 4px solid var(--primary, #2563eb);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.score-circle-num {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--primary, #2563eb);
+}
+
+.score-circle-max {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  margin-top: 2px;
+}
+
+.score-hero-details {
+  flex: 1;
+}
+
+.score-hero-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: var(--text);
+}
+
+.score-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.calibrated-badge {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* Helping vs Holding Back Grid */
+.score-insights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .score-insights-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.score-insight-card {
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.score-insight-card.helping {
+  border-left: 4px solid #10b981;
+}
+
+.score-insight-card.holding-back {
+  border-left: 4px solid #f59e0b;
+}
+
+.score-insight-card h4 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-insight-card.helping h4 {
+  color: #059669;
+}
+
+.score-insight-card.holding-back h4 {
+  color: #d97706;
+}
+
+.score-insight-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-insight-list li {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text);
+}
+
+/* Priority Improvements */
+.improvement-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+
+.improvement-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.priority-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.priority-tag.high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.priority-tag.medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.priority-tag.low {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.improvement-problem {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.improvement-why {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.improvement-action {
+  font-size: 0.82rem;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.improvement-example-box {
+  background: var(--surface-2, #f8fafc);
+  border-left: 3px solid var(--primary, #2563eb);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-muted);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Dimensions Progress Breakdown */
+.dimension-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle, rgba(0,0,0,0.05));
+  font-size: 0.84rem;
+}
+
+.dimension-row:last-child {
+  border-bottom: none;
+}
+
+.dimension-name-col {
+  width: 200px;
+  font-weight: 600;
+}
+
+.dimension-bar-col {
+  flex: 1;
+  margin: 0 16px;
+}
+
+.dimension-progress {
+  height: 8px;
+  background: var(--surface-2, #e2e8f0);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dimension-fill {
+  height: 100%;
+  background: var(--primary, #2563eb);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.dimension-status-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.dimension-status-badge.strong {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.dimension-status-badge.partial, .dimension-status-badge.developing {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.dimension-status-badge.needs_attention, .dimension-status-badge.ungrounded {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+/* Buzzword Pills */
+.buzzword-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin: 2px 4px 2px 0;
+}
+
+/* Interview Simulator Enhancements */
+.interview-config-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: 16px;
+}
+
+.question-type-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary, #2563eb);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  margin-bottom: 8px;
+}
+
+.turn-eval-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 16px;
+  margin: 10px 0 16px 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.turn-eval-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eval-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.eval-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.eval-tag.strong {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.eval-tag.weak {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.eval-tag.improve {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+}
+
+/* Multi-Dimensional Final Report Grid */
+.report-dimensions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.report-dimension-box {
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.report-dim-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--primary, #2563eb);
+  line-height: 1;
+}
+
+.report-dim-lbl {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.next-practice-banner {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(16, 185, 129, 0.08));
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: var(--radius-md, 8px);
+  padding: 14px 18px;
+  margin-top: 16px;
+}
+
+/* ==========================================================================
    PRINT ISOLATION STYLESHEET (@media print)
    Ensures ONLY the resume document prints, hiding all application UI
    ========================================================================== */
 @media print {
+
   @page {
     size: A4 portrait;
     margin: 10mm;

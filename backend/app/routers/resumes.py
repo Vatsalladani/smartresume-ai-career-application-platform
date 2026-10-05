@@ -12,10 +12,20 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ATSAnalysis, Resume, User
 from app.repositories.resume_repository import get_resume_version, get_user_resume
-from app.schemas.resume import ResumeCompareOut, ResumeDetail, ResumeOut, ResumeUpdate, ResumeVersionOut
+from app.schemas.resume import (
+    ResumeCompareOut,
+    ResumeDetail,
+    ResumeOut,
+    ResumeScoreOut,
+    ResumeScoreRequest,
+    ResumeUpdate,
+    ResumeVersionOut,
+)
 from app.services.audit_service import write_audit_log
 from app.services.export_service import generate_resume_docx, generate_resume_pdf
 from app.services.profile_service import get_or_create_profile
+from app.services.scoring_service import calculate_evidence_based_score
+
 from app.services.resume_service import (
     compare_with_version,
     create_resume,
@@ -213,7 +223,85 @@ def export_profile_resume_post(
     )
 
 
+@router.post("/score")
+def score_resume_endpoint(
+    payload: ResumeScoreRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    resume_data = payload.resume_data
+    if not resume_data and payload.resume_id:
+        resume = get_user_resume(db, payload.resume_id, current_user.id)
+        if resume:
+            resume_data = resume.parsed_content or {}
+
+    if not resume_data:
+        profile = get_or_create_profile(db, current_user.id)
+        candidate_name = getattr(profile, "full_name", None) or current_user.full_name or "Candidate"
+        email = getattr(profile, "email", None) or current_user.email or ""
+        resume_data = {
+            "header": {
+                "full_name": candidate_name,
+                "headline": profile.headline or "",
+                "email": email,
+                "phone": profile.phone or "",
+                "location": profile.location or "",
+                "linkedin": profile.linkedin_url or "",
+                "github": profile.github_url or "",
+                "website": profile.website_url or "",
+            },
+            "summary": profile.summary or "",
+            "skills": [s.name for s in (profile.skills or [])],
+            "experiences": [
+                {
+                    "role_title": getattr(e, "role_title", getattr(e, "title", "")),
+                    "company": e.company,
+                    "location": e.location or "",
+                    "start_date": e.start_date or "",
+                    "end_date": e.end_date or "",
+                    "is_current": e.is_current,
+                    "bullet_points": [b if isinstance(b, str) else b.get("text", "") for b in (getattr(e, "bullet_points", None) or getattr(e, "bullets", []) or [])],
+                }
+                for e in (profile.experiences or [])
+            ],
+            "projects": [
+                {
+                    "title": getattr(p, "title", getattr(p, "name", "")),
+                    "technologies": p.technologies if isinstance(p.technologies, list) else ([p.technologies] if p.technologies else []),
+                    "description": p.description or "",
+                    "bullet_points": [b if isinstance(b, str) else b.get("text", "") for b in (getattr(p, "bullet_points", None) or getattr(p, "bullets", []) or [])],
+                }
+                for p in (profile.projects or [])
+            ],
+            "education": [
+                {
+                    "institution": ed.institution,
+                    "degree": ed.degree,
+                    "field_of_study": ed.field_of_study or "",
+                    "start_date": ed.start_date or "",
+                    "end_date": ed.end_date or getattr(ed, "graduation_year", "") or "",
+                    "grade": ed.grade or getattr(ed, "gpa", "") or "",
+                }
+                for ed in (profile.education or [])
+            ],
+            "certifications": [
+                (c if isinstance(c, str) else c.name) for c in (profile.certifications or [])
+            ],
+        }
+
+    score_result = calculate_evidence_based_score(
+        resume_data=resume_data,
+        target_role=payload.target_role or "Software Engineer",
+        target_company=payload.target_company,
+        job_description=payload.job_description,
+        career_level=payload.career_level,
+        previous_score=payload.previous_score,
+    )
+    return success_response(ResumeScoreOut.model_validate(score_result).model_dump(), "Resume score evaluated.")
+
+
 @router.get("/{resume_id}")
+
 def get_resume(resume_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
     resume = get_user_resume(db, resume_id, current_user.id)
     return success_response(ResumeDetail.model_validate(resume).model_dump())

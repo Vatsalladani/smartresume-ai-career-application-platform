@@ -754,6 +754,10 @@
             <p>Design, customize, and edit your resume with live preview and instant export.</p>
           </div>
           <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" id="builderCheckScoreBtn" title="Check evidence-based resume score">
+              <i data-lucide="award"></i>
+              <span>Resume Score</span>
+            </button>
             <button class="secondary-btn sm" type="button" id="builderSyncProfileBtn" title="Sync data from Career Profile">
               <i data-lucide="refresh-cw"></i>
               <span>Sync Profile</span>
@@ -767,6 +771,7 @@
               <span>Download DOCX</span>
             </button>
           </div>
+
         </div>
 
         <!-- Progressive Disclosure Sub-Pills -->
@@ -1069,7 +1074,102 @@
             </div>
           </div>
         </div>
+
+        <!-- Evidence-Based Resume Score Modal -->
+        <div id="resumeScoreModal" class="modal-backdrop hidden" style="z-index: 10000;">
+          <div class="modal-content score-modal-dialog" style="display: flex; flex-direction: column; padding: 0; background: var(--surface); border-radius: var(--radius-lg, 12px); overflow: hidden;">
+            <div class="p-3 bg-surface flex-row justify-between align-center border-bottom">
+              <div class="flex-row align-center gap-2">
+                <i data-lucide="award" style="color: var(--primary);"></i>
+                <strong style="font-size: 1.05rem;">Evidence-Based Resume Score</strong>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <button class="icon-btn sm" type="button" onclick="$('#resumeScoreModal').classList.add('hidden')"><i data-lucide="x"></i></button>
+              </div>
+            </div>
+
+            <div class="p-4" style="overflow-y: auto; flex: 1; max-height: calc(90vh - 60px);">
+              <!-- Target Configuration Bar -->
+              <div class="panel p-3 mb-3 flex-row align-center justify-between gap-3 flex-wrap" style="background: var(--surface-2);">
+                <div class="flex-row align-center gap-3 flex-wrap">
+                  <div class="flex-row align-center gap-2">
+                    <label class="text-xs text-muted font-bold" for="scoreTargetRoleInput">Target Role:</label>
+                    <input id="scoreTargetRoleInput" class="form-input sm" style="width: 220px;" placeholder="e.g. Software Engineer" value="Software Engineer">
+                  </div>
+                  <div class="flex-row align-center gap-2">
+                    <label class="text-xs text-muted font-bold" for="scoreCareerLevelSelect">Career Stage:</label>
+                    <select id="scoreCareerLevelSelect" class="form-select sm" style="width: 170px;">
+                      <option value="EARLY_CAREER" selected>Early Career / Fresher</option>
+                      <option value="DEVELOPING">Developing (1-4 yrs)</option>
+                      <option value="EXPERIENCED">Experienced (5+ yrs)</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="primary-btn sm" type="button" id="scoreRecalculateBtn">
+                  <i data-lucide="refresh-cw"></i>
+                  <span>Recalculate Score</span>
+                </button>
+              </div>
+
+              <!-- Score Hero Banner -->
+              <div class="score-hero-banner" id="scoreHeroBanner">
+                <div class="score-circle-display">
+                  <span class="score-circle-num" id="scoreModalNum">--</span>
+                  <span class="score-circle-max">/ 100</span>
+                </div>
+                <div class="score-hero-details">
+                  <h3 class="score-hero-title" id="scoreHeroTargetText">Software Engineer Evaluation</h3>
+                  <div class="score-hero-meta">
+                    <span id="scoreFresherCalibratedBadge" class="calibrated-badge">Fresher Context Calibrated</span>
+                    <span id="scoreDeltaPill" class="text-xs text-muted"></span>
+                  </div>
+                  <p id="scoreDeltaExplanation" class="text-xs text-muted mt-1 mb-0"></p>
+                </div>
+              </div>
+
+              <!-- What is Helping vs What is Holding Back Grid -->
+              <div class="score-insights-grid">
+                <div class="score-insight-card helping">
+                  <h4><i data-lucide="check-circle-2"></i> What is helping:</h4>
+                  <ul class="score-insight-list" id="scoreHelpingList"></ul>
+                </div>
+                <div class="score-insight-card holding-back">
+                  <h4><i data-lucide="alert-triangle"></i> What is holding it back:</h4>
+                  <ul class="score-insight-list" id="scoreHoldingBackList"></ul>
+                </div>
+              </div>
+
+              <!-- Top Actionable Improvements -->
+              <div class="mb-4">
+                <div class="flex-row justify-between align-center mb-2">
+                  <h4 style="margin: 0; font-size: 0.95rem;"><i data-lucide="sparkles"></i> Top Priority Improvements (Sorted by Impact)</h4>
+                </div>
+                <div id="scoreTopImprovementsList"></div>
+              </div>
+
+              <!-- 7 Dimension Breakdown -->
+              <div class="panel p-3 mb-3">
+                <h4 style="margin: 0 0 10px 0; font-size: 0.92rem;"><i data-lucide="bar-chart-2"></i> Transparent Scoring Dimensions</h4>
+                <div id="scoreDimensionsList"></div>
+              </div>
+
+              <!-- Buzzword & Consistency Checks -->
+              <div id="scoreBuzzwordsSection" class="panel p-3 mb-2 hidden">
+                <h4 style="margin: 0 0 6px 0; font-size: 0.88rem; color: #dc2626;"><i data-lucide="alert-circle"></i> Weak Buzzwords Detected</h4>
+                <p class="text-xs text-muted mb-2">These common subjective phrases add little evidence. Replace them with specific project accomplishments:</p>
+                <div id="scoreBuzzwordsList" class="flex-row flex-wrap"></div>
+              </div>
+
+              <!-- Job Eligibility Gaps Notice -->
+              <div id="scoreEligibilityGapsSection" class="panel p-3 hidden" style="border-left: 3px solid #2563eb;">
+                <h4 style="margin: 0 0 4px 0; font-size: 0.88rem; color: var(--primary);"><i data-lucide="info"></i> Job Eligibility Note</h4>
+                <p id="scoreEligibilityGapsText" class="text-xs text-muted mb-0"></p>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
+
 
       <!-- TAB 2: CHECK JOB FIT -->
       <section id="tabFit" class="tab-panel">
@@ -2099,7 +2199,7 @@
           </div>
 
           <!-- Collapsible context edit inputs (hidden by default) -->
-          <div id="interviewContextInputsRow" class="grid three mt-3 pt-3 border-t hidden">
+          <div id="interviewContextInputsRow" class="grid four mt-3 pt-3 border-t hidden">
             <label>Target Role<input id="interviewRoleInput" placeholder="e.g. Senior Backend Engineer" value="Software Engineer"></label>
             <label>Target Company<input id="interviewCompanyInput" placeholder="e.g. Razorpay or Acme Corp" value="Target Company"></label>
             <label>Career Level
@@ -2109,7 +2209,25 @@
                 <option value="EXPERIENCED">Experienced (Architecture & Leadership)</option>
               </select>
             </label>
+            <label>Difficulty
+              <select id="interviewDifficultySelect">
+                <option value="EASY">Easy (Foundations)</option>
+                <option value="MEDIUM" selected>Medium (Standard)</option>
+                <option value="HARD">Hard (Tradeoffs)</option>
+                <option value="VERY_HARD">Very Hard (Edge Cases)</option>
+                <option value="ADAPTIVE">Adaptive (Dynamic)</option>
+              </select>
+            </label>
+            <label>Practice Mode
+              <select id="interviewPracticeModeSelect">
+                <option value="QUICK">Quick (10 Questions)</option>
+                <option value="STANDARD" selected>Standard (20 Questions)</option>
+                <option value="DEEP">Deep (30+ Questions)</option>
+                <option value="FULL_PRESSURE">Full Pressure (Maximum Rigor)</option>
+              </select>
+            </label>
           </div>
+
         </div>
 
         <!-- 2. Two Primary Mode Selection Cards (Requirements 11 & 31) -->
@@ -2228,6 +2346,13 @@
               <textarea id="candidateAnswerInput" rows="3" placeholder="Type your answer using Situation, Task, Action, Result..." required></textarea>
               <button class="primary-btn sm" type="submit"><i data-lucide="send"></i><span>Submit Turn</span></button>
             </form>
+            <div id="turnEvaluationDrawer" class="turn-eval-drawer hidden">
+              <div class="turn-eval-header">
+                <span class="flex-row align-center gap-1 font-bold"><i data-lucide="sparkles"></i> Turn-by-Turn Feedback</span>
+                <span id="turnEvaluationStatus" class="badge-sub">Evaluated</span>
+              </div>
+              <div id="turnEvaluationContent" class="turn-eval-content"></div>
+            </div>
           </div>
         </div>
 
@@ -2330,7 +2455,44 @@
             <span class="badge-musthave" id="reviewReadinessBadge">READY</span>
           </div>
 
-          <div class="grid two mt-4">
+          <!-- Multi-Dimensional Score Grid -->
+          <div class="report-dimensions-grid" id="reviewDimensionScoresGrid">
+            <div class="report-dimension-box">
+              <div class="report-dim-val" id="reportOverallScore">--</div>
+              <div class="report-dim-lbl">Overall</div>
+            </div>
+            <div class="report-dimension-box">
+              <div class="report-dim-val" id="reportTechnicalScore">--</div>
+              <div class="report-dim-lbl">Technical Depth</div>
+            </div>
+            <div class="report-dimension-box">
+              <div class="report-dim-val" id="reportProblemSolvingScore">--</div>
+              <div class="report-dim-lbl">Problem Solving</div>
+            </div>
+            <div class="report-dimension-box">
+              <div class="report-dim-val" id="reportCommunicationScore">--</div>
+              <div class="report-dim-lbl">Communication</div>
+            </div>
+            <div class="report-dimension-box">
+              <div class="report-dim-val" id="reportResumeKnowledgeScore">--</div>
+              <div class="report-dim-lbl">Resume Knowledge</div>
+            </div>
+            <div class="report-dimension-box">
+              <div class="report-dim-val" id="reportRoleReadinessScore">--</div>
+              <div class="report-dim-lbl">Role Readiness</div>
+            </div>
+          </div>
+
+          <!-- What is holding you back -->
+          <div id="reportHoldingBackContainer" class="score-card warning mb-3 hidden">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="alert-triangle"></i>
+              <strong>What Is Holding You Back:</strong>
+            </div>
+            <p id="reportHoldingBackText" class="text-sm mt-1 mb-0"></p>
+          </div>
+
+          <div class="grid two mt-3">
             <div class="review-dimension-box">
               <h5 class="text-success"><i data-lucide="check-circle-2"></i> Strong Delivery Areas</h5>
               <ul id="reviewStrongList" class="clean-bullet-list mt-2 text-xs"></ul>
@@ -2350,6 +2512,15 @@
               <h5><i data-lucide="shield"></i> Resume Claims Defensibility</h5>
               <ul id="reviewClaimsList" class="clean-bullet-list mt-2 text-xs"></ul>
             </div>
+          </div>
+
+          <!-- Next Best Practice Recommendation -->
+          <div id="reportNextPracticeContainer" class="next-practice-banner hidden">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="compass" class="text-primary"></i>
+              <strong>Next Best Practice Recommendation:</strong>
+            </div>
+            <p id="reportNextPracticeText" class="text-sm mt-1 mb-0"></p>
           </div>
 
           <div class="button-row mt-4 pt-3 border-t">

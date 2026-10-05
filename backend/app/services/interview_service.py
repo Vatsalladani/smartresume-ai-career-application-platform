@@ -1,15 +1,16 @@
-"""AI Interview Copilot Service
-Conducts grounded mock interview sessions, interrogates candidate claims,
-evaluates responses along STAR methodology and evidence grounding,
-and produces comprehensive evidence-based interview reviews.
+"""AI Interview Copilot Service — Real Grounded Interview Simulator
+Interrogates candidate claims, conducts multi-turn deep-dive follow-ups,
+evaluates responses along STAR methodology, correctness, and evidence grounding,
+and produces comprehensive multi-dimensional interview reviews.
 """
+import re
 from typing import Optional, Any
 from sqlalchemy.orm import Session
 
 from app.models.interview import InterviewSession, InterviewMessage, InterviewEvaluation
 from app.models.master_profile import Profile
-from app.models.job_fit import JobPosting, ApplicationVersion
-from app.schemas.interview import InterviewSessionCreate, ClaimsToDefendOut
+from app.models.job_fit import JobPosting
+from app.schemas.interview import InterviewSessionCreate
 from app.services.company_verification_service import get_cached_verification, verify_company
 from app.schemas.company_verification import CompanyVerificationRequest
 
@@ -25,46 +26,43 @@ def get_claims_to_defend(db: Session, user_id: int, job_id: Optional[int] = None
     experiences = profile.experiences if profile and profile.experiences else []
     projects = profile.projects if profile and profile.projects else []
 
-    # 1. Primary technical skills claims
-    if skills:
-        for skill in skills[:4]:
-            claims.append({
-                "claim": f"{skill} Implementation & Proficiency",
-                "category": "Technical Core",
-                "why_asked": f"Technical interviewers will drill into your depth with {skill}, concurrency/memory models, and failure patterns.",
-                "evidence": f"Listed in verified profile skills with supporting evidence.",
-                "suggested_question": f"Can you walk me through the most complex problem you solved using {skill}, and what specific alternatives did you consider?",
-            })
-
-    # 2. Work experience architecture claim
-    if experiences:
-        top_exp = experiences[0]
+    # 1. Project delivery claims
+    for proj in projects[:3]:
+        tech_str = proj.technologies if isinstance(proj.technologies, str) else ", ".join(proj.technologies or ["Full Stack"])
         claims.append({
-            "claim": f"Production Impact at {top_exp.company}",
-            "category": "Experience Defense",
-            "why_asked": "Hiring managers evaluate whether your bullet points reflect direct personal contribution versus passive team presence.",
-            "evidence": f"Role: {top_exp.role_title} at {top_exp.company} ({top_exp.start_date} - {'Present' if top_exp.is_current else top_exp.end_date}).",
-            "suggested_question": f"At {top_exp.company}, what was your single most impactful architectural decision, and how did you measure its business result?",
+            "claim": f"Project Architecture in '{proj.title}'",
+            "category": "Project Defense",
+            "why_asked": f"Technical interviewers probe candidate ownership, component design, and performance tradeoffs in '{proj.title}'.",
+            "evidence": f"Technologies: {tech_str}. Description: {(proj.description or '')[:120]}...",
+            "suggested_question": f"In '{proj.title}', walk me through your exact personal contribution, why you selected {tech_str}, and what happens when the primary service experiences unexpected load?",
         })
 
-    # 3. Project delivery claim
-    if projects:
-        top_proj = projects[0]
+    # 2. Primary technical skills claims
+    for skill in skills[:4]:
         claims.append({
-            "claim": f"System Architecture in '{top_proj.title}'",
-            "category": "Project Defense",
-            "why_asked": "Interviewers probe how you handled non-functional requirements like latency, caching, and data consistency.",
-            "evidence": f"Project: {top_proj.title} (Tech: {top_proj.technologies or 'Standard Stack'}).",
-            "suggested_question": f"In {top_proj.title}, what was the hardest bottleneck you encountered during development, and how did you debug it?",
+            "claim": f"{skill} Core Depth & Practical Mastery",
+            "category": "Technical Core",
+            "why_asked": f"Interviewers will test whether you have hands-on debugging experience with {skill} or only superficial syntax knowledge.",
+            "evidence": f"Listed in candidate's verified technical skills.",
+            "suggested_question": f"Can you walk me through the most complex problem or edge-case you solved using {skill}, and what specific alternatives did you consider?",
+        })
+
+    # 3. Work experience claim (if present)
+    for exp in experiences[:2]:
+        claims.append({
+            "claim": f"Production Impact at {exp.company}",
+            "category": "Experience Defense",
+            "why_asked": "Hiring managers evaluate whether your contributions reflect personal ownership versus passive team presence.",
+            "evidence": f"Role: {exp.role_title} at {exp.company}.",
+            "suggested_question": f"At {exp.company}, what was your single most impactful technical contribution, and how did you measure its success?",
         })
 
     if not claims:
-        # Grounded default claims if profile is empty
         claims = [
             {
                 "claim": "REST API Architecture & Web Services",
                 "category": "Technical Core",
-                "why_asked": "Interviewers will test request lifecycle, routing, error handling, and serialization efficiency.",
+                "why_asked": "Interviewers test request lifecycles, routing, authentication, and error serialization.",
                 "evidence": "Foundational web service engineering requirement.",
                 "suggested_question": "How do you structure API endpoints for idempotency, authorization, and predictable error responses?",
             },
@@ -84,6 +82,8 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
     target_role = session_in.target_role or "Software Engineer"
     target_company = session_in.target_company or "Target Company"
     career_level = (session_in.career_level or "DEVELOPING").upper()
+    difficulty = getattr(session_in, "difficulty", "MEDIUM").upper()
+    practice_mode = getattr(session_in, "practice_mode", "STANDARD").upper()
 
     job_desc = ""
     if session_in.job_id:
@@ -93,7 +93,7 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
             target_company = job.company or target_company
             job_desc = getattr(job, "raw_description", getattr(job, "description", "")) or ""
 
-    # Check company verification status (Requirement 26)
+    # Check company verification status
     verification = get_cached_verification(target_company)
     if not verification and target_company:
         verification = verify_company(CompanyVerificationRequest(company_name=target_company))
@@ -104,6 +104,14 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
     elif verification and verification.verification_status == "COULD_NOT_VERIFY":
         company_context_str = " Company-specific information is limited; questions will focus directly on the job description and your resume context."
 
+    # Load candidate profile for grounded opening
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    projects = profile.projects if profile and profile.projects else []
+    skills = [s.name for s in profile.skills] if profile and profile.skills else []
+
+    top_proj_name = projects[0].title if projects else "your key project"
+    top_skills_str = ", ".join(skills[:3]) if skills else "your primary technical stack"
+
     session = InterviewSession(
         user_id=user_id,
         job_id=session_in.job_id,
@@ -113,43 +121,47 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
         session_mode=session_in.session_mode.upper(),
         status="IN_PROGRESS",
         readiness_score=70,
-        feedback_summary="Session started. Level 1: Warm-up delivered.",
+        feedback_summary=f"Mode: {practice_mode} | Difficulty: {difficulty} | Target: {target_role} at {target_company}",
     )
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    # Initial AI interviewer opening question calibrated to career level
+    # Initial AI interviewer opening calibrated to role, career level, and actual resume claims
     if career_level == "EARLY_CAREER":
         opening_text = (
-            f"Welcome! I am your AI Interview Copilot. We will be conducting a targeted mock interview "
-            f"for the {target_role} position at {target_company}.{company_context_str}\n\n"
-            f"[Level 1: Warm-up & Foundations]\n"
-            f"To start: Tell me about your journey into software engineering, your academic or project foundation, "
-            f"and what specifically excites you about the {target_role} opportunity?"
+            f"Hello! I am your AI Technical Interviewer for the {target_role} role at {target_company}.{company_context_str}\n\n"
+            f"[Stage 1: Introduction & Technical Orientation]\n"
+            f"I see from your background that you have built '{top_proj_name}' and work with {top_skills_str}. "
+            f"To begin: Walk me through a concise overview of your background, what motivated you to build '{top_proj_name}', "
+            f"and what specifically attracts you to this {target_role} position?"
         )
     elif career_level == "EXPERIENCED":
         opening_text = (
-            f"Welcome! I am your AI Interview Copilot. We will be conducting a senior-level mock interview "
-            f"for the {target_role} position at {target_company}.{company_context_str}\n\n"
-            f"[Level 1: Warm-up & Strategic Scope]\n"
-            f"To start: Give me a concise executive summary of your career progression, the scale of systems you "
-            f"have designed, and the major architectural challenges you enjoy tackling."
+            f"Welcome. I will be conducting your senior technical interview for the {target_role} position at {target_company}.{company_context_str}\n\n"
+            f"[Stage 1: Architectural Scope & System Background]\n"
+            f"To start: Give me an executive summary of the scale and complexity of systems you have architected, "
+            f"and walk me through the high-level architecture of your primary project or recent production service."
         )
-    else:  # DEVELOPING / MID
+    else:  # DEVELOPING
         opening_text = (
-            f"Welcome! I am your AI Interview Copilot. We will be conducting a targeted mock interview "
-            f"for the {target_role} position at {target_company}.{company_context_str}\n\n"
-            f"[Level 1: Warm-up & Recent Impact]\n"
-            f"To begin: Walk me through a challenging problem you solved in your recent work. "
-            f"What was the specific situation, what actions did you personally take, and what was the measurable result?"
+            f"Welcome! I am your AI Interviewer for the {target_role} role at {target_company}.{company_context_str}\n\n"
+            f"[Stage 1: Background & Core Engineering]\n"
+            f"To start: Walk me through your technical background, highlighting your work in '{top_proj_name}' and your proficiency with {top_skills_str}. "
+            f"What was your single most challenging engineering hurdle there?"
         )
 
     initial_msg = InterviewMessage(
         session_id=session.id,
         sender="AI",
         message_text=opening_text,
-        evaluation_json={"step": "level_1_warmup", "level": 1},
+        evaluation_json={
+            "step": "stage_1_warmup",
+            "level": 1,
+            "question_type": "Introduction & Orientation",
+            "difficulty": difficulty,
+            "practice_mode": practice_mode,
+        },
     )
     db.add(initial_msg)
     db.commit()
@@ -158,193 +170,308 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
 
 
 def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text: str) -> tuple[InterviewMessage, InterviewMessage]:
+    """Processes candidate answer, evaluates response quality (STAR, depth, metrics, ownership),
+    and generates grounded follow-up or next-stage interview question with multi-turn deep-dive interrogation.
+    """
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
     if not session:
         raise ValueError("Interview session not found")
 
-    # Record candidate response
+    # Candidate profile context
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    projects = profile.projects if profile and profile.projects else []
+    skills = [s.name for s in profile.skills] if profile and profile.skills else []
+    experiences = profile.experiences if profile and profile.experiences else []
+
+    top_proj = projects[0] if projects else None
+    proj_title = top_proj.title if top_proj else "your primary project"
+    proj_tech = (top_proj.technologies if isinstance(top_proj.technologies, str) else ", ".join(top_proj.technologies or [])) if top_proj else "your tech stack"
+
+    # Analyze candidate answer text
+    text_lower = user_text.lower()
+    word_count = len(user_text.split())
+    has_metrics = bool(re.search(r"\b\d+[%kKmM]?|\$\d+|\d+\+", user_text))
+    has_action = any(w in text_lower for w in ["i built", "i designed", "i led", "i implemented", "i created", "i debugged", "my role", "i chose", "i optimized", "i refactored", "i wrote"])
+    has_we_only = ("we " in text_lower or "our " in text_lower) and not has_action
+    is_superficial = word_count < 25
+
+    # Count previous USER messages directly from database
+    prev_user_count = db.query(InterviewMessage).filter(
+        InterviewMessage.session_id == session.id,
+        InterviewMessage.sender == "USER"
+    ).count()
+    turn_index = prev_user_count + 1
+
+
+    # Evaluate turn
+    strong_feedback = []
+    weak_feedback = []
+    improve_feedback = []
+
+    if has_action:
+        strong_feedback.append("Good ownership: clearly stated personal contribution ('I designed / I implemented').")
+    elif has_we_only:
+        weak_feedback.append("Used collective phrasing ('we did'); clarify your specific individual ownership.")
+        improve_feedback.append("State exactly what part of the code or design you personally authored.")
+
+    if has_metrics:
+        strong_feedback.append("Provided concrete quantifiable evidence or observable parameters.")
+    else:
+        weak_feedback.append("Lacked quantitative indicators or performance parameters.")
+        improve_feedback.append("Mention measurable indicators (e.g. response latency, table sizes, test coverage, throughput).")
+
+    if is_superficial:
+        weak_feedback.append("Answer was brief and lacked technical depth.")
+        improve_feedback.append("Walk through the step-by-step technical mechanism rather than providing a high-level summary.")
+
+    if not weak_feedback:
+        weak_feedback.append("Good baseline explanation; ensure trade-offs and alternative patterns are addressed.")
+    if not improve_feedback:
+        improve_feedback.append("Highlight why your chosen solution was preferable to at least one rejected alternative.")
+
+    # Record candidate message with turn evaluation
     cand_msg = InterviewMessage(
         session_id=session.id,
         sender="USER",
         message_text=user_text,
-        evaluation_json={},
+        evaluation_json={
+            "word_count": word_count,
+            "has_metrics": has_metrics,
+            "has_action": has_action,
+            "turn_index": turn_index,
+        },
     )
     db.add(cand_msg)
     db.commit()
 
-    # Analyze answer content along STAR and technical depth
-    text_lower = user_text.lower()
-    has_metrics = any(char.isdigit() for char in user_text)
-    has_action = any(w in text_lower for w in ["i built", "i designed", "i led", "i implemented", "i created", "i debugged", "my role", "i chose", "i optimized"])
-    has_result = any(w in text_lower for w in ["result", "reduced", "improved", "increased", "delivered", "outcome", "latency", "throughput", "saved"])
+    # Dynamic 10-Stage Multi-Turn Deep-Dive Progression (Requirements 55, 56, 57, 58, 59)
+    if turn_index == 1:
+        # Move to Stage 2: Resume Project Deep-Dive (Dig Deep Part 1)
+        question_type = "Role Fundamentals & Project Architecture"
+        ai_reply = (
+            f"[Stage 2: Role Fundamentals & Project Architecture Deep-Dive]\n"
+            f"You mentioned working on '{proj_title}'. Let's drill into the architecture: "
+            f"Can you walk me through the lifecycle of a request from client initiation to database persistence? "
+            f"What specific components did you personally author, and why did you choose {proj_tech} over other alternatives?"
+        )
+    elif turn_index == 2:
+        # Move to Stage 3: Project Follow-Up Deep-Dive (Dig Deep Part 2 - Requirement 56)
+        question_type = "Technical Depth & Security"
+        # Extract potential topics from previous candidate answer
+        auth_mentioned = "auth" in text_lower or "token" in text_lower or "jwt" in text_lower or "login" in text_lower
+        db_mentioned = "database" in text_lower or "sql" in text_lower or "table" in text_lower or "postgres" in text_lower
 
-    user_turns_count = len([m for m in session.messages if m.sender == "USER"])
-
-    # Structured 6-Level Adaptive Question Progression
-    if user_turns_count == 1:
-        # Move to Level 2: Role Fundamentals
+        if auth_mentioned:
+            ai_reply = (
+                f"[Stage 3: Technical Depth — Authentication & Security]\n"
+                f"You brought up authentication in '{proj_title}'. Let's dig deeper: "
+                f"Walk me through the exact authentication flow from credentials submission to token validation. "
+                f"What security risks exist in that implementation (e.g. CSRF, session hijacking, replay attacks), "
+                f"and how did you protect against them?"
+            )
+        elif db_mentioned:
+            ai_reply = (
+                f"[Stage 3: Technical Depth — Data Consistency & Query Design]\n"
+                f"You mentioned database operations. In '{proj_title}', how did you structure your schema and index design? "
+                f"How did you guarantee data consistency during concurrent operations or partial write failures?"
+            )
+        else:
+            ai_reply = (
+                f"[Stage 3: Technical Depth — Personal Implementation Details]\n"
+                f"In '{proj_title}', walk me through one specific component or endpoint you found most difficult to build. "
+                f"What unexpected bug or bottleneck arose during implementation, and how did you diagnose the root cause?"
+            )
+    elif turn_index == 3:
+        # Move to Stage 4: Twisted / Edge-Case Question (Requirement 57)
+        question_type = "Resume Claim Defense & System Resilience"
         ai_reply = (
-            f"[Level 2: Role Fundamentals]\n"
-            f"Thank you for setting the stage. Let's delve into the core fundamentals required for {session.target_role}: "
-            f"When designing a core service for this type of workload, how do you structure your data models, "
-            f"and how do you ensure reliability under unexpected network partitions or database timeouts?"
+            f"[Stage 4: Resume Claim Defense — Edge Cases & High Load Scenarios]\n"
+            f"Let's test the resilience of your architecture in '{proj_title}':\n"
+            f"1. What happens if your service receives 10x normal traffic and the database latency spikes to 5 seconds?\n"
+            f"2. What happens if a user submits a state-modifying action twice in rapid succession?\n"
+            f"How does your system handle these edge cases without corrupting state or crashing?"
         )
-        turn_feedback = {
-            "level": 2,
-            "star_assessment": "Good premise provided. Ensure your personal contributions ('I' vs 'we') remain prominent.",
-            "metrics_detected": has_metrics,
-            "ownership_detected": has_action,
-        }
-    elif user_turns_count == 2:
-        # Move to Level 3: Technical Depth & Tradeoffs
+    elif turn_index == 4:
+        # Move to Stage 5: Role-Specific Technical Deep-Dive (Requirement 58)
+        question_type = "Role-Specific Technical Fundamentals"
+        primary_skill = skills[0] if skills else "Python / APIs"
+        sec_skill = skills[1] if len(skills) > 1 else "Relational Databases"
         ai_reply = (
-            f"[Level 3: Technical Depth & Tradeoffs]\n"
-            f"Understood. Now let's explore technical tradeoffs: In the solution you just described, "
-            f"what were the primary performance, consistency, or cost tradeoffs you made, and why did you choose that approach "
-            f"over alternative patterns?"
+            f"[Stage 5: Technical Fundamentals & Deep Concepts ({session.target_role})]\n"
+            f"Moving to core technical knowledge required for {session.target_role}: "
+            f"Your resume highlights proficiency with {primary_skill} and {sec_skill}. "
+            f"Explain a subtle concept or limitation in {primary_skill} that often trips up junior developers. "
+            f"How does {primary_skill} manage memory, concurrency, or execution state under the hood?"
         )
-        turn_feedback = {
-            "level": 3,
-            "star_assessment": "Clear explanation of technical concepts. Moving to architectural tradeoff evaluation.",
-            "metrics_detected": has_metrics,
-            "ownership_detected": has_action,
-        }
-    elif user_turns_count == 3:
-        # Move to Level 4: Project & Resume Defense (Requirement 14: Real resume claims)
-        claims = get_claims_to_defend(db, user_id, session.job_id)
-        selected_claim = claims[0]["claim"] if claims else "your primary technical stack"
-        defense_q = claims[0]["suggested_question"] if claims else "Can you walk me through your API architecture?"
-
+    elif turn_index == 5:
+        # Move to Stage 6: Scenario-Based Debugging Problem (Requirement 55D & 55E)
+        question_type = "Scenario-Based Incident Investigation"
         ai_reply = (
-            f"[Level 4: Resume Claim Defense]\n"
-            f"Your resume highlights direct experience with {selected_claim}. "
-            f"{defense_q}"
+            f"[Stage 6: Scenario-Based Debugging Problem]\n"
+            f"Here is a real engineering scenario: "
+            f"Your service runs completely fine in local and staging environments, but after deployment to production, "
+            f"5% of incoming requests begin timing out with HTTP 504 errors intermittently during peak hours. "
+            f"Walk me through your step-by-step investigation methodology. What metrics, logs, and profiling tools would you inspect first?"
         )
-        turn_feedback = {
-            "level": 4,
-            "star_assessment": "Solid tradeoff analysis. Now validating specific claims stated on your resume.",
-            "metrics_detected": has_metrics,
-            "ownership_detected": has_action,
-        }
-    elif user_turns_count == 4:
-        # Move to Level 5: Weak-Area Probe & Resilience
+    elif turn_index == 6:
+        # Move to Stage 7: Behavioral STAR Question (Requirement 55F)
+        question_type = "Behavioral & Conflict Resolution (STAR)"
         ai_reply = (
-            f"[Level 5: Resilience & Failure Recovery]\n"
-            f"That's insightful. Let's consider failure modes: Suppose an upstream dependency degrades or returns corrupted payloads. "
-            f"How do you monitor, isolate, and maintain service health without causing cascading failures across downstream consumers?"
+            f"[Stage 7: Behavioral & Technical Decision-Making]\n"
+            f"Tell me about a time when you experienced a disagreement with a team member, peer, or lead over "
+            f"a technical choice (e.g. architecture design, database schema, or delivery trade-off). "
+            f"What was the specific situation, what steps did you take to reach alignment, and what was the outcome?"
         )
-        turn_feedback = {
-            "level": 5,
-            "star_assessment": "Strong technical defense of your resume claim. Probing edge-case resilience.",
-            "metrics_detected": has_metrics,
-            "ownership_detected": has_action,
-        }
-    elif user_turns_count == 5:
-        # Move to Level 6: Behavioral / STAR Situational Judgment
+    elif turn_index == 7:
+        # Move to Stage 8: Pressure / Weakness Reflection (Requirement 55I)
+        question_type = "Self-Awareness & Architectural Critique"
         ai_reply = (
-            f"[Level 6: Behavioral & Decision-Making]\n"
-            f"To wrap up our question rounds: Tell me about a time when you had a serious disagreement with an engineering colleague "
-            f"or product stakeholder over technical architecture or delivery deadlines. How did you resolve it, and what was the outcome?"
+            f"[Stage 8: Architectural Trade-Offs & Honest Critique]\n"
+            f"Looking objectively at your resume and project portfolio: "
+            f"If you had to completely refactor one major decision in '{proj_title}', what would you redesign from scratch and why? "
+            f"Additionally, what is the single biggest technical knowledge gap you are actively working to improve right now?"
         )
-        turn_feedback = {
-            "level": 6,
-            "star_assessment": "Comprehensive technical coverage. Concluding with leadership and collaboration.",
-            "metrics_detected": has_metrics,
-            "ownership_detected": has_action,
-        }
+    elif turn_index == 8:
+        # Move to Stage 9: Resume Claim Consistency Probe (Requirement 59)
+        question_type = "Resume Claim Verification Probe"
+        probe_skill = skills[2] if len(skills) > 2 else (skills[0] if skills else "REST API Design")
+        ai_reply = (
+            f"[Stage 9: Resume Claim Verification Probe]\n"
+            f"Your resume claims hands-on familiarity with {probe_skill}. "
+            f"Describe one production-grade problem you solved using {probe_skill}, including how you verified correctness with automated tests or benchmarks."
+        )
     else:
         # Wrap up turn
+        question_type = "Interview Conclusion"
         ai_reply = (
-            f"Excellent. You have completed all six structured levels of this interview session (Warm-up, Fundamentals, "
-            f"Technical Depth, Resume Defense, Resilience, and Behavioral Decision-Making). "
-            f"You can now click 'Complete & Evaluate' to generate your detailed Evidence-Based Interview Review."
+            f"[Stage 10: Session Wrap-Up]\n"
+            f"Excellent. You have completed the intensive interview rounds covering Project Architecture, Deep-Dive Follow-ups, "
+            f"Resilience Edge Cases, Role Technical Fundamentals, Scenario Debugging, and Behavioral Judgement. "
+            f"You can now click 'Complete & Evaluate' to generate your full Multi-Dimensional Interview Report."
         )
-        turn_feedback = {
-            "level": 6,
-            "star_assessment": "All core interview rounds completed with strong candidate engagement.",
-            "metrics_detected": has_metrics,
-            "ownership_detected": has_action,
-        }
+
+    # Compile turn evaluation
+    turn_eval = {
+        "level": min(10, turn_index + 1),
+        "question_type": question_type,
+        "strong": strong_feedback,
+        "weak": weak_feedback,
+        "improve": improve_feedback,
+        "metrics_detected": has_metrics,
+        "ownership_detected": has_action,
+    }
 
     ai_msg = InterviewMessage(
         session_id=session.id,
         sender="AI",
         message_text=ai_reply,
-        evaluation_json=turn_feedback,
+        evaluation_json=turn_eval,
     )
     db.add(ai_msg)
 
-    # Adjust score dynamically based on evidence and structure
+    # Dynamic readiness score updating based on answer quality
     current_score = session.readiness_score
-    if has_metrics:
-        current_score = min(92, current_score + 4)
     if has_action:
-        current_score = min(92, current_score + 3)
-    if has_result:
-        current_score = min(92, current_score + 3)
+        current_score = min(94, current_score + 3)
+    if has_metrics:
+        current_score = min(94, current_score + 3)
+    if not is_superficial and word_count >= 50:
+        current_score = min(94, current_score + 2)
     session.readiness_score = current_score
-    db.commit()
 
+    db.commit()
     return cand_msg, ai_msg
 
 
 def complete_evaluation(db: Session, user_id: int, session_id: int) -> InterviewEvaluation:
+    """Generates comprehensive multi-dimensional interview report across 6 dimensions
+    with honest feedback and next best practice recommendations.
+    """
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
     if not session:
         raise ValueError("Interview session not found")
 
     session.status = "COMPLETED"
 
-    # Analyze actual user messages to construct EVIDENCE-BASED review referencing actual answers (Requirement 24 & 25)
+    # Analyze all candidate answers
     user_msgs = [m.message_text for m in session.messages if m.sender == "USER"]
     combined_user_text = " ".join(user_msgs).lower()
 
-    # Detect what candidate actually talked about
-    mentioned_metrics = [word for word in user_msgs if any(c.isdigit() for c in word)]
-    technical_keywords = []
-    for kw in ["fastapi", "python", "postgresql", "sql", "redis", "docker", "aws", "react", "rest", "graphql", "kafka", "kubernetes", "microservices"]:
-        if kw in combined_user_text:
-            technical_keywords.append(kw.capitalize())
+    # Detect technical and metric indicators
+    metrics_present = bool(re.search(r"\b\d+[%kKmM]?|\$\d+|\d+\+", combined_user_text))
+    ownership_present = any(kw in combined_user_text for kw in ["i built", "i designed", "i implemented", "i led", "i wrote", "i chose", "my role"])
+    tradeoffs_present = any(kw in combined_user_text for kw in ["tradeoff", "trade-off", "instead of", "alternative", "because", "latency", "bottleneck"])
+    debugging_present = any(kw in combined_user_text for kw in ["log", "metric", "profil", "reproduce", "isolate", "root cause", "trace"])
 
-    # Build genuine strong areas referencing actual answers
+    # Multi-dimensional scores (Requirement 61)
+    # 1. Technical Understanding
+    tech_score = 75
+    if any(k in combined_user_text for k in ["fastapi", "python", "postgresql", "sql", "api", "database", "query"]):
+        tech_score += 10
+    if tradeoffs_present:
+        tech_score += 5
+    tech_score = max(45, min(95, tech_score))
+
+    # 2. Problem Solving
+    ps_score = 70
+    if debugging_present:
+        ps_score += 12
+    if metrics_present:
+        ps_score += 8
+    ps_score = max(40, min(92, ps_score))
+
+    # 3. Communication
+    comm_score = 72
+    if ownership_present:
+        comm_score += 10
+    if len(user_msgs) >= 4 and all(len(m.split()) >= 30 for m in user_msgs):
+        comm_score += 8
+    comm_score = max(50, min(95, comm_score))
+
+    # 4. Resume Knowledge
+    resume_score = 78
+    if ownership_present and any(k in combined_user_text for k in ["project", "architecture", "implemented"]):
+        resume_score += 10
+    resume_score = max(50, min(95, resume_score))
+
+    # 5. Role Readiness
+    role_score = round((tech_score * 0.35) + (ps_score * 0.25) + (comm_score * 0.20) + (resume_score * 0.20))
+    overall_score = round((tech_score * 0.30) + (ps_score * 0.25) + (comm_score * 0.20) + (resume_score * 0.15) + (role_score * 0.10))
+
+    session.readiness_score = overall_score
+
+    # Strong areas grounded in answers
     strong_areas = []
-    if technical_keywords:
-        strong_areas.append(
-            f"Clearly discussed technical implementations and architectural decisions in {', '.join(technical_keywords[:3])}."
-        )
-    else:
-        strong_areas.append("Demonstrated foundational technical reasoning across role requirements.")
+    if ownership_present:
+        strong_areas.append("Demonstrated personal ownership ('I implemented / I designed') rather than passive team summaries.")
+    if tech_score >= 80:
+        strong_areas.append("Articulated component architecture and software design clearly for primary projects.")
+    if metrics_present:
+        strong_areas.append("Included concrete technical parameters and observable outcomes in answers.")
+    if not strong_areas:
+        strong_areas.append("Maintained consistent engagement throughout multi-turn technical interrogation.")
 
-    if any(action_kw in combined_user_text for action_kw in ["i built", "i designed", "i implemented", "i led"]):
-        strong_areas.append(
-            "Emphasized active personal ownership ('I implemented / I designed') rather than passive team summaries."
-        )
-    else:
-        strong_areas.append("Maintained consistent engagement throughout all interview progression rounds.")
-
-    if mentioned_metrics:
-        strong_areas.append(
-            "Supplied concrete metric evidence and business results within situational answers."
-        )
-    else:
-        strong_areas.append("Maintained structured conversational delivery across behavioral scenarios.")
-
-    # Needs practice grounded in actual answers
-    needs_practice = [
-        "State the quantitative outcome earlier when answering behavioral prompts using the STAR framework.",
-        "When explaining architecture choices, briefly contrast your chosen pattern against at least one rejected alternative.",
-    ]
+    # Weak / Areas to practice
+    needs_practice = []
+    if not tradeoffs_present:
+        needs_practice.append("Explicitly contrast your chosen architectural pattern against at least one rejected alternative.")
+    if not debugging_present:
+        needs_practice.append("Structure scenario investigations step-by-step: logs/metrics first, reproduction second, root-cause isolation third.")
+    if not metrics_present:
+        needs_practice.append("State quantifiable outcomes earlier when answering behavioral prompts using the STAR framework.")
+    if not needs_practice:
+        needs_practice.append("Deepen discussion of database query plans, concurrency, and failure recovery mechanisms.")
 
     technical_gaps = [
-        "Deepen discussion of failure recovery mechanisms (e.g. circuit breaking, dead-letter queues, query latency profiling).",
+        "Deepen practical understanding of distributed resilience patterns (circuit breakers, retry backoff, database timeouts).",
+        "Practice explaining concurrency, transactions, and indexing strategies in your primary relational database.",
     ]
 
     communication_improvements = [
-        "Structure opening responses with clear signposts ('I faced X, my role was Y, and the result was Z').",
-        "Minimize passive team phrasing ('we did') in favor of specific personal scope ('my specific contribution was').",
+        "Structure complex architectural explanations with clear signposts ('First, the gateway validates; second, the service executes; third, the DB persists').",
+        "Minimize passive team phrasing in favor of your personal contribution.",
     ]
 
-    # Resume claims defense recommendations
     claims = get_claims_to_defend(db, user_id, session.job_id)
     resume_claims_to_defend = [
         {"claim": c["claim"], "defense_tip": f"Be prepared to answer: '{c['suggested_question']}'"}
@@ -352,9 +479,20 @@ def complete_evaluation(db: Session, user_id: int, session_id: int) -> Interview
     ]
 
     suggested_questions = [
-        f"How would you scale the architecture of your primary service at {session.target_company} to handle 10x traffic spikes?",
-        "Describe a production incident you investigated, the root cause you identified, and the preventative measures you put in place.",
+        f"How would you scale the architecture of your primary project to handle 10x traffic spikes?",
+        "Describe a production incident you investigated, the root cause identified, and the preventative measures adopted.",
     ]
+
+    holding_back = (
+        "You demonstrated solid familiarity with your project implementations. "
+        "What is currently holding you back from a higher rating is scenario-based debugging depth and addressing architectural trade-offs."
+        if not tradeoffs_present else
+        "Strong overall performance across technical questions and project claims."
+    )
+
+    suggested_next_practice = (
+        "Practice scenario-based troubleshooting: simulate production API timeouts and explain log analysis + database query profiling."
+    )
 
     evaluation = db.query(InterviewEvaluation).filter(InterviewEvaluation.session_id == session.id).first()
     if not evaluation:
@@ -366,7 +504,7 @@ def complete_evaluation(db: Session, user_id: int, session_id: int) -> Interview
             communication_improvements=communication_improvements,
             resume_claims_to_defend=resume_claims_to_defend,
             suggested_questions=suggested_questions,
-            readiness_level="READY" if session.readiness_score >= 80 else "NEEDS_PRACTICE",
+            readiness_level="READY" if overall_score >= 80 else "NEEDS_PRACTICE",
         )
         db.add(evaluation)
     else:
@@ -376,10 +514,28 @@ def complete_evaluation(db: Session, user_id: int, session_id: int) -> Interview
         evaluation.communication_improvements = communication_improvements
         evaluation.resume_claims_to_defend = resume_claims_to_defend
         evaluation.suggested_questions = suggested_questions
-        evaluation.readiness_level = "READY" if session.readiness_score >= 80 else "NEEDS_PRACTICE"
+        evaluation.readiness_level = "READY" if overall_score >= 80 else "NEEDS_PRACTICE"
+
+    # Dynamic metrics attached to evaluation object for schema serialization
+    evaluation.overall_score = overall_score
+    evaluation.technical_score = tech_score
+    evaluation.problem_solving_score = ps_score
+    evaluation.communication_score = comm_score
+    evaluation.resume_knowledge_score = resume_score
+    evaluation.role_readiness_score = role_score
+    evaluation.holding_back = holding_back
+    evaluation.suggested_next_practice = suggested_next_practice
+    evaluation.technical_topics_to_revise = [
+        "Database transactions & index optimization",
+        "API error handling & status codes",
+        "System resilience under load",
+    ]
+    evaluation.weak_questions = [
+        {"topic": "Resilience & Edge Cases", "feedback": "Needs deeper discussion of timeout handling and database connection pooling."}
+    ]
 
     session.feedback_summary = (
-        f"Evidence-based interview review generated with {evaluation.readiness_level} rating ({session.readiness_score}/100)."
+        f"Score: {overall_score}/100 | Tech: {tech_score} | Problem Solving: {ps_score} | Comm: {comm_score} | Status: {evaluation.readiness_level}"
     )
     db.commit()
     db.refresh(evaluation)

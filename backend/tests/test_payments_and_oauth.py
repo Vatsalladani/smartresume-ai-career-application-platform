@@ -126,7 +126,14 @@ def test_single_export_one_time_payment_flow():
     db.close()
 
 
-def test_oauth_config_status_and_urls():
+def test_oauth_config_status_and_urls(monkeypatch):
+    from app.core.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(settings, "google_client_id", "")
+    monkeypatch.setattr(settings, "google_client_secret", "")
+    monkeypatch.setattr(settings, "linkedin_client_id", "")
+    monkeypatch.setattr(settings, "linkedin_client_secret", "")
+
     # Test config status endpoint
     config_res = client.get("/api/v1/auth/oauth/config")
     assert config_res.status_code == 200

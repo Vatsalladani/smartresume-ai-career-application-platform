@@ -1690,6 +1690,230 @@ function wireResumeBuilder() {
       executeResumeBuilderExport("docx");
     });
   }
+
+  // Score Modal Button in Builder
+  const scoreBtn = $("#builderCheckScoreBtn");
+  if (scoreBtn) {
+    scoreBtn.addEventListener("click", () => {
+      openResumeScoreModal();
+    });
+  }
+
+  // Recalculate Button in Score Modal
+  const recalcBtn = $("#scoreRecalculateBtn");
+  if (recalcBtn) {
+    recalcBtn.addEventListener("click", () => {
+      runResumeScoreCalculation();
+    });
+  }
+}
+
+let lastResumeScore = null;
+
+async function openResumeScoreModal(targetRole, careerLevel) {
+  const modal = $("#resumeScoreModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  if (targetRole && $("#scoreTargetRoleInput")) {
+    $("#scoreTargetRoleInput").value = targetRole;
+  }
+  if (careerLevel && $("#scoreCareerLevelSelect")) {
+    $("#scoreCareerLevelSelect").value = careerLevel;
+  }
+
+  await runResumeScoreCalculation();
+}
+window.openResumeScoreModal = openResumeScoreModal;
+
+async function runResumeScoreCalculation() {
+  const targetRole = $("#scoreTargetRoleInput")?.value.trim() || "Software Engineer";
+  const careerLevel = $("#scoreCareerLevelSelect")?.value || "EARLY_CAREER";
+
+  // Gather current resume data
+  const resumeData = Object.assign({}, resumeBuilderState);
+
+  try {
+    toast("Calculating evidence-based resume score...");
+    const res = await API.request("/resumes/score", {
+      method: "POST",
+      body: {
+        resume_data: resumeData,
+        target_role: targetRole,
+        career_level: careerLevel,
+        previous_score: lastResumeScore,
+      },
+    });
+
+    lastResumeScore = res.overall_score;
+    renderResumeScoreModal(res);
+  } catch (err) {
+    toast(err.message || "Failed to calculate resume score", "error");
+  }
+}
+window.runResumeScoreCalculation = runResumeScoreCalculation;
+
+function renderResumeScoreModal(data) {
+  if (!data) return;
+
+  // 1. Overall Score & styling
+  const scoreNum = $("#scoreModalNum");
+  if (scoreNum) {
+    scoreNum.textContent = data.overall_score;
+    if (data.overall_score >= 80) {
+      scoreNum.style.color = "#10b981";
+    } else if (data.overall_score >= 60) {
+      scoreNum.style.color = "#f59e0b";
+    } else {
+      scoreNum.style.color = "#ef4444";
+    }
+  }
+
+  // 2. Target role
+  const targetText = $("#scoreHeroTargetText");
+  if (targetText) {
+    targetText.textContent = `${data.target_role || "Role"} Evaluation`;
+  }
+
+  // 3. Fresher calibrated badge
+  const calBadge = $("#scoreFresherCalibratedBadge");
+  if (calBadge) {
+    if (data.is_fresher_calibrated) {
+      calBadge.classList.remove("hidden");
+      calBadge.textContent = "Fresher Calibrated · Experience Penalty Waived";
+    } else {
+      calBadge.textContent = "Professional Evaluation";
+    }
+  }
+
+  // 4. Delta pill and explanation
+  const deltaPill = $("#scoreDeltaPill");
+  const deltaExp = $("#scoreDeltaExplanation");
+  if (data.score_delta !== null && data.score_delta !== undefined) {
+    if (deltaPill) {
+      deltaPill.classList.remove("hidden");
+      const sign = data.score_delta > 0 ? `+${data.score_delta}` : `${data.score_delta}`;
+      deltaPill.textContent = `${sign} vs previous`;
+      deltaPill.style.color = data.score_delta >= 0 ? "#10b981" : "#ef4444";
+    }
+    if (deltaExp) {
+      deltaExp.textContent = data.delta_explanation || "";
+    }
+  } else {
+    if (deltaPill) deltaPill.classList.add("hidden");
+    if (deltaExp) deltaExp.textContent = "";
+  }
+
+  // 5. What is Helping
+  const helpList = $("#scoreHelpingList");
+  if (helpList) {
+    helpList.innerHTML = (data.what_is_helping || []).map((item) => `
+      <li>
+        <i data-lucide="check" style="color: #10b981; width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px;"></i>
+        <span>${escapeHtml(item)}</span>
+      </li>
+    `).join("");
+  }
+
+  // 6. What is Holding Back
+  const holdList = $("#scoreHoldingBackList");
+  if (holdList) {
+    holdList.innerHTML = (data.what_is_holding_back || []).map((item) => `
+      <li>
+        <i data-lucide="alert-triangle" style="color: #f59e0b; width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px;"></i>
+        <span>${escapeHtml(item)}</span>
+      </li>
+    `).join("");
+  }
+
+  // 7. Top Priority Improvements
+  const impList = $("#scoreTopImprovementsList");
+  if (impList) {
+    if (data.top_improvements && data.top_improvements.length > 0) {
+      impList.innerHTML = data.top_improvements.map((imp) => {
+        const priority = imp.priority || imp.impact || "MEDIUM";
+        const impactClass = priority.toLowerCase();
+        const title = imp.problem || imp.title || "Improvement";
+        const explanation = imp.why || imp.explanation || "";
+        const action = imp.action || imp.suggested_action || "";
+        let exHtml = "";
+        if (imp.example) {
+          exHtml = `
+            <div class="mt-2 p-2 bg-surface border rounded text-xs">
+              <span class="text-muted font-bold">Concrete Fix:</span>
+              <div class="font-mono text-xs mt-1" style="white-space: pre-wrap;">${escapeHtml(imp.example)}</div>
+            </div>
+          `;
+        }
+        return `
+          <div class="priority-fix-card ${impactClass}">
+            <div class="flex-between align-center mb-1">
+              <strong>${escapeHtml(title)}</strong>
+              <span class="priority-tag ${impactClass}">${escapeHtml(priority)} IMPACT</span>
+            </div>
+            <p class="text-xs text-muted mb-1">${escapeHtml(explanation)}</p>
+            <p class="text-xs font-semibold mb-0" style="color: var(--primary);">${escapeHtml(action)}</p>
+            ${exHtml}
+          </div>
+        `;
+      }).join("");
+    } else {
+      impList.innerHTML = `<p class="text-xs text-muted">No high priority fixes needed! Your resume has strong evidence alignment.</p>`;
+    }
+  }
+
+  // 8. Dimensions
+  const dimsList = $("#scoreDimensionsList");
+  if (dimsList) {
+    const dimEntries = Array.isArray(data.dimensions)
+      ? data.dimensions
+      : Object.values(data.dimensions || {});
+    dimsList.innerHTML = dimEntries.map((d) => {
+      const weightDisplay = typeof d.weight === "number" ? `${Math.round(d.weight * 100)}% weight` : (d.weight || "");
+      return `
+        <div class="dim-row">
+          <div class="dim-label-row">
+            <span class="font-semibold text-xs">${escapeHtml(d.name || "Dimension")}</span>
+            <span class="text-xs font-bold">${d.score}/100 <span class="text-muted font-normal">(${weightDisplay})</span></span>
+          </div>
+          <div class="dim-bar">
+            <div class="dim-fill" style="width: ${d.score}%;"></div>
+          </div>
+          <span class="text-xs text-muted mt-1 block">${escapeHtml(d.explanation || "")}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 9. Buzzwords
+  const buzzSec = $("#scoreBuzzwordsSection");
+  const buzzList = $("#scoreBuzzwordsList");
+  if (buzzSec && buzzList) {
+    if (data.buzzwords_detected && data.buzzwords_detected.length > 0) {
+      buzzSec.classList.remove("hidden");
+      buzzList.innerHTML = data.buzzwords_detected.map((b) => `
+        <div class="buzzword-chip">
+          <strong>"${escapeHtml(b.phrase)}"</strong>: ${escapeHtml(b.suggestion || b.reason)}
+        </div>
+      `).join("");
+    } else {
+      buzzSec.classList.add("hidden");
+    }
+  }
+
+  // 10. Eligibility Gaps
+  const eligSec = $("#scoreEligibilityGapsSection");
+  const eligText = $("#scoreEligibilityGapsText");
+  if (eligSec && eligText) {
+    if (data.eligibility_gaps && data.eligibility_gaps.length > 0) {
+      eligSec.classList.remove("hidden");
+      eligText.textContent = data.eligibility_gaps.join("; ");
+    } else {
+      eligSec.classList.add("hidden");
+    }
+  }
+
+  drawIcons();
 }
 
 async function executeResumeBuilderExport(format = "pdf") {
@@ -5334,9 +5558,11 @@ function wireInterviewCopilot() {
     const role = $("#interviewRoleInput")?.value.trim() || state.activeJobContext.role || "Software Engineer";
     const company = $("#interviewCompanyInput")?.value.trim() || state.activeJobContext.company || "Target Company";
     const level = $("#interviewCareerLevelSelect")?.value || "DEVELOPING";
+    const difficulty = $("#interviewDifficultySelect")?.value || "MEDIUM";
+    const practice_mode = $("#interviewPracticeModeSelect")?.value || "STANDARD_20";
 
     try {
-      toast("Initializing Text Interview Session...");
+      toast("Initializing Interview Practice Session...");
       const session = await API.request("/interview/sessions", {
         method: "POST",
         body: {
@@ -5344,6 +5570,8 @@ function wireInterviewCopilot() {
           target_company: company,
           session_mode: "TEXT",
           career_level: level,
+          difficulty: difficulty,
+          practice_mode: practice_mode,
           job_id: state.activeJobContext.jobId || null,
         },
       });
@@ -5352,10 +5580,11 @@ function wireInterviewCopilot() {
       $("#textInterviewWorkspace")?.classList.remove("hidden");
       $("#liveInterviewRoom")?.classList.add("hidden");
       $("#interviewReviewCard")?.classList.add("hidden");
+      $("#turnEvaluationDrawer")?.classList.add("hidden");
 
       renderActiveInterviewSession(session);
       await loadInterviewSessions();
-      toast("Level 1: Warm-up initialized.");
+      toast(`Level 1 initialized (${difficulty} difficulty).`);
     } catch (err) {
       toast(err.message, "error");
     }
@@ -5381,19 +5610,44 @@ function wireInterviewCopilot() {
 
       appendInterviewMsg("ai", turnRes.ai_response);
 
-      // Update progression step active indicator
-      if (turnRes.turn_feedback && turnRes.turn_feedback.level) {
-        const lvl = turnRes.turn_feedback.level;
-        $$(".prog-step").forEach((step, idx) => {
-          if (idx + 1 === lvl) step.classList.add("active");
-          else step.classList.remove("active");
-        });
-        const pill = $("#interviewStatusPill");
-        if (pill) pill.textContent = `Level ${lvl} / 6`;
-      }
+      // Render Turn-by-Turn feedback
+      if (turnRes.turn_feedback) {
+        const tf = turnRes.turn_feedback;
+        const drawer = $("#turnEvaluationDrawer");
+        const content = $("#turnEvaluationContent");
+        const status = $("#turnEvaluationStatus");
+        if (drawer && content) {
+          drawer.classList.remove("hidden");
+          const qType = tf.question_type || "Follow-up Question";
+          if (status) status.textContent = qType.replace(/_/g, " ");
 
-      if (turnRes.turn_feedback?.star_assessment) {
-        toast(turnRes.turn_feedback.star_assessment);
+          let html = "";
+          if (tf.strong) {
+            html += `<div class="eval-tag strong"><strong>Strong:</strong> ${escapeHtml(tf.strong)}</div>`;
+          }
+          if (tf.weak) {
+            html += `<div class="eval-tag weak"><strong>Gap:</strong> ${escapeHtml(tf.weak)}</div>`;
+          }
+          if (tf.improve) {
+            html += `<div class="eval-tag improve"><strong>Improve:</strong> ${escapeHtml(tf.improve)}</div>`;
+          }
+          content.innerHTML = html;
+        }
+
+        // Update progression step active indicator
+        if (tf.level) {
+          const lvl = tf.level;
+          $$(".prog-step").forEach((step, idx) => {
+            if (idx + 1 === lvl) step.classList.add("active");
+            else step.classList.remove("active");
+          });
+          const pill = $("#interviewStatusPill");
+          if (pill) pill.textContent = `Level ${lvl} / 6`;
+        }
+
+        if (tf.star_assessment) {
+          toast(tf.star_assessment);
+        }
       }
     } catch (err) {
       toast(err.message, "error");
@@ -5579,6 +5833,38 @@ function renderInterviewReviewCard(evaluation) {
     badge.className = evaluation.readiness_level === "READY" ? "badge-musthave" : "badge-sub badge-unverified";
   }
 
+  // 6-Dimension Score Grid
+  if ($("#reportOverallScore")) $("#reportOverallScore").textContent = evaluation.overall_score !== undefined ? `${evaluation.overall_score}%` : "--";
+  if ($("#reportTechnicalScore")) $("#reportTechnicalScore").textContent = evaluation.technical_score !== undefined ? `${evaluation.technical_score}%` : "--";
+  if ($("#reportProblemSolvingScore")) $("#reportProblemSolvingScore").textContent = evaluation.problem_solving_score !== undefined ? `${evaluation.problem_solving_score}%` : "--";
+  if ($("#reportCommunicationScore")) $("#reportCommunicationScore").textContent = evaluation.communication_score !== undefined ? `${evaluation.communication_score}%` : "--";
+  if ($("#reportResumeKnowledgeScore")) $("#reportResumeKnowledgeScore").textContent = evaluation.resume_knowledge_score !== undefined ? `${evaluation.resume_knowledge_score}%` : "--";
+  if ($("#reportRoleReadinessScore")) $("#reportRoleReadinessScore").textContent = evaluation.role_readiness_score !== undefined ? `${evaluation.role_readiness_score}%` : "--";
+
+  // What Is Holding You Back
+  const holdBox = $("#reportHoldingBackContainer");
+  const holdText = $("#reportHoldingBackText");
+  if (holdBox && holdText) {
+    if (evaluation.holding_back) {
+      holdText.textContent = evaluation.holding_back;
+      holdBox.classList.remove("hidden");
+    } else {
+      holdBox.classList.add("hidden");
+    }
+  }
+
+  // Next Best Practice Recommendation
+  const nextBox = $("#reportNextPracticeContainer");
+  const nextText = $("#reportNextPracticeText");
+  if (nextBox && nextText) {
+    if (evaluation.suggested_next_practice) {
+      nextText.textContent = evaluation.suggested_next_practice;
+      nextBox.classList.remove("hidden");
+    } else {
+      nextBox.classList.add("hidden");
+    }
+  }
+
   const strongList = $("#reviewStrongList");
   if (strongList) {
     strongList.innerHTML = (evaluation.strong_areas || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("");
@@ -5600,6 +5886,8 @@ function renderInterviewReviewCard(evaluation) {
       <li><strong>${escapeHtml(c.claim || "Claim")}:</strong> ${escapeHtml(c.defense_tip || "")}</li>
     `).join("");
   }
+
+  drawIcons();
 }
 
 async function loadInterviewSessions() {
