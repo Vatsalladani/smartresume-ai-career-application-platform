@@ -850,6 +850,7 @@ const TAB_TO_ROUTE = {
   "applications": "#/application-tracker",
   "interview": "#/interview",
   "career-insights": "#/insights",
+  "insights": "#/insights",
   "billing": "#/billing",
   "settings": "#/settings",
 };
@@ -867,6 +868,7 @@ const TAB_MAP = {
   "applications": "tabApplications",
   "interview": "tabInterview",
   "career-insights": "tabCareerInsights",
+  "insights": "tabCareerInsights",
   "billing": "tabBilling",
   "settings": "tabSettings",
 };
@@ -875,9 +877,20 @@ function wireNavigation() {
   function activateTab(tabName, updateHash = true) {
     const validTab = TAB_MAP[tabName] ? tabName : "dashboard";
 
-    // 1. Highlight sidebar & mobile navigation items
+    // 1. Highlight sidebar & mobile navigation items (map sub-tabs to their parent journey pillar)
+    const TAB_PARENT_MAP = {
+      "evidence-vault": "profile",
+      "templates": "resume-builder",
+      "job-radar": "fit",
+      "tailor": "applications",
+      "smartapply": "applications",
+      "career-insights": "interview",
+      "insights": "interview",
+    };
+    const primaryNavTab = TAB_PARENT_MAP[validTab] || validTab;
+
     $$(".nav-tabs button, .nav-groups .nav-item, .mobile-bottom-nav .mobile-nav-item").forEach((item) => {
-      if (item.dataset.tab === validTab) {
+      if (item.dataset.tab === primaryNavTab) {
         item.classList.add("active");
         item.setAttribute("aria-selected", "true");
         const label = item.querySelector("span") ? item.querySelector("span").textContent.trim() : item.textContent.trim();
@@ -887,6 +900,16 @@ function wireNavigation() {
       } else {
         item.classList.remove("active");
         item.setAttribute("aria-selected", "false");
+      }
+    });
+
+    // Highlight active sub-navigation pills across all workspace headers
+    $$(".subnav-pill").forEach((pill) => {
+      const onclickAttr = pill.getAttribute("onclick") || "";
+      if (onclickAttr.includes(`'${validTab}'`) || onclickAttr.includes(`"${validTab}"`)) {
+        pill.classList.add("active");
+      } else {
+        pill.classList.remove("active");
       }
     });
 
@@ -1054,7 +1077,12 @@ function renderDashboard() {
   const p = state.profile || {};
   const score = p.completeness_score || 0;
 
-  // Prominent Current Resume Hero Card vs No Resume State
+  // 1. User Greeting
+  const firstName = (state.user?.name || p.full_name || "Job Seeker").trim().split(" ")[0];
+  const welcomeEl = $("#dashWelcomeName");
+  if (welcomeEl) welcomeEl.textContent = firstName;
+
+  // 2. Prominent Current Resume Hero Card vs No Resume State
   const hasProfileData = !!(p.full_name || (p.experiences && p.experiences.length > 0) || (p.skills && p.skills.length > 0));
   const heroCard = $("#dashCurrentResumeHeroCard");
   const noResumeCard = $("#dashNoResumeHeroCard");
@@ -1066,7 +1094,6 @@ function renderDashboard() {
   // Active Template name & badge
   const resumeNameEl = $("#dashCurrentResumeName");
   const resumeBadgeEl = $("#dashCurrentResumeBadge");
-  const changeBtn = $("#dashChangeResumeBtn");
   const activeTplId = state.activeTemplateId || state.activeTemplate || "classic_ats";
   const tplDef = (state.templates || []).find(t => t.template_id === activeTplId) || (window.RESUME_TEMPLATES || []).find(t => t.id === activeTplId) || { name: "Classic ATS", isPro: false };
 
@@ -1079,166 +1106,116 @@ function renderDashboard() {
     if (tplDef.isPro && !isUserPro && !isTrial) {
       resumeBadgeEl.textContent = "PRO 🔒";
       resumeBadgeEl.className = "badge-sub badge-pro-lock";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "View / Upgrade";
     } else if (tplDef.isPro && isTrial) {
       resumeBadgeEl.textContent = "PRO · Trial included";
       resumeBadgeEl.className = "badge-sub badge-pro-trial";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change Template";
     } else if (tplDef.isPro) {
       resumeBadgeEl.textContent = "PRO";
       resumeBadgeEl.className = "badge-sub badge-pro";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change Template";
     } else {
       resumeBadgeEl.textContent = "Standard";
       resumeBadgeEl.className = "badge-sub";
-      if (changeBtn && changeBtn.querySelector("span")) changeBtn.querySelector("span").textContent = "Change Template";
     }
   }
 
-  // 4 Core Questions in Dashboard
-  const q1 = $("#dashQ1Answer");
-  if (q1) {
-    const verifiedCount = (p.skills || []).filter(s => s.evidence_status === "SUPPORTED").length;
-    const totalSkills = (p.skills || []).length;
-    let strengthMsg = "Let's build your verified career foundation.";
-    if (score >= 80) {
-      strengthMsg = "Your profile has strong evidence across your core skills.";
-    } else if (score >= 50) {
-      strengthMsg = "Your profile has moderate supporting evidence. Add project proof to strengthen it.";
-    } else if (totalSkills > 0) {
-      strengthMsg = "Your profile currently has limited supporting evidence across core skills.";
-    }
-    q1.textContent = `${strengthMsg} (${verifiedCount} of ${totalSkills} skills verified with project/experience evidence).`;
-  }
+  // 3. Dynamic Next Best Action Calculation
+  computeAndRenderNextBestAction(hasProfileData, score);
 
-  const q2 = $("#dashQ2Answer");
-  if (q2) {
-    if (state.jobs && state.jobs.length > 0) {
-      q2.textContent = `${state.jobs.length} target role(s) being pursued. Active: ${state.jobs[0].title} at ${state.jobs[0].company}.`;
-    } else {
-      q2.textContent = "No target jobs analyzed yet. Paste a job description in Job Match & Fit.";
-    }
-  }
-
-  const q3 = $("#dashQ3Answer");
-  if (q3) {
-    const missing = [];
-    if (!p.experiences || p.experiences.length === 0) missing.push("Add work experiences");
-    if (!p.skills || p.skills.length < 3) missing.push("Add verified skills");
-    if (!p.projects || p.projects.length === 0) missing.push("Add key projects");
-    if (missing.length > 0) {
-      q3.textContent = `Priority actions: ${missing.join(", ")}. Grounding improves ATS alignment.`;
-    } else {
-      q3.textContent = "Strong foundational profile. Run Strength Audit to inspect verb strength & density.";
-    }
-  }
-
-  const q4 = $("#dashQ4Answer");
-  if (q4) {
-    if (state.applications && state.applications.length > 0) {
-      const latest = state.applications[0];
-      q4.textContent = `${state.applications.length} application(s) tracked. Latest: ${latest.job_title} at ${latest.company} [${latest.status}].`;
-    } else if (state.versions && state.versions.length > 0) {
-      q4.textContent = `${state.versions.length} immutable snapshot(s) generated. Link one in Application Tracker.`;
-    } else {
-      q4.textContent = "No tailored version snapshots linked yet. Generate in Tailoring Studio.";
-    }
-  }
-
-  // Career Profile Strength meter
-  $("#dashCompletenessPercent").textContent = `${score}%`;
+  // 4. Career Profile Readiness Meter
+  const completenessEl = $("#dashCompletenessPercent");
+  if (completenessEl) completenessEl.textContent = `${score}%`;
   const circle = $("#dashMeterCircle");
-  if (score >= 80) {
-    circle.style.borderColor = "var(--success)";
-    $("#dashCompletenessLabel").textContent = "Strong Evidence Grounding";
-  } else if (score >= 50) {
-    circle.style.borderColor = "var(--warning)";
-    $("#dashCompletenessLabel").textContent = "Moderate Profile Strength";
-  } else {
-    circle.style.borderColor = "var(--primary)";
-    $("#dashCompletenessLabel").textContent = "Foundation In Progress";
+  if (circle) {
+    if (score >= 80) {
+      circle.style.borderColor = "var(--success)";
+      const lbl = $("#dashCompletenessLabel");
+      if (lbl) lbl.textContent = "Strong Profile Grounding";
+    } else if (score >= 50) {
+      circle.style.borderColor = "var(--warning)";
+      const lbl = $("#dashCompletenessLabel");
+      if (lbl) lbl.textContent = "Moderate Profile Strength";
+    } else {
+      circle.style.borderColor = "var(--primary)";
+      const lbl = $("#dashCompletenessLabel");
+      if (lbl) lbl.textContent = "Foundation In Progress";
+    }
   }
 
-  // Quotas in Dashboard
+  // Profile readiness tip
+  const tipEl = $("#dashReadinessTip");
+  if (tipEl) {
+    if (score < 50) {
+      tipEl.textContent = "Add your recent work experience and 3 top skills to build your career foundation.";
+    } else if (score < 80) {
+      tipEl.textContent = "Add key projects or certifications to reach 80% and improve recruiter readability.";
+    } else {
+      tipEl.textContent = "Your profile is well-grounded! Tailor your resume for specific roles to stand out.";
+    }
+  }
+
+  // Hidden compatibility elements
+  const q1 = $("#dashQ1Answer");
+  if (q1) q1.textContent = score >= 80 ? "Strong evidence across core skills." : "Foundation in progress.";
+  const q2 = $("#dashQ2Answer");
+  if (q2) q2.textContent = state.jobs?.length ? `${state.jobs.length} jobs matched` : "";
+  const q3 = $("#dashQ3Answer");
+  if (q3) q3.textContent = "Keep profile updated.";
+  const q4 = $("#dashQ4Answer");
+  if (q4) q4.textContent = state.applications?.length ? `${state.applications.length} applications tracked` : "";
+
+  // Quotas in Dashboard (if present)
   if (state.quotas) {
     const q = state.quotas.quotas || {};
     const fits = q.fit_analyses || { used: 0, limit: 2 };
     const tailors = q.tailored_versions || { used: 0, limit: 2 };
     const exports_ = q.exports || { used: 0, limit: 2 };
 
-    $("#dashFitsUsage").textContent = `${fits.used} / ${fits.limit}`;
-    $("#dashFitsBar").style.width = `${Math.min(100, Math.round((fits.used / (fits.limit || 1)) * 100))}%`;
+    if ($("#dashFitsUsage")) $("#dashFitsUsage").textContent = `${fits.used} / ${fits.limit}`;
+    if ($("#dashFitsBar")) $("#dashFitsBar").style.width = `${Math.min(100, Math.round((fits.used / (fits.limit || 1)) * 100))}%`;
 
-    $("#dashTailorsUsage").textContent = `${tailors.used} / ${tailors.limit}`;
-    $("#dashTailorsBar").style.width = `${Math.min(100, Math.round((tailors.used / (tailors.limit || 1)) * 100))}%`;
+    if ($("#dashTailorsUsage")) $("#dashTailorsUsage").textContent = `${tailors.used} / ${tailors.limit}`;
+    if ($("#dashTailorsBar")) $("#dashTailorsBar").style.width = `${Math.min(100, Math.round((tailors.used / (tailors.limit || 1)) * 100))}%`;
 
-    $("#dashExportsUsage").textContent = `${exports_.used} / ${exports_.limit}`;
-    $("#dashExportsBar").style.width = `${Math.min(100, Math.round((exports_.used / (exports_.limit || 1)) * 100))}%`;
+    if ($("#dashExportsUsage")) $("#dashExportsUsage").textContent = `${exports_.used} / ${exports_.limit}`;
+    if ($("#dashExportsBar")) $("#dashExportsBar").style.width = `${Math.min(100, Math.round((exports_.used / (exports_.limit || 1)) * 100))}%`;
   }
 
-  // Recent Applications on Dashboard
+  // 5. Recent Applications on Dashboard
   const appContainer = $("#dashApplicationsList");
-  appContainer.innerHTML = "";
-  if (!state.applications || state.applications.length === 0) {
-    appContainer.innerHTML = `
-      <div class="empty-state-card mini">
-        <i data-lucide="briefcase"></i>
-        <p>No job applications tracked yet.</p>
-        <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')">Add Application</button>
-      </div>`;
-  } else {
-    state.applications.slice(0, 3).forEach((app) => {
-      const card = document.createElement("div");
-      card.className = "card-item";
-      card.innerHTML = `
-        <div class="card-item-header">
-          <div>
-            <strong>${escapeHtml(app.job_title)}</strong> <span class="text-muted">at ${escapeHtml(app.company)}</span>
+  if (appContainer) {
+    appContainer.innerHTML = "";
+    if (!state.applications || state.applications.length === 0) {
+      appContainer.innerHTML = `
+        <div class="empty-state-structured" style="padding: 24px 16px;">
+          <div class="empty-icon"><i data-lucide="briefcase"></i></div>
+          <h4 style="font-size: 0.95rem;">No job applications tracked yet</h4>
+          <p style="font-size: 0.8rem; margin-bottom: 12px;">Track your submissions and interview stages in one organized pipeline.</p>
+          <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')">Add Application</button>
+        </div>`;
+    } else {
+      state.applications.slice(0, 3).forEach((app) => {
+        const card = document.createElement("div");
+        card.className = "card-item";
+        card.innerHTML = `
+          <div class="card-item-header">
+            <div>
+              <strong>${escapeHtml(app.job_title)}</strong> <span class="text-muted">at ${escapeHtml(app.company)}</span>
+            </div>
+            <span class="badge-musthave">${escapeHtml(app.status)}</span>
           </div>
-          <span class="badge-musthave">${escapeHtml(app.status)}</span>
-        </div>
-      `;
-      appContainer.appendChild(card);
-    });
-  }
-
-  // Recent Jobs on Dashboard
-  const jobsContainer = $("#dashJobsList");
-  jobsContainer.innerHTML = "";
-  if (!state.jobs || state.jobs.length === 0) {
-    jobsContainer.innerHTML = `
-      <div class="empty-state-card mini">
-        <i data-lucide="file-search"></i>
-        <p>No target job postings analyzed yet.</p>
-        <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')">Analyze First Job</button>
-      </div>`;
-  } else {
-    state.jobs.slice(0, 3).forEach((job) => {
-      const card = document.createElement("div");
-      card.className = "card-item";
-      card.innerHTML = `
-        <div class="card-item-header">
-          <div>
-            <strong>${escapeHtml(job.title)}</strong> <span class="text-muted">at ${escapeHtml(job.company)}</span>
-          </div>
-          <button class="secondary-btn sm" type="button" data-open-job="${job.id}">View Fit</button>
-        </div>
-      `;
-      card.querySelector(`[data-open-job="${job.id}"]`).addEventListener("click", () => {
-        selectJob(job.id);
-        navigateToTab("fit");
+        `;
+        appContainer.appendChild(card);
       });
-      jobsContainer.appendChild(card);
-    });
+    }
   }
 
-  // Recent Activity Stream on Dashboard
+  // 6. Recent Activity Stream on Dashboard
   const actContainer = $("#dashRecentActivityList");
   if (actContainer) {
     actContainer.innerHTML = "";
     const activities = [];
     if (state.applications && state.applications.length > 0) {
-      state.applications.slice(0, 3).forEach((app) => {
+      state.applications.slice(0, 2).forEach((app) => {
         activities.push({
           icon: "briefcase",
           title: `Application: ${app.job_title} at ${app.company}`,
@@ -1249,11 +1226,11 @@ function renderDashboard() {
       });
     }
     if (state.jobs && state.jobs.length > 0) {
-      state.jobs.slice(0, 3).forEach((job) => {
+      state.jobs.slice(0, 2).forEach((job) => {
         activities.push({
-          icon: "radar",
-          title: `Target Job: ${job.title} at ${job.company}`,
-          subtitle: `Analyzed with match intelligence`,
+          icon: "crosshair",
+          title: `Job Match: ${job.title} at ${job.company}`,
+          subtitle: `Calibrated with keyword analysis`,
           date: job.created_at ? new Date(job.created_at).toLocaleDateString() : "Recent",
           actionTab: "fit",
         });
@@ -1263,7 +1240,7 @@ function renderDashboard() {
       activities.push({
         icon: "user-check",
         title: "Career Profile Updated",
-        subtitle: `Career profile strength: ${score}%`,
+        subtitle: `Profile strength: ${score}%`,
         date: new Date(state.profile.updated_at).toLocaleDateString(),
         actionTab: "profile",
       });
@@ -1271,9 +1248,10 @@ function renderDashboard() {
 
     if (activities.length === 0) {
       actContainer.innerHTML = `
-        <div class="empty-state-card mini">
-          <i data-lucide="clock"></i>
-          <p>No activity yet. Analyze a job or build your profile to see recent activity here.</p>
+        <div class="empty-state-structured" style="padding: 24px 16px;">
+          <div class="empty-icon"><i data-lucide="activity"></i></div>
+          <h4 style="font-size: 0.95rem;">No recent activity</h4>
+          <p style="font-size: 0.8rem; margin-bottom: 0;">Match a job or polish your resume to see your activity timeline.</p>
         </div>`;
     } else {
       activities.slice(0, 4).forEach((item) => {
@@ -1300,6 +1278,52 @@ function renderDashboard() {
 
   syncActiveTemplateDisplay();
   drawIcons();
+}
+
+function computeAndRenderNextBestAction(hasProfileData, score) {
+  const iconEl = $("#dashNextActionIcon");
+  const titleEl = $("#dashNextActionTitle");
+  const descEl = $("#dashNextActionDesc");
+  const btnEl = $("#dashNextActionBtn");
+  const btnTextEl = $("#dashNextActionBtnText");
+
+  if (!titleEl || !btnEl) return;
+
+  if (!hasProfileData) {
+    if (iconEl) iconEl.setAttribute("data-lucide", "file-plus");
+    titleEl.textContent = "Create your first resume";
+    if (descEl) descEl.textContent = "Start with our guided builder to generate an ATS-ready resume in minutes.";
+    if (btnTextEl) btnTextEl.textContent = "Create My Resume";
+    btnEl.onclick = () => {
+      const modal = $("#onboardingModal");
+      if (modal) {
+        modal.classList.remove("hidden");
+        resetOnboardingWizard();
+      } else {
+        navigateToTab("resume-builder");
+      }
+    };
+  } else if (!state.jobs || state.jobs.length === 0) {
+    if (iconEl) iconEl.setAttribute("data-lucide", "crosshair");
+    titleEl.textContent = "Match your resume to a target job";
+    if (descEl) descEl.textContent = "Paste any job posting to see how well you qualify and what keywords recruiters expect.";
+    if (btnTextEl) btnTextEl.textContent = "Match a Target Job";
+    btnEl.onclick = () => navigateToTab("fit");
+  } else if (!state.applications || state.applications.length === 0) {
+    const topJob = state.jobs[0];
+    if (iconEl) iconEl.setAttribute("data-lucide", "sparkles");
+    titleEl.textContent = `Prepare application for ${topJob.title}`;
+    if (descEl) descEl.textContent = `Tailor your resume bullets specifically for ${topJob.company} to maximize your interview chances.`;
+    if (btnTextEl) btnTextEl.textContent = "Prepare Job Application";
+    btnEl.onclick = () => navigateToTab("tailor");
+  } else {
+    const topApp = state.applications[0];
+    if (iconEl) iconEl.setAttribute("data-lucide", "messages-square");
+    titleEl.textContent = `Prepare for your interview at ${topApp.company}`;
+    if (descEl) descEl.textContent = `Practice realistic mock interview questions tailored to the ${topApp.job_title} role.`;
+    if (btnTextEl) btnTextEl.textContent = "Practice Interview";
+    btnEl.onclick = () => navigateToTab("interview");
+  }
 }
 
 function openActiveResumePreview() {
@@ -3651,9 +3675,6 @@ function wireIntelligenceModals() {
     }
   });
 
-  // Onboarding Modal
-  wireOnboardingModal();
-
   // Expose to window for inline HTML onclick handlers
   window.openHealthReportModal = openHealthReportModal;
   window.openRelevanceModal = openRelevanceModal;
@@ -3674,7 +3695,7 @@ async function openHealthReportModal() {
     if ($("#healthLevelBadge")) $("#healthLevelBadge").textContent = `Career Level: ${(health.career_level || "DEVELOPING_PROFESSIONAL").replace(/_/g, " ")}`;
     if ($("#healthOverallSummary")) {
       $("#healthOverallSummary").textContent = health.overall_summary ||
-        "Evaluated across 10 deterministic dimensions. Every score is explainable with concrete evidence.";
+        "Evaluated across 10 essential criteria. Every score is explainable with concrete recommendations.";
     }
 
     list.innerHTML = "";
@@ -3915,23 +3936,307 @@ async function executeExportDownload(jobId, versionId, format) {
   }
 }
 
+let onboardingState = {
+  step: 1,
+  goal: "new_job",
+  method: "upload",
+  draft: null,
+};
+
+function resetOnboardingWizard() {
+  onboardingState = {
+    step: 1,
+    goal: "new_job",
+    method: "upload",
+    draft: null,
+  };
+  $$(".onboarding-option-card[data-goal]").forEach(card => {
+    card.classList.toggle("selected", card.dataset.goal === "new_job");
+  });
+  $$(".onboarding-option-card[data-method]").forEach(card => {
+    card.classList.toggle("selected", card.dataset.method === "upload");
+  });
+  const uploadZone = $("#onboardUploadZone");
+  if (uploadZone) uploadZone.classList.remove("hidden");
+  const uploadProgress = $("#onboardUploadProgress");
+  if (uploadProgress) uploadProgress.classList.add("hidden");
+  const fileChosen = $("#onboardFileChosenName");
+  if (fileChosen) {
+    fileChosen.textContent = "";
+    fileChosen.classList.add("hidden");
+  }
+  const fileInput = $("#onboardFileInput");
+  if (fileInput) fileInput.value = "";
+
+  renderOnboardingStep(1);
+}
+
+function renderOnboardingStep(step) {
+  onboardingState.step = step;
+
+  // 1. Stepper pills
+  $$("#onboardingStepper .onboarding-step-pill").forEach((pill) => {
+    const s = parseInt(pill.dataset.step, 10);
+    pill.classList.remove("active", "completed");
+    if (s === step) pill.classList.add("active");
+    else if (s < step) pill.classList.add("completed");
+  });
+  $$("#onboardingStepper .onboarding-step-divider").forEach((divider, idx) => {
+    divider.classList.toggle("completed", idx + 1 < step);
+  });
+
+  // 2. Toggle panels
+  for (let i = 1; i <= 5; i++) {
+    const panel = $(`#onboardStep${i}`);
+    if (panel) panel.classList.toggle("hidden", i !== step);
+  }
+
+  // 3. Footer buttons
+  const backBtn = $("#onboardBackBtn");
+  const nextBtn = $("#onboardNextBtn");
+  const skipBtn = $("#onboardSkipBtn");
+  const footer = $("#onboardModalFooter");
+
+  if (step === 1) {
+    if (backBtn) backBtn.classList.add("hidden");
+    if (skipBtn) skipBtn.classList.add("hidden");
+    if (nextBtn) {
+      nextBtn.classList.remove("hidden");
+      nextBtn.innerHTML = `<span>Continue &rarr;</span>`;
+    }
+    if (footer) footer.classList.remove("hidden");
+  } else if (step === 2) {
+    if (backBtn) backBtn.classList.remove("hidden");
+    if (skipBtn) skipBtn.classList.add("hidden");
+    if (nextBtn) {
+      nextBtn.classList.remove("hidden");
+      nextBtn.innerHTML = `<span>Continue &rarr;</span>`;
+    }
+    if (footer) footer.classList.remove("hidden");
+  } else if (step === 3) {
+    if (backBtn) backBtn.classList.remove("hidden");
+    if (skipBtn) skipBtn.classList.add("hidden");
+    if (nextBtn) {
+      nextBtn.classList.remove("hidden");
+      nextBtn.innerHTML = `<span>Looks Good, Continue &rarr;</span>`;
+    }
+    if (footer) footer.classList.remove("hidden");
+  } else if (step === 4) {
+    if (backBtn) backBtn.classList.remove("hidden");
+    if (skipBtn) skipBtn.classList.remove("hidden");
+    if (nextBtn) {
+      nextBtn.classList.remove("hidden");
+      nextBtn.innerHTML = `<span>Save & Generate Resume &rarr;</span>`;
+    }
+    if (footer) footer.classList.remove("hidden");
+  } else if (step === 5) {
+    if (footer) footer.classList.add("hidden");
+  }
+  drawIcons();
+}
+
 function checkAndShowOnboarding() {
   const seen = localStorage.getItem("smartresume_seen_onboarding");
   const p = state.profile;
   const isFresh = !p || ((!p.experiences || p.experiences.length === 0) && (!p.skills || p.skills.length === 0));
   if (!seen && isFresh) {
     const modal = $("#onboardingModal");
-    if (modal) modal.classList.remove("hidden");
-    drawIcons();
+    if (modal) {
+      modal.classList.remove("hidden");
+      resetOnboardingWizard();
+    }
   }
 }
 
 function wireOnboardingModal() {
-  $("#dismissOnboardingBtn")?.addEventListener("click", () => {
+  // Step 1: Goal selection
+  $$(".onboarding-option-card[data-goal]").forEach((card) => {
+    card.addEventListener("click", () => {
+      $$(".onboarding-option-card[data-goal]").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      onboardingState.goal = card.dataset.goal;
+    });
+  });
+
+  // Step 2: Method selection
+  $$(".onboarding-option-card[data-method]").forEach((card) => {
+    card.addEventListener("click", () => {
+      $$(".onboarding-option-card[data-method]").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      onboardingState.method = card.dataset.method;
+      const uploadZone = $("#onboardUploadZone");
+      if (uploadZone) {
+        uploadZone.classList.toggle("hidden", card.dataset.method !== "upload");
+      }
+    });
+  });
+
+  // Step 2: File upload handling
+  const fileInput = $("#onboardFileInput");
+  const uploadZone = $("#onboardUploadZone");
+
+  async function handleOnboardingFileUpload(file) {
+    if (!file) return;
+    const progress = $("#onboardUploadProgress");
+    const statusText = $("#onboardUploadStatusText");
+    if (progress) progress.classList.remove("hidden");
+    if (uploadZone) uploadZone.classList.add("hidden");
+    if (statusText) statusText.textContent = "Reading your resume and organizing your experience...";
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const draft = await API.request("/profile/import/parse-file", { method: "POST", body: formData });
+      onboardingState.draft = draft;
+
+      if ($("#onboardNameInput")) $("#onboardNameInput").value = state.user?.name || draft.full_name || "";
+      if ($("#onboardTitleInput")) $("#onboardTitleInput").value = draft.headline || "";
+      if ($("#onboardContactInput")) $("#onboardContactInput").value = draft.phone || state.user?.email || "";
+      if ($("#onboardRecentExpInput")) {
+        const topExp = draft.experiences?.[0];
+        $("#onboardRecentExpInput").value = topExp ? `${topExp.role_title} at ${topExp.company}` : "";
+      }
+      if ($("#onboardSkillsInput")) {
+        $("#onboardSkillsInput").value = (draft.skills || []).map(s => typeof s === "string" ? s : s.name).slice(0, 8).join(", ");
+      }
+      if ($("#onboardLocationInput")) $("#onboardLocationInput").value = draft.location || "";
+
+      toast("Resume extracted! Please review your details.");
+      renderOnboardingStep(3);
+    } catch (err) {
+      toast(err.message || "Failed to parse resume file.", "error");
+      if (uploadZone) uploadZone.classList.remove("hidden");
+      if (progress) progress.classList.add("hidden");
+    }
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) handleOnboardingFileUpload(file);
+    });
+  }
+
+  if (uploadZone) {
+    uploadZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadZone.classList.add("dragover");
+    });
+    uploadZone.addEventListener("dragleave", () => {
+      uploadZone.classList.remove("dragover");
+    });
+    uploadZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove("dragover");
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleOnboardingFileUpload(file);
+    });
+  }
+
+  // Navigation Buttons
+  $("#onboardBackBtn")?.addEventListener("click", () => {
+    if (onboardingState.step > 1) {
+      renderOnboardingStep(onboardingState.step - 1);
+    }
+  });
+
+  $("#onboardNextBtn")?.addEventListener("click", async () => {
+    if (onboardingState.step === 1) {
+      renderOnboardingStep(2);
+    } else if (onboardingState.step === 2) {
+      if (onboardingState.method === "upload") {
+        if (fileInput && fileInput.files?.length) {
+          handleOnboardingFileUpload(fileInput.files[0]);
+        } else {
+          toast("Please select a resume file or choose 'Start from scratch'.", "info");
+        }
+      } else {
+        if ($("#onboardNameInput")) $("#onboardNameInput").value = state.user?.name || "";
+        if ($("#onboardContactInput")) $("#onboardContactInput").value = state.user?.email || "";
+        renderOnboardingStep(3);
+      }
+    } else if (onboardingState.step === 3) {
+      renderOnboardingStep(4);
+    } else if (onboardingState.step === 4) {
+      await saveOnboardingProfile();
+    }
+  });
+
+  $("#onboardSkipBtn")?.addEventListener("click", async () => {
+    await saveOnboardingProfile();
+  });
+
+  async function saveOnboardingProfile() {
+    const nextBtn = $("#onboardNextBtn");
+    setButtonLoading(nextBtn, true, "Saving...");
+    try {
+      if (onboardingState.draft) {
+        const payload = {
+          ...onboardingState.draft,
+          headline: $("#onboardTitleInput")?.value || onboardingState.draft.headline || "",
+          location: $("#onboardLocationInput")?.value || onboardingState.draft.location || "",
+          phone: $("#onboardContactInput")?.value || onboardingState.draft.phone || "",
+        };
+        await API.request("/profile/import/commit", { method: "POST", body: payload });
+      } else {
+        const skillsArr = ($("#onboardSkillsInput")?.value || "")
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean)
+          .map(s => ({ name: s, category: "TECHNICAL" }));
+        const expsArr = [];
+        const expStr = $("#onboardRecentExpInput")?.value?.trim();
+        if (expStr) {
+          const parts = expStr.split(/ at | @ /i);
+          expsArr.push({
+            role_title: parts[0] || expStr,
+            company: parts[1] || "Company",
+            start_date: "2023-01",
+            end_date: null,
+            is_current: true,
+          });
+        }
+        const draftPayload = {
+          headline: $("#onboardTitleInput")?.value || "",
+          location: $("#onboardLocationInput")?.value || "",
+          phone: $("#onboardContactInput")?.value || "",
+          skills: skillsArr,
+          experiences: expsArr,
+        };
+        await API.request("/profile/import/commit", { method: "POST", body: draftPayload });
+      }
+
+      localStorage.setItem("smartresume_seen_onboarding", "true");
+      await loadMasterProfile();
+      renderDashboard();
+      renderOnboardingStep(5);
+    } catch (err) {
+      toast(err.message || "Unable to save profile info.", "error");
+    } finally {
+      setButtonLoading(nextBtn, false, "Save & Generate Resume \u2192");
+    }
+  }
+
+  // Step 5 Actions
+  $("#onboardFinishBuilderBtn")?.addEventListener("click", () => {
+    localStorage.setItem("smartresume_seen_onboarding", "true");
+    $("#onboardingModal")?.classList.add("hidden");
+    navigateToTab("resume-builder");
+  });
+
+  $("#onboardFinishMatchBtn")?.addEventListener("click", () => {
+    localStorage.setItem("smartresume_seen_onboarding", "true");
+    $("#onboardingModal")?.classList.add("hidden");
+    navigateToTab("fit");
+  });
+
+  $("#closeOnboardingModalBtn")?.addEventListener("click", () => {
     localStorage.setItem("smartresume_seen_onboarding", "true");
     $("#onboardingModal")?.classList.add("hidden");
   });
-  $("#closeOnboardingModalBtn")?.addEventListener("click", () => {
+
+  // Legacy compatibility bindings
+  $("#dismissOnboardingBtn")?.addEventListener("click", () => {
     localStorage.setItem("smartresume_seen_onboarding", "true");
     $("#onboardingModal")?.classList.add("hidden");
   });
@@ -3950,12 +4255,9 @@ function wireOnboardingModal() {
     localStorage.setItem("smartresume_seen_onboarding", "true");
     $("#onboardingModal")?.classList.add("hidden");
     navigateToTab("fit");
-    $("#targetJobTitle").value = "Senior Backend Engineer";
-    $("#targetCompany").value = "Razorpay";
-    $("#targetJobDesc").value = "We are looking for a Senior Backend Engineer with 3+ years experience building scalable microservices in Python / Go, designing RESTful APIs, utilizing Redis caching, PostgreSQL database optimization, Docker containerization, and AWS cloud infrastructure.";
-    toast("Loaded demo target job. Click 'Analyze ATS Fit' to test!");
   });
 }
+window.resetOnboardingWizard = resetOnboardingWizard;
 
 // ==========================================================================
 // 1. EVIDENCE VAULT MODULE
@@ -3969,12 +4271,12 @@ function wireEvidenceVault() {
     setButtonLoading(btn, true, "Syncing...");
     try {
       const res = await API.request("/evidence-vault/sync", { method: "POST" });
-      toast(res.message || "Synced items into Evidence Vault.");
+      toast(res.message || "Synced items into Achievement Proof.");
       await loadEvidenceVault();
     } catch (err) {
       toast(err.message, "error");
     } finally {
-      setButtonLoading(btn, false, "Sync from Master Profile");
+      setButtonLoading(btn, false, "Sync from Career Profile");
       drawIcons();
     }
   });
@@ -5711,7 +6013,7 @@ function wireGuidanceSystem() {
 
 const GLOSSARY_TERMS = {
   "evidence": "Verifiable proof (metrics, code repo, project scope, employer record) supporting a resume claim without exaggeration.",
-  "readiness": "Deterministic alignment score between verified profile qualifications and target job requirements.",
+  "readiness": "Clear alignment score between verified profile qualifications and target job requirements.",
   "coverage": "Percentage of hard and soft job requirements directly matched by your profile evidence.",
   "strong match": "Direct, verified experience or projects proving exact mastery of the required skill or responsibility.",
   "partial match": "Related, transferable background present, but lacking exact technology or keyword match.",
@@ -5719,7 +6021,7 @@ const GLOSSARY_TERMS = {
   "honest gap": "Requirement intentionally excluded from tailoring because you lack verified evidence, protecting against fabrication.",
   "career level": "Seniority tier (Early Career, Developing Professional, Senior, Lead, Executive) based on verified experience years and scope.",
   "tailoring": "Restructuring existing verified achievements to highlight relevance to a specific role without fabricating unverified claims.",
-  "version snapshot": "An immutable, point-in-time copy of your tailored resume locked for export and job submission.",
+  "version snapshot": "A saved point-in-time copy of your tailored resume locked for export and job submission.",
   "ats health": "Single-column parsability, text-layer integrity, and standard heading hierarchy for machine recruitment scanners.",
 };
 

@@ -261,65 +261,38 @@
           </button>
         </div>
 
-        <div class="nav-group" data-nav-group="resume">
-          <div class="nav-group-header"><span>MY RESUME</span></div>
+        <div class="nav-group" data-nav-group="primary">
+          <div class="nav-group-header"><span>PRIMARY TOOLS</span></div>
+          <div class="nav-group-items">
+            <button class="nav-item" data-tab="resume-builder">
+              <i data-lucide="file-text"></i><span>Resume</span>
+            </button>
+            <button class="nav-item" data-tab="tailor">
+              <i data-lucide="sparkles"></i><span>Improve Resume</span>
+            </button>
+            <button class="nav-item" data-tab="fit">
+              <i data-lucide="crosshair"></i><span>Job Match</span>
+            </button>
+            <button class="nav-item" data-tab="interview">
+              <i data-lucide="messages-square"></i><span>Interview Practice</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-group nav-group-secondary" data-nav-group="secondary">
+          <div class="nav-group-header"><span>ACCOUNT & MORE</span></div>
           <div class="nav-group-items">
             <button class="nav-item" data-tab="profile">
-              <i data-lucide="user-check"></i><span>Profile & Evidence</span>
-            </button>
-            <button class="nav-item" data-tab="resume-builder">
-              <i data-lucide="edit-3"></i><span>Resume Builder</span>
+              <i data-lucide="user-check"></i><span>Profile</span>
             </button>
             <button class="nav-item" data-tab="templates">
               <i data-lucide="layout-template"></i><span>Templates</span>
             </button>
-          </div>
-        </div>
-
-        <div class="nav-group" data-nav-group="jobs">
-          <div class="nav-group-header"><span>JOBS</span></div>
-          <div class="nav-group-items">
-            <button class="nav-item" data-tab="fit">
-              <i data-lucide="radar"></i><span>Check Job Fit</span>
-            </button>
-            <button class="nav-item" data-tab="job-radar">
-              <i data-lucide="compass"></i><span>Job Radar</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="nav-group" data-nav-group="applications">
-          <div class="nav-group-header"><span>APPLICATIONS</span></div>
-          <div class="nav-group-items">
-            <button class="nav-item" data-tab="tailor">
-              <i data-lucide="sparkles"></i><span>Prepare Application</span>
-            </button>
-            <button class="nav-item" data-tab="smartapply">
-              <i data-lucide="external-link"></i><span>SmartApply</span>
-            </button>
             <button class="nav-item" data-tab="applications">
-              <i data-lucide="briefcase"></i><span>Application Tracker</span>
+              <i data-lucide="briefcase"></i><span>Applications</span>
             </button>
-          </div>
-        </div>
-
-        <div class="nav-group-single">
-          <button class="nav-item" data-tab="interview">
-            <i data-lucide="messages-square"></i><span>Interview</span>
-          </button>
-        </div>
-
-        <div class="nav-group-single">
-          <button class="nav-item" data-tab="career-insights">
-            <i data-lucide="trending-up"></i><span>Insights</span>
-          </button>
-        </div>
-
-        <div class="nav-group nav-group-secondary" data-nav-group="secondary">
-          <div class="nav-group-header"><span>ACCOUNT</span></div>
-          <div class="nav-group-items">
             <button class="nav-item" data-tab="billing">
-              <i data-lucide="credit-card"></i><span>Billing</span>
+              <i data-lucide="credit-card"></i><span>Billing & Plans</span>
             </button>
             <button class="nav-item" data-tab="settings">
               <i data-lucide="settings"></i><span>Settings</span>
@@ -382,219 +355,183 @@
         <!-- TOP: Greeting & Purpose -->
         <div class="view-header">
           <div class="view-header-content">
-            <h2 id="dashWelcomeName">Welcome back!</h2>
-            <p>Your career operating system summary. Track career profile strength, active applications, and recommended next steps.</p>
+            <h2>Welcome back, <span id="dashWelcomeName">Job Seeker</span>!</h2>
+            <p>Here is your progress and what to do next to land your target role.</p>
           </div>
           <div class="view-header-actions">
-            <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="edit-3"></i><span>Resume Builder</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="radar"></i><span>Check Job Fit</span></button>
+            <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Builder</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="crosshair"></i><span>Match a Job</span></button>
           </div>
         </div>
 
-        <!-- CURRENT RESUME HERO CARD (Prominent visual resume status) -->
-        <div class="current-resume-hero-card" id="dashCurrentResumeHeroCard">
-          <div class="current-resume-hero-visual">
-            <div class="current-resume-icon-badge">
-              <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
-              <span class="text-xs" style="font-size: 0.65rem; font-weight: 700;">ATS</span>
+        <!-- 1. DYNAMIC NEXT BEST ACTION HERO BANNER -->
+        <div class="dash-next-action-hero" id="dashNextActionHero">
+          <div class="dash-next-action-content">
+            <div class="dash-next-action-icon">
+              <i id="dashNextActionIcon" data-lucide="sparkles"></i>
             </div>
-            <div class="current-resume-hero-info">
-              <div class="current-resume-hero-badge-row">
-                <span class="text-xs text-muted font-bold tracking-wider">CURRENT RESUME</span>
-                <span id="dashCurrentResumeBadge" class="badge-sub">Standard</span>
+            <div>
+              <span class="dash-next-action-badge">RECOMMENDED NEXT STEP</span>
+              <h3 class="dash-next-action-title" id="dashNextActionTitle">Create your first resume</h3>
+              <p class="dash-next-action-desc" id="dashNextActionDesc">Start with our guided builder to generate an ATS-ready resume in minutes.</p>
+            </div>
+          </div>
+          <button class="primary-btn" id="dashNextActionBtn" type="button">
+            <i data-lucide="arrow-right"></i><span id="dashNextActionBtnText">Create My Resume</span>
+          </button>
+        </div>
+
+        <!-- 2. CURRENT RESUME & PROFILE READINESS (2-COLUMN CARDS) -->
+        <div class="dash-primary-grid">
+          <!-- Left: My Active Resume -->
+          <div class="dash-resume-card" id="dashCurrentResumeHeroCard">
+            <div class="dash-resume-header">
+              <div class="dash-resume-preview-thumb">
+                <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
+                <span style="font-size: 0.65rem; font-weight: 700;">PDF</span>
               </div>
-              <h3 id="dashCurrentResumeName" class="current-resume-hero-title">Classic ATS</h3>
-              <p class="current-resume-hero-desc" id="dashCurrentResumeDesc">Active template linked to your Master Profile. Clean, machine-readable formatting.</p>
+              <div class="dash-resume-info">
+                <div class="flex-row align-center gap-2 mb-1">
+                  <span class="text-xs text-muted font-bold tracking-wider">ACTIVE RESUME</span>
+                  <span id="dashCurrentResumeBadge" class="badge-sub">Standard</span>
+                </div>
+                <h3 id="dashCurrentResumeName" class="dash-resume-title">Classic ATS</h3>
+                <p id="dashCurrentResumeDesc" class="dash-resume-sub">Clean, machine-readable formatting linked to your Career Profile.</p>
+              </div>
+            </div>
+            <div class="button-row mt-2">
+              <button class="primary-btn sm" type="button" id="dashImproveResumeBtn" onclick="navigateToTab('resume-builder')">
+                <i data-lucide="edit-3"></i><span>Improve My Resume</span>
+              </button>
+              <button class="secondary-btn sm" type="button" id="dashPreviewResumeBtn" onclick="openActiveResumePreview()">
+                <i data-lucide="eye"></i><span>Preview</span>
+              </button>
+              <button class="secondary-btn sm" type="button" id="dashChangeResumeBtn" onclick="navigateToTab('templates')">
+                <i data-lucide="layout-template"></i><span>Change Style</span>
+              </button>
             </div>
           </div>
-          <div class="current-resume-hero-actions">
-            <button class="secondary-btn sm" type="button" id="dashPreviewResumeBtn" onclick="openActiveResumePreview()">
-              <i data-lucide="eye"></i><span>Preview</span>
-            </button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
-              <i data-lucide="edit-3"></i><span>Edit in Builder</span>
-            </button>
-            <button class="primary-btn sm" type="button" id="dashChangeResumeBtn" onclick="navigateToTab('templates')">
-              <i data-lucide="layout-template"></i><span>Change Template</span>
-            </button>
-          </div>
-        </div>
 
-        <!-- NO RESUME EMPTY STATE (Shown if profile is completely empty) -->
-        <div class="current-resume-hero-card hidden" id="dashNoResumeHeroCard">
-          <div class="current-resume-hero-visual">
-            <div class="current-resume-icon-badge" style="background: var(--surface-2); color: var(--muted);">
-              <i data-lucide="file-plus" style="width: 24px; height: 24px;"></i>
+          <!-- Left Alternative: No Resume Yet State -->
+          <div class="dash-resume-card hidden" id="dashNoResumeHeroCard">
+            <div class="dash-resume-header">
+              <div class="dash-resume-preview-thumb" style="color: var(--muted); border-style: dashed;">
+                <i data-lucide="file-plus" style="width: 24px; height: 24px;"></i>
+              </div>
+              <div class="dash-resume-info">
+                <span class="text-xs text-muted font-bold tracking-wider">GET STARTED</span>
+                <h3 class="dash-resume-title">Create your first resume</h3>
+                <p class="dash-resume-sub">Build a recruiter-ready resume directly from your experience in minutes.</p>
+              </div>
             </div>
-            <div class="current-resume-hero-info">
-              <span class="text-xs text-muted font-bold tracking-wider">NO RESUME YET</span>
-              <h3 class="current-resume-hero-title">Create your first resume</h3>
-              <p class="current-resume-hero-desc">Build an ATS-optimized resume directly from your career experience.</p>
+            <div class="button-row mt-2">
+              <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
+                <i data-lucide="file-plus"></i><span>Build My Resume</span>
+              </button>
             </div>
           </div>
-          <div class="current-resume-hero-actions">
-            <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
-              <i data-lucide="file-plus"></i><span>Build My Resume</span>
-            </button>
-          </div>
-        </div>
 
-        <!-- Dashboard Context Guide -->
-        <div class="context-guide" data-guide-id="dashboard">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="compass"></i>
-              <span>Dashboard Overview & Next Steps</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>Your central command center summarizing career profile strength, monthly usage quotas, active applications, and job matches.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Review profile strength score, inspect recommended actions below, and track pending application submissions.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>A calm, focused view of your career pipeline with clear guidance on what to improve next.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECOND: Career Profile Strength & Monthly Quotas -->
-        <div class="grid two mb-4">
-          <!-- Card 1: Career Profile Strength -->
-          <div class="panel">
-            <div class="panel-head">
-              <h4><i data-lucide="shield-check"></i> Career Profile Strength</h4>
-              <button class="text-btn text-xs" type="button" onclick="openHealthReportModal()">Strength Breakdown &rarr;</button>
-            </div>
-            <div class="flex-row align-center gap-4 mb-3">
-              <div class="meter-circle" id="dashMeterCircle" style="width: 72px; height: 72px; min-width: 72px;">
-                <span id="dashCompletenessPercent" style="font-size: 1.25rem;">0%</span>
+          <!-- Right: Profile Readiness -->
+          <div class="dash-readiness-card">
+            <div class="dash-readiness-row">
+              <div class="meter-circle" id="dashMeterCircle" style="width: 68px; height: 68px; min-width: 68px;">
+                <span id="dashCompletenessPercent" style="font-size: 1.2rem;">0%</span>
               </div>
               <div>
                 <strong id="dashCompletenessLabel" class="text-sm">Career Profile Strength</strong>
-                <p id="dashQ1Answer" class="text-xs text-muted mt-1">How complete and well-supported your career profile is.</p>
+                <p id="dashQ1Answer" class="text-xs text-muted mt-1">Foundation In Progress</p>
               </div>
             </div>
+            <p class="dash-readiness-tip" id="dashReadinessTip">Add your recent work experience and core skills to boost recruiter software readability.</p>
             <div class="button-row mt-auto">
-              <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>Profile Strength Audit</span></button>
-              <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="user-check"></i><span>Edit Profile</span></button>
-            </div>
-          </div>
-
-          <!-- Card 2: Plan & Monthly Usage Summary -->
-          <div class="panel">
-            <div class="panel-head">
-              <h4><i data-lucide="gauge"></i> Plan & Monthly Quotas</h4>
-              <button class="text-btn text-xs" type="button" onclick="navigateToTab('billing')">Manage Billing &rarr;</button>
-            </div>
-            <div class="grid three mb-3">
-              <div class="quota-mini-stat">
-                <span class="text-xs text-muted">Job Fits</span>
-                <strong id="dashFitsUsage" class="text-sm">0 / 2</strong>
-                <div class="progress-bar mini mt-1"><span id="dashFitsBar" style="width: 0%"></span></div>
-              </div>
-              <div class="quota-mini-stat">
-                <span class="text-xs text-muted">Tailorings</span>
-                <strong id="dashTailorsUsage" class="text-sm">0 / 2</strong>
-                <div class="progress-bar mini mt-1"><span id="dashTailorsBar" style="width: 0%"></span></div>
-              </div>
-              <div class="quota-mini-stat">
-                <span class="text-xs text-muted">Exports</span>
-                <strong id="dashExportsUsage" class="text-sm">0 / 2</strong>
-                <div class="progress-bar mini mt-1"><span id="dashExportsBar" style="width: 0%"></span></div>
-              </div>
-            </div>
-            <div class="button-row mt-auto">
-              <button class="secondary-btn sm" type="button" onclick="navigateToTab('evidence-vault')"><i data-lucide="database"></i><span>Open Evidence Vault</span></button>
-              <button class="primary-btn sm" type="button" onclick="navigateToTab('billing')"><i data-lucide="zap"></i><span>View Plans & Credits</span></button>
+              <button class="primary-btn sm" type="button" onclick="navigateToTab('profile')">
+                <i data-lucide="user-check"></i><span>Complete Profile</span>
+              </button>
+              <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()">
+                <i data-lucide="activity"></i><span>Strength Audit</span>
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- THIRD: Current Applications & Active Target Jobs (Answers Q2: "What jobs/applications am I working on?") -->
+        <!-- 3. FOUR PRIMARY ACTIONS BAR -->
+        <div class="dash-actions-grid">
+          <div class="dash-action-btn-card" onclick="navigateToTab('resume-builder')">
+            <i data-lucide="file-text"></i>
+            <div>
+              <strong>Create & Edit Resume</strong>
+              <span>Recruiter-ready layout</span>
+            </div>
+          </div>
+          <div class="dash-action-btn-card" onclick="navigateToTab('tailor')">
+            <i data-lucide="sparkles"></i>
+            <div>
+              <strong>Improve Resume</strong>
+              <span>Tailor bullets & summary</span>
+            </div>
+          </div>
+          <div class="dash-action-btn-card" onclick="navigateToTab('fit')">
+            <i data-lucide="crosshair"></i>
+            <div>
+              <strong>Match a Job</strong>
+              <span>Instant fit & keywords</span>
+            </div>
+          </div>
+          <div class="dash-action-btn-card" onclick="navigateToTab('interview')">
+            <i data-lucide="messages-square"></i>
+            <div>
+              <strong>Practice Interview</strong>
+              <span>Targeted question prep</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. RECENT APPLICATIONS & RECENT ACTIVITY -->
         <div class="grid two mb-4">
-          <!-- Recent Tracked Applications -->
+          <!-- Active Applications -->
           <div class="panel">
             <div class="panel-head">
               <h4><i data-lucide="briefcase"></i> Active Applications</h4>
               <button class="ghost-btn sm" type="button" onclick="navigateToTab('applications')"><span>View All</span> &rarr;</button>
             </div>
             <div id="dashApplicationsList" class="cards-list">
-              <div class="empty-state-card mini">
-                <i data-lucide="briefcase"></i>
-                <p>No job applications tracked yet.</p>
+              <div class="empty-state-structured" style="padding: 24px 16px;">
+                <div class="empty-icon"><i data-lucide="briefcase"></i></div>
+                <h4 style="font-size: 0.95rem;">No job applications tracked yet</h4>
+                <p style="font-size: 0.8rem; margin-bottom: 12px;">Track your submissions and interview stages in one organized pipeline.</p>
                 <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')">Add Application</button>
               </div>
             </div>
           </div>
 
-          <!-- Target Job Postings -->
+          <!-- Recent Activity -->
           <div class="panel">
             <div class="panel-head">
-              <h4><i data-lucide="file-search"></i> Target Job Postings</h4>
-              <button class="ghost-btn sm" type="button" onclick="navigateToTab('fit')"><span>View All</span> &rarr;</button>
+              <h4><i data-lucide="clock"></i> Recent Activity</h4>
+              <span class="text-xs text-muted">Latest career updates</span>
             </div>
-            <div id="dashJobsList" class="cards-list">
-              <div class="empty-state-card mini">
-                <i data-lucide="file-search"></i>
-                <p>No target job postings analyzed yet.</p>
-                <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')">Analyze First Job</button>
+            <div id="dashRecentActivityList" class="cards-list">
+              <div class="empty-state-structured" style="padding: 24px 16px;">
+                <div class="empty-icon"><i data-lucide="activity"></i></div>
+                <h4 style="font-size: 0.95rem;">No recent activity</h4>
+                <p style="font-size: 0.8rem; margin-bottom: 0;">Match a job or polish your resume to see your activity timeline.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- FOURTH: What Needs Attention & What Should I Do Next (Answers Q3 & Q4) -->
-        <div class="grid two">
-          <!-- Attention / Improvements Card (Q3) -->
-          <div class="panel">
-            <div class="panel-head">
-              <h4><i data-lucide="alert-circle"></i> What Needs Attention</h4>
-              <button class="text-btn text-xs" type="button" onclick="navigateToTab('evidence-vault')">Review Vault &rarr;</button>
-            </div>
-            <p id="dashQ3Answer" class="text-sm text-muted mb-3">Loading actionable evidence suggestions...</p>
-            <div class="button-row mt-auto">
-              <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')"><i data-lucide="check-square"></i><span>Review Skill Consistency</span></button>
-              <button class="secondary-btn sm" type="button" onclick="navigateToTab('evidence-vault')"><i data-lucide="database"></i><span>Add Verifiable Metric</span></button>
-            </div>
-          </div>
-
-          <!-- Recommended Next Actions & Versions (Q4 & Q2) -->
-          <div class="panel">
-            <div class="panel-head">
-              <h4><i data-lucide="compass"></i> Recommended Next Action</h4>
-              <button class="text-btn text-xs" type="button" onclick="navigateToTab('tailor')">Application Builder &rarr;</button>
-            </div>
-            <p id="dashQ4Answer" class="text-sm text-muted mb-3">No tailored version snapshots linked to applications yet.</p>
-            <p id="dashQ2Answer" class="hidden">No target jobs analyzed yet.</p>
-            <div class="button-row mt-auto">
-              <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="bookmark-plus"></i><span>Create Tailored Version</span></button>
-              <button class="secondary-btn sm" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Mock Interview Practice</span></button>
-            </div>
-          </div>
-        </div>
-
-        <!-- FIFTH: Recent Activity Stream (What happened recently?) -->
-        <div class="panel mt-4">
-          <div class="panel-head">
-            <h4><i data-lucide="clock"></i> Recent Activity</h4>
-            <span class="text-xs text-muted">What happened recently across your career pipeline</span>
-          </div>
-          <div id="dashRecentActivityList" class="cards-list">
-            <div class="empty-state-card mini">
-              <i data-lucide="activity"></i>
-              <p>No recent activity recorded yet.</p>
-            </div>
-          </div>
+        <!-- Hidden Compatibility Anchors for existing listeners -->
+        <div class="hidden" style="display: none !important;">
+          <span id="dashFitsUsage">0 / 2</span>
+          <span id="dashFitsBar" style="width: 0%"></span>
+          <span id="dashTailorsUsage">0 / 2</span>
+          <span id="dashTailorsBar" style="width: 0%"></span>
+          <span id="dashExportsUsage">0 / 2</span>
+          <span id="dashExportsBar" style="width: 0%"></span>
+          <span id="dashJobsList"></span>
+          <span id="dashQ2Answer"></span>
+          <span id="dashQ3Answer"></span>
+          <span id="dashQ4Answer"></span>
         </div>
       </section>
 
@@ -602,41 +539,24 @@
       <section id="tabProfile" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Profile & Evidence</h2>
-            <p>Keep the information behind your resume accurate, complete, and supported by real evidence.</p>
+            <h2>Career Profile</h2>
+            <p>Your verified career foundation. Keep your background accurate so your resumes are always recruiter-ready.</p>
           </div>
           <div class="view-header-actions">
             <button class="primary-btn sm" type="button" onclick="$('#saveMasterProfileBtn').click()"><i data-lucide="save"></i><span>Save Profile</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="edit-3"></i><span>Resume Builder</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Builder</span></button>
             <button class="secondary-btn sm" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
           </div>
         </div>
 
-        <!-- Career Profile Context Guide -->
-        <div class="context-guide" data-guide-id="profile">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="user-check"></i>
-              <span>Profile & Evidence — Grounding Store</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>Your permanent, canonical career database. Everything you enter here serves as the ground truth for your resume and AI tailoring.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Add verified employment history, key projects, and skill tags. Link evidence URLs or repositories to support your claims.</p>
-            </div>
-            <div class="guide-col">
-              <h5>Evidence Grounding:</h5>
-              <p>Evidence shows what you have actually done. SmartResume uses it to keep recommendations grounded with zero hallucinations.</p>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('profile')"><i data-lucide="user"></i><span>Profile Details</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('evidence-vault')"><i data-lucide="shield-check"></i><span>Achievement Proof</span></button>
+        </div>
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Everything in your Career Profile is saved securely and used to generate your resumes and match jobs with zero guesswork.</p>
         </div>
 
         <!-- Profile Header / Completeness Card -->
@@ -847,32 +767,15 @@
           </div>
         </div>
 
-        <!-- Resume Builder Context Guide -->
-        <div class="context-guide" data-guide-id="resume-builder">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="sparkles"></i>
-              <span>Resume Builder & Live Preview</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>Your interactive resume editor. Changes made on the left reflect immediately in the formatted ATS document on the right.</p>
-            </div>
-            <div class="guide-col">
-              <h5>Customization:</h5>
-              <p>Adjust typography, line spacing, and accent color. Switch templates at any time without re-typing content.</p>
-            </div>
-            <div class="guide-col">
-              <h5>Export Ready:</h5>
-              <p>Download clean, machine-parseable PDF or editable DOCX formats tested with major applicant tracking systems.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Editor</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('templates')"><i data-lucide="layout-template"></i><span>Templates & Styles</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Edits on the left update your formatted resume live on the right. Formats are tested for maximum readability by hiring teams.</p>
         </div>
 
         <!-- Customizer Toolbar -->
@@ -1065,32 +968,15 @@
           </div>
         </div>
 
-        <!-- Job Match Context Guide -->
-        <div class="context-guide" data-guide-id="fit">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="radar"></i>
-              <span>Understanding ATS Fit & Requirement Coverage</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>An algorithmic parser that compares a job description against your verified profile to map exact keyword and competency matches.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Paste the full job description on the left. Click "Analyze ATS Fit" to reveal hard vs soft requirements and evidence matches.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>A transparent breakdown of Strong, Partial, and Missing requirements before you apply, so you can tailor with precision.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('fit')"><i data-lucide="crosshair"></i><span>Match Role</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('job-radar')"><i data-lucide="compass"></i><span>Discovered Jobs</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Paste any job description to see how your background matches and what keywords recruiters look for.</p>
         </div>
 
         <div class="grid two">
@@ -1117,7 +1003,7 @@
               </label>
             </div>
             <div class="button-row mt-3">
-              <button id="runFitAnalysisBtn" class="primary-btn" type="button"><i data-lucide="wand-sparkles"></i><span>Analyze ATS Fit</span></button>
+              <button id="runFitAnalysisBtn" class="primary-btn" type="button"><i data-lucide="wand-sparkles"></i><span>Analyze Job Match</span></button>
               <button id="deleteJobBtn" class="danger-btn sm hidden" type="button"><i data-lucide="trash-2"></i><span>Delete Job</span></button>
             </div>
           </section>
@@ -1125,14 +1011,14 @@
           <!-- Fit Analysis Results & Scoreboard -->
           <section class="panel">
             <div class="panel-head">
-              <h3><i data-lucide="bar-chart-3"></i> ATS Fit Scoreboard</h3>
-              <button id="proceedToTailorBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="sparkles"></i><span>Open in Tailoring Studio &rarr;</span></button>
+              <h3><i data-lucide="bar-chart-3"></i> Job Match Scoreboard</h3>
+              <button id="proceedToTailorBtn" class="secondary-btn sm hidden" type="button"><i data-lucide="sparkles"></i><span>Prepare Job Application &rarr;</span></button>
             </div>
 
-            <div id="fitScoreEmptyState" class="empty-state-card">
-              <i data-lucide="target"></i>
-              <h4>No fit analysis evaluated</h4>
-              <p>Paste a job description on the left and click "Analyze ATS Fit" to extract requirements and evaluate evidence grounding.</p>
+            <div id="fitScoreEmptyState" class="empty-state-structured" style="margin-top: 20px;">
+              <div class="empty-icon"><i data-lucide="crosshair"></i></div>
+              <h4>No job match analyzed yet</h4>
+              <p>Paste a job description on the left to see your match score and identify which keywords recruiters are looking for.</p>
             </div>
 
             <div id="fitScoreResults" class="hidden">
@@ -1255,38 +1141,22 @@
           </div>
         </div>
 
-        <!-- Application Builder Context Guide -->
-        <div class="context-guide" data-guide-id="application-builder">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="sparkles"></i>
-              <span>Prepare Application — Role-Specific Pack</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>Build a job-specific resume version, cover letter, and outreach email tailored to this exact role without fabrication.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Review recommended bullet enhancements, accept or reject suggested changes, and commit your tailored resume version.</p>
-            </div>
-            <div class="guide-col">
-              <h5>Zero Fabrication Guarantee:</h5>
-              <p>Every change is grounded in your verified profile and evidence. Unmatched requirements are highlighted as honest gaps.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill" type="button" onclick="navigateToTab('applications')"><i data-lucide="briefcase"></i><span>Application Tracker</span></button>
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Job Application</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('smartapply')"><i data-lucide="external-link"></i><span>Quick Answers</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Tune your resume bullets and cover letter for this specific role, strictly fact-checked from your experience.</p>
         </div>
 
         <div class="panel mb-4">
           <div class="panel-head">
             <div>
-              <h3><i data-lucide="sparkles"></i> AI Tailoring Studio</h3>
+              <h3><i data-lucide="sparkles"></i> Improve Resume for Target Job</h3>
               <p id="tailorJobContext">Select a target job from "Job Match & Fit" first.</p>
             </div>
             <div class="button-row">
@@ -1403,32 +1273,16 @@
           </div>
         </div>
 
-        <!-- Applications Tracker Context Guide -->
-        <div class="context-guide" data-guide-id="applications">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="briefcase"></i>
-              <span>Application Tracker — Pipeline Command</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>A unified pipeline to record everywhere you apply, linked directly to the tailored resume version you submitted.</p>
-            </div>
-            <div class="guide-col">
-              <h5>Pipeline Stages:</h5>
-              <p>Move opportunities through Saved, Ready, Applied, Interviewing, Offer, and Rejected so you never lose context.</p>
-            </div>
-            <div class="guide-col">
-              <h5>Context Reusable:</h5>
-              <p>Click "Prep Interview" on any application to instantly load that role, company, and resume into Interview practice.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('applications')"><i data-lucide="briefcase"></i><span>Application Tracker</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Job Application</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('smartapply')"><i data-lucide="external-link"></i><span>Quick Answers</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Manage your job search pipeline in one place. Link custom resumes and practice interviews for each company.</p>
         </div>
 
         <div class="grid two">
@@ -1455,7 +1309,7 @@
                 <option value="WITHDRAWN">WITHDRAWN</option>
               </select>
             </label>
-            <label class="span-2">Linked Job Posting (Fit Engine)
+            <label class="span-2">Linked Job Posting (Job Match)
               <select id="appJobPostingSelect">
                 <option value="">None (Standalone)</option>
               </select>
@@ -1829,12 +1683,12 @@
         </div>
       </section>
 
-      <!-- TAB: EVIDENCE VAULT -->
+      <!-- TAB: ACHIEVEMENT PROOF -->
       <section id="tabEvidenceVault" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Career Evidence Vault</h2>
-            <p>Your verified repository of career accomplishments, metrics, project scope, and certifications. Ground every resume bullet in verifiable truth.</p>
+            <h2>Achievement Proof</h2>
+            <p>Your verified collection of career accomplishments, metrics, project scope, and certifications. Ground every resume bullet in verifiable truth.</p>
           </div>
           <div class="view-header-actions">
             <button class="secondary-btn sm" type="button" onclick="$('#syncEvidenceBtn').click()"><i data-lucide="refresh-cw"></i><span>Sync from Profile</span></button>
@@ -1842,42 +1696,25 @@
           </div>
         </div>
 
-        <!-- Evidence Vault Context Guide -->
-        <div class="context-guide" data-guide-id="evidence-vault">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="database"></i>
-              <span>How the Evidence Vault Works</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>An indexed vault of all your quantifiable accomplishments, verified skill demonstrations, and professional deliverables.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Click "Sync from Profile" to auto-extract items, or add standalone evidence entries with tangible metrics and context.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>Direct proof links that our AI resume engine uses to validate and defend your skills during ATS tailoring and interview prep.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill" type="button" onclick="navigateToTab('profile')"><i data-lucide="user"></i><span>Profile Details</span></button>
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('evidence-vault')"><i data-lucide="shield-check"></i><span>Achievement Proof</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Save project metrics and proof of your accomplishments to back up every resume claim with solid facts.</p>
         </div>
 
         <div class="panel mb-4">
           <div class="panel-head">
             <div>
-              <h3><i data-lucide="database"></i> Career Evidence Vault</h3>
+              <h3><i data-lucide="shield-check"></i> Achievement Proof</h3>
               <p class="text-sm text-muted">Verified repository of career accomplishments, metrics, project scope, and certifications.</p>
             </div>
             <div class="panel-actions">
-              <button id="syncEvidenceBtn" class="primary-btn sm" type="button"><i data-lucide="refresh-cw"></i><span>Sync from Master Profile</span></button>
+              <button id="syncEvidenceBtn" class="primary-btn sm" type="button"><i data-lucide="refresh-cw"></i><span>Sync from Career Profile</span></button>
               <button id="addEvidenceBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>Add Evidence</span></button>
             </div>
           </div>
@@ -1907,32 +1744,15 @@
           </div>
         </div>
 
-        <!-- Guided UX Component: How Resume Templates Work -->
-        <div class="context-guide" data-guide-id="templates">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="sparkles"></i>
-              <span>How Resume Templates Work</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>A library of 12 real, working ATS-compliant templates designed specifically for technical, corporate, academic, and executive roles.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Choose your current intent below or review our smart recommendation. Preview with realistic data, customize layout density, and select your template.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>Guaranteed 100% text-parseable PDF and DOCX exports that present your verified accomplishments in the optimal visual hierarchy.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Editor</span></button>
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('templates')"><i data-lucide="layout-template"></i><span>Templates & Styles</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">All 12 templates are pre-tested for recruiter software readability. Switching templates preserves 100% of your content.</p>
         </div>
 
         <!-- Intent Question Bar -->
@@ -2012,32 +1832,15 @@
           </div>
         </div>
 
-        <!-- Job Radar Context Guide -->
-        <div class="context-guide" data-guide-id="job-radar">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="compass"></i>
-              <span>How Job Radar Market Discovery Works</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>A smart discovery scanner that ranks open market jobs based on how closely they match your verified career evidence.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Filter by role title or location. Review Match Categories (Strong Match, Reach, Stretch, Backup) and 1-click send to Fit Analysis.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>A prioritized shortlist of high-probability opportunities where you have verified proof of the required skills.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill" type="button" onclick="navigateToTab('fit')"><i data-lucide="crosshair"></i><span>Match Role</span></button>
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('job-radar')"><i data-lucide="compass"></i><span>Discovered Jobs</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Browse live openings categorized by how well they match your career profile.</p>
         </div>
 
         <div class="panel mb-4">
@@ -2082,32 +1885,16 @@
           </div>
         </div>
 
-        <!-- SmartApply Context Guide -->
-        <div class="context-guide" data-guide-id="smartapply">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="external-link"></i>
-              <span>How SmartApply Application Copilot Works</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>A non-invasive Chrome extension that detects application portal forms and suggests verified answers from your profile.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Load the extension from <code>smartapply-extension/</code> into Chrome. When on an application page, click SmartApply to fill answers.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>Faster form completion with zero bot scraping risk, fully grounded in your verified experiences and metrics.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill" type="button" onclick="navigateToTab('applications')"><i data-lucide="briefcase"></i><span>Application Tracker</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Job Application</span></button>
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('smartapply')"><i data-lucide="external-link"></i><span>Quick Answers</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Use saved answers for common job portal questions (notice periods, work authorizations, and past projects).</p>
         </div>
 
         <div class="grid two mb-4">
@@ -2165,32 +1952,15 @@
           </div>
         </div>
 
-        <!-- AI Interview Context Guide -->
-        <div class="context-guide" data-guide-id="interview">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="messages-square"></i>
-              <span>How AI Mock Interview Practice Works</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>Two Clear Practice Modes:</h5>
-              <p>Practice by Text (adaptive 6-level STAR chat) or Live AI Interview (real-time spoken & video interview room).</p>
-            </div>
-            <div class="guide-col">
-              <h5>Resume Claim Defense:</h5>
-              <p>Questions probe specific claims stated in your actual resume bullets (FastAPI, SQL, system scale, ownership).</p>
-            </div>
-            <div class="guide-col">
-              <h5>Evidence-Based Review:</h5>
-              <p>Feedback evaluates communication, technical depth, and metrics citing your actual answers, with zero fake scores.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Practice Questions</span></button>
+          <button class="subnav-pill" type="button" onclick="navigateToTab('career-insights')"><i data-lucide="trending-up"></i><span>Career Growth</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Prepare for behavioral and technical interviews with AI practice questions tailored to your target company.</p>
         </div>
 
         <!-- 1. Active Application Context Card -->
@@ -2484,32 +2254,15 @@
           </div>
         </div>
 
-        <!-- Career Insights Context Guide -->
-        <div class="context-guide" data-guide-id="career-insights">
-          <div class="context-guide-head">
-            <div class="context-guide-title">
-              <i data-lucide="trending-up"></i>
-              <span>How Market Insights & Career Leveling Work</span>
-            </div>
-            <div class="context-guide-actions">
-              <button class="icon-btn xs toggle-guide-btn" type="button" title="Toggle guide"><i data-lucide="chevron-up"></i></button>
-              <button class="icon-btn xs dismiss-guide-btn" type="button" title="Dismiss guide"><i data-lucide="x"></i></button>
-            </div>
-          </div>
-          <div class="context-guide-body">
-            <div class="guide-col">
-              <h5>What is this?</h5>
-              <p>Aggregated hiring market analytics showing the most frequently demanded technologies and competencies in your domain.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What to do:</h5>
-              <p>Compare your verified skill coverage against market demand bars. Review leveling progression steps to reach Senior/Staff roles.</p>
-            </div>
-            <div class="guide-col">
-              <h5>What you get:</h5>
-              <p>Clarity on high-value skills to acquire next, keeping your career trajectory moving upward with measurable proof.</p>
-            </div>
-          </div>
+        <!-- Progressive Disclosure Sub-Pills -->
+        <div class="subnav-pills-bar">
+          <button class="subnav-pill" type="button" onclick="navigateToTab('interview')"><i data-lucide="messages-square"></i><span>Practice Questions</span></button>
+          <button class="subnav-pill active" type="button" onclick="navigateToTab('career-insights')"><i data-lucide="trending-up"></i><span>Career Growth</span></button>
+        </div>
+
+        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">Explore high-demand market skills and leveling milestones to advance your career trajectory.</p>
         </div>
 
         <div class="panel mb-4">
@@ -2558,16 +2311,16 @@
         <span>Home</span>
       </button>
       <button class="mobile-nav-item" data-tab="resume-builder" type="button">
-        <i data-lucide="edit-3"></i>
+        <i data-lucide="file-text"></i>
         <span>Resume</span>
       </button>
-      <button class="mobile-nav-item" data-tab="fit" type="button">
-        <i data-lucide="radar"></i>
-        <span>Jobs</span>
+      <button class="mobile-nav-item" data-tab="tailor" type="button">
+        <i data-lucide="sparkles"></i>
+        <span>Improve</span>
       </button>
-      <button class="mobile-nav-item" data-tab="applications" type="button">
-        <i data-lucide="briefcase"></i>
-        <span>Tracker</span>
+      <button class="mobile-nav-item" data-tab="fit" type="button">
+        <i data-lucide="crosshair"></i>
+        <span>Match</span>
       </button>
       <button class="mobile-nav-item" id="mobileMoreNavBtn" type="button">
         <i data-lucide="menu"></i>
@@ -3130,40 +2883,213 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
     </div>
   </div>
 
-  <!-- MODAL: GUIDED FIRST-TIME ONBOARDING -->
-  <div id="onboardingModal" class="modal-overlay hidden">
-    <div class="modal-dialog" style="max-width: 740px;">
+  <!-- MODAL: GUIDED 5-STEP FIRST-TIME ONBOARDING -->
+  <div id="onboardingModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingModalTitle">
+    <div class="modal-dialog" style="max-width: 760px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
         <div>
-          <h3><i data-lucide="sparkles"></i> Welcome to SmartResume.ai</h3>
-          <p class="text-sm text-muted">The Evidence-Grounded Career Intelligence Platform</p>
+          <h3 id="onboardingModalTitle"><i data-lucide="sparkles"></i> Welcome to SmartResume.ai</h3>
+          <p class="text-sm text-muted">Let's set up your career profile and first resume in 2 minutes</p>
         </div>
-        <button id="closeOnboardingModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+        <button id="closeOnboardingModalBtn" class="icon-btn" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
       </div>
+
       <div class="modal-body">
-        <p class="text-sm mb-3">
-          Unlike generic AI tools that hallucinate metrics or invent ATS scores, SmartResume operates on a strict <strong>Single Source of Truth</strong>: your Master Profile.
-        </p>
-        <div class="onboarding-grid">
-          <div class="onboarding-card" id="onboardImportCard">
-            <i data-lucide="upload-cloud"></i>
-            <strong>Import Resume</strong>
-            <p class="text-xs text-muted">Upload existing PDF/DOCX. Review extracted data before saving.</p>
+        <!-- 5-Step Stepper Header -->
+        <div class="onboarding-stepper" id="onboardingStepper">
+          <div class="onboarding-step-pill active" data-step="1">
+            <span class="onboarding-step-circle">1</span>
+            <span>Goal</span>
           </div>
-          <div class="onboarding-card" id="onboardManualCard">
-            <i data-lucide="edit-3"></i>
-            <strong>Build Profile</strong>
-            <p class="text-xs text-muted">Enter verified skills, experiences, and projects step-by-step.</p>
+          <div class="onboarding-step-divider"></div>
+          <div class="onboarding-step-pill" data-step="2">
+            <span class="onboarding-step-circle">2</span>
+            <span>Start</span>
           </div>
-          <div class="onboarding-card" id="onboardDemoCard">
-            <i data-lucide="play-circle"></i>
-            <strong>Explore Demo</strong>
-            <p class="text-xs text-muted">Test tailoring and fit analysis with a realistic sample software role.</p>
+          <div class="onboarding-step-divider"></div>
+          <div class="onboarding-step-pill" data-step="3">
+            <span class="onboarding-step-circle">3</span>
+            <span>Review</span>
+          </div>
+          <div class="onboarding-step-divider"></div>
+          <div class="onboarding-step-pill" data-step="4">
+            <span class="onboarding-step-circle">4</span>
+            <span>Essentials</span>
+          </div>
+          <div class="onboarding-step-divider"></div>
+          <div class="onboarding-step-pill" data-step="5">
+            <span class="onboarding-step-circle">5</span>
+            <span>Ready</span>
+          </div>
+        </div>
+
+        <!-- STEP 1: GOAL SELECTION -->
+        <div id="onboardStep1" class="onboard-step-panel">
+          <h4 class="text-base font-bold mb-1">What is your primary goal right now?</h4>
+          <p class="text-sm text-muted mb-3">We will personalize your experience and recommendations to match.</p>
+
+          <div class="onboarding-options-grid">
+            <div class="onboarding-option-card selected" data-goal="new_job" id="onboardGoalNewJob">
+              <div class="onboarding-option-icon"><i data-lucide="briefcase"></i></div>
+              <div class="onboarding-option-title">Find a new job</div>
+              <div class="onboarding-option-desc">Looking for my next full-time career opportunity.</div>
+            </div>
+            <div class="onboarding-option-card" data-goal="switch_career" id="onboardGoalSwitch">
+              <div class="onboarding-option-icon"><i data-lucide="repeat"></i></div>
+              <div class="onboarding-option-title">Switch careers</div>
+              <div class="onboarding-option-desc">Pivoting my transferable skills into a new role or industry.</div>
+            </div>
+            <div class="onboarding-option-card" data-goal="first_job" id="onboardGoalFirstJob">
+              <div class="onboarding-option-icon"><i data-lucide="graduation-cap"></i></div>
+              <div class="onboarding-option-title">First job or internship</div>
+              <div class="onboarding-option-desc">Starting my career journey and highlighting projects.</div>
+            </div>
+            <div class="onboarding-option-card" data-goal="polish" id="onboardGoalPolish">
+              <div class="onboarding-option-icon"><i data-lucide="check-circle-2"></i></div>
+              <div class="onboarding-option-title">Polish my resume</div>
+              <div class="onboarding-option-desc">Modernize formatting for recruiter software readability.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: START METHOD -->
+        <div id="onboardStep2" class="onboard-step-panel hidden">
+          <h4 class="text-base font-bold mb-1">How would you like to start?</h4>
+          <p class="text-sm text-muted mb-3">Choose the fastest way to get your experience into SmartResume.</p>
+
+          <div class="onboarding-options-grid">
+            <div class="onboarding-option-card selected" data-method="upload" id="onboardMethodUpload">
+              <div class="onboarding-option-icon"><i data-lucide="upload-cloud"></i></div>
+              <div class="onboarding-option-title">Upload resume</div>
+              <div class="onboarding-option-desc">PDF or Word document. We extract your details automatically.</div>
+            </div>
+            <div class="onboarding-option-card" data-method="linkedin" id="onboardMethodLinkedIn">
+              <div class="onboarding-option-icon"><i data-lucide="link-2"></i></div>
+              <div class="onboarding-option-title">Import from LinkedIn</div>
+              <div class="onboarding-option-desc">Uses your authorized profile name and email to start.</div>
+            </div>
+            <div class="onboarding-option-card" data-method="scratch" id="onboardMethodScratch">
+              <div class="onboarding-option-icon"><i data-lucide="edit-3"></i></div>
+              <div class="onboarding-option-title">Start from scratch</div>
+              <div class="onboarding-option-desc">Enter your details step-by-step with guided prompts.</div>
+            </div>
+          </div>
+
+          <!-- File Dropzone for Upload Method -->
+          <div id="onboardUploadZone" class="onboarding-dropzone">
+            <i data-lucide="file-up" style="width: 36px; height: 36px; color: var(--primary); margin-bottom: 8px;"></i>
+            <h5 class="text-sm font-bold mb-1">Click to select or drag & drop your resume</h5>
+            <p class="text-xs text-muted mb-2">Supports PDF, DOCX, DOC, or TXT (Max 5MB)</p>
+            <input type="file" id="onboardFileInput" class="hidden" accept=".pdf,.docx,.doc,.txt">
+            <button class="secondary-btn sm" type="button" onclick="$('#onboardFileInput').click()">Browse File</button>
+            <div id="onboardFileChosenName" class="text-xs text-primary font-bold mt-2 hidden"></div>
+          </div>
+
+          <!-- Upload in progress feedback -->
+          <div id="onboardUploadProgress" class="hidden text-center p-4">
+            <div class="spinner" style="width: 28px; height: 28px; margin: 0 auto 10px;"></div>
+            <p class="text-sm font-bold" id="onboardUploadStatusText">Reading your resume and organizing your experience...</p>
+            <p class="text-xs text-muted">This takes just a few seconds.</p>
+          </div>
+        </div>
+
+        <!-- STEP 3: REVIEW DETECTED INFO -->
+        <div id="onboardStep3" class="onboard-step-panel hidden">
+          <h4 class="text-base font-bold mb-1">Review your detected information</h4>
+          <p class="text-sm text-muted mb-3">Here is what was found. Feel free to adjust anything now or later.</p>
+
+          <div class="onboarding-summary-box">
+            <div class="grid two gap-3 mb-3">
+              <div>
+                <label class="form-label text-xs">Full Name</label>
+                <input type="text" class="input sm" id="onboardNameInput" placeholder="e.g. Alex Morgan">
+              </div>
+              <div>
+                <label class="form-label text-xs">Target Job Title / Headline</label>
+                <input type="text" class="input sm" id="onboardTitleInput" placeholder="e.g. Senior Product Manager">
+              </div>
+            </div>
+
+            <div class="grid two gap-3 mb-3">
+              <div>
+                <label class="form-label text-xs">Email / Contact</label>
+                <input type="text" class="input sm" id="onboardContactInput" placeholder="e.g. alex@example.com">
+              </div>
+              <div>
+                <label class="form-label text-xs">Most Recent Role & Company</label>
+                <input type="text" class="input sm" id="onboardRecentExpInput" placeholder="e.g. Lead Engineer at Acme Corp">
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label text-xs">Top Core Skills (comma-separated)</label>
+              <input type="text" class="input sm" id="onboardSkillsInput" placeholder="e.g. Python, SQL, Project Management, Agile">
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4: FILL MISSING ESSENTIALS -->
+        <div id="onboardStep4" class="onboard-step-panel hidden">
+          <h4 class="text-base font-bold mb-1">A few quick essentials</h4>
+          <p class="text-sm text-muted mb-3">These help us suggest the most relevant job matches and tailoring tips.</p>
+
+          <div class="onboarding-summary-box">
+            <div class="grid two gap-3 mb-3">
+              <div>
+                <label class="form-label text-xs">Desired Location & Remote Preference</label>
+                <input type="text" class="input sm" id="onboardLocationInput" placeholder="e.g. San Francisco, CA (or Remote)">
+              </div>
+              <div>
+                <label class="form-label text-xs">Years of Experience</label>
+                <select class="select sm" id="onboardYearsInput">
+                  <option value="0-1">0 - 1 years (Entry / Early Career)</option>
+                  <option value="2-4" selected>2 - 4 years (Mid-Level)</option>
+                  <option value="5-8">5 - 8 years (Senior)</option>
+                  <option value="9+">9+ years (Lead / Executive)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="form-label text-xs">Target Industry / Domain</label>
+              <input type="text" class="input sm" id="onboardIndustryInput" placeholder="e.g. Software, Finance, Healthcare, Retail">
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: RESUME READY CELEBRATION -->
+        <div id="onboardStep5" class="onboard-step-panel hidden text-center p-4">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <i data-lucide="check-circle" style="width: 36px; height: 36px;"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Your resume is ready!</h3>
+          <p class="text-sm text-muted mb-4" style="max-width: 500px; margin: 0 auto 20px;">
+            We've formatted your career details into an ATS-friendly, clean resume. You can customize the layout, match it against real job openings, or download the PDF anytime.
+          </p>
+
+          <div class="flex-row justify-center gap-3">
+            <button class="primary-btn" id="onboardFinishBuilderBtn" type="button">
+              <i data-lucide="file-text"></i><span>View & Improve My Resume</span>
+            </button>
+            <button class="secondary-btn" id="onboardFinishMatchBtn" type="button">
+              <i data-lucide="crosshair"></i><span>Match to a Job Opening</span>
+            </button>
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button id="dismissOnboardingBtn" class="primary-btn" type="button">Go to Dashboard</button>
+
+      <div class="modal-footer" id="onboardModalFooter">
+        <button id="onboardBackBtn" class="secondary-btn hidden" type="button">Back</button>
+        <div style="flex: 1;"></div>
+        <button id="onboardSkipBtn" class="text-btn text-muted hidden" type="button">Skip for now</button>
+        <button id="onboardNextBtn" class="primary-btn" type="button">Continue &rarr;</button>
+      </div>
+
+      <!-- Hidden legacy fallbacks -->
+      <div class="hidden" style="display: none !important;">
+        <button id="dismissOnboardingBtn"></button>
+        <div id="onboardImportCard"></div>
+        <div id="onboardManualCard"></div>
+        <div id="onboardDemoCard"></div>
       </div>
     </div>
   </div>
