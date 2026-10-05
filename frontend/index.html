@@ -744,15 +744,17 @@
       <section id="tabResumeBuilder" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Resume Builder</h2>
+            <div class="flex-row align-center gap-3">
+              <h2 style="margin: 0;">Resume Builder</h2>
+              <div class="builder-save-status" id="builderSaveStatus">
+                <span class="status-dot"></span>
+                <span>Saved</span>
+              </div>
+            </div>
             <p>Design, customize, and edit your resume with live preview and instant export.</p>
           </div>
           <div class="view-header-actions">
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('templates')" title="Change resume template">
-              <i data-lucide="layout-template"></i>
-              <span id="builderActiveTemplateName">Template: Classic ATS</span>
-            </button>
-            <button class="secondary-btn sm" type="button" id="builderSyncProfileBtn" title="Sync latest data from Master Profile">
+            <button class="secondary-btn sm" type="button" id="builderSyncProfileBtn" title="Sync data from Career Profile">
               <i data-lucide="refresh-cw"></i>
               <span>Sync Profile</span>
             </button>
@@ -773,17 +775,21 @@
           <button class="subnav-pill" type="button" onclick="navigateToTab('templates')"><i data-lucide="layout-template"></i><span>Templates & Styles</span></button>
         </div>
 
-        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
-          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
-          <p class="text-xs text-muted mb-0" style="margin: 0;">Edits on the left update your formatted resume live on the right. Formats are tested for maximum readability by hiring teams.</p>
-        </div>
-
         <!-- Customizer Toolbar -->
-        <div class="panel p-3 mb-4 flex-row justify-between align-center flex-wrap gap-3">
+        <div class="panel p-3 mb-4 flex-row justify-between align-center flex-wrap gap-3 builder-toolbar">
           <div class="flex-row align-center gap-3 flex-wrap">
             <div class="flex-row align-center gap-2">
+              <label class="text-xs text-muted" for="builderTemplateSelect">Template:</label>
+              <select id="builderTemplateSelect" class="form-select sm" style="width: 160px; font-weight: 600;">
+                <option value="classic_ats" selected>Classic ATS</option>
+                <option value="modern_professional">Modern Professional</option>
+                <option value="minimal_professional">Minimal Professional</option>
+                <option value="technical_ats">Technical ATS</option>
+              </select>
+            </div>
+            <div class="flex-row align-center gap-2">
               <label class="text-xs text-muted" for="builderFontSize">Font Size:</label>
-              <select id="builderFontSize" class="form-select sm" style="width: 100px;">
+              <select id="builderFontSize" class="form-select sm" style="width: 95px;">
                 <option value="small">Small</option>
                 <option value="medium" selected>Medium</option>
                 <option value="large">Large</option>
@@ -791,7 +797,7 @@
             </div>
             <div class="flex-row align-center gap-2">
               <label class="text-xs text-muted" for="builderSpacing">Spacing:</label>
-              <select id="builderSpacing" class="form-select sm" style="width: 110px;">
+              <select id="builderSpacing" class="form-select sm" style="width: 105px;">
                 <option value="compact">Compact</option>
                 <option value="standard" selected>Standard</option>
                 <option value="relaxed">Relaxed</option>
@@ -799,7 +805,18 @@
             </div>
             <div class="flex-row align-center gap-2">
               <label class="text-xs text-muted" for="builderAccentColor">Accent Color:</label>
-              <input type="color" id="builderAccentColor" value="#1e3a8a" style="width: 36px; height: 28px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+              <input type="color" id="builderAccentColor" value="#1e3a8a" title="Choose resume accent color" style="width: 32px; height: 28px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+            </div>
+            <div class="flex-row align-center gap-2">
+              <select id="builderAddSectionSelect" class="form-select sm" style="width: 135px; color: var(--primary); font-weight: 500;">
+                <option value="" disabled selected>+ Add Section</option>
+                <option value="certifications">Certifications</option>
+                <option value="projects">Key Projects</option>
+                <option value="achievements">Achievements</option>
+                <option value="awards">Awards</option>
+                <option value="languages">Languages</option>
+                <option value="courses">Courses</option>
+              </select>
             </div>
           </div>
           <div class="flex-row align-center gap-2">
@@ -819,136 +836,236 @@
           <!-- Left Column: Focused Section Editors -->
           <div class="column-stack gap-3" id="builderEditorColumn">
             <!-- Section 1: Contact & Headline -->
-            <div class="panel">
+            <div class="panel" id="secEditorContact">
               <div class="panel-head flex-row justify-between align-center">
-                <h4><i data-lucide="user"></i> Contact & Headline</h4>
+                <h4><i data-lucide="user"></i> Header & Contact Info</h4>
                 <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
                   <i data-lucide="chevron-down"></i>
                 </button>
               </div>
               <div class="panel-body">
                 <div class="form-grid">
-                  <label>Full Name
-                    <input id="builderFullName" type="text" placeholder="Your Name">
+                  <label class="span-2">Full Name
+                    <input id="builderFullName" type="text" placeholder="Candidate Name">
                   </label>
-                  <label>Professional Headline
-                    <input id="builderHeadline" type="text" placeholder="e.g. Senior Software Engineer">
+                  <label class="span-2">Professional Headline / Role
+                    <input id="builderHeadline" type="text" placeholder="e.g. Lead Full Stack Software Engineer">
                   </label>
-                  <label>Email
+                  <label>Email Address
                     <input id="builderEmail" type="email" placeholder="you@domain.com">
                   </label>
-                  <label>Phone
+                  <label>Phone Number
                     <input id="builderPhone" type="tel" placeholder="+1 (555) 012-3456">
                   </label>
                   <label class="span-2">Location
                     <input id="builderLocation" type="text" placeholder="City, State / Country">
                   </label>
+                  <label>LinkedIn URL
+                    <input id="builderLinkedin" type="text" placeholder="linkedin.com/in/username">
+                  </label>
+                  <label>GitHub URL
+                    <input id="builderGithub" type="text" placeholder="github.com/username">
+                  </label>
+                  <label class="span-2">Portfolio / Website URL
+                    <input id="builderWebsite" type="text" placeholder="https://portfolio.dev">
+                  </label>
                 </div>
               </div>
             </div>
 
-            <!-- Section 2: Executive Summary -->
-            <div class="panel">
+            <!-- Section 2: Professional Summary -->
+            <div class="panel" id="secEditorSummary">
               <div class="panel-head flex-row justify-between align-center">
-                <h4><i data-lucide="file-text"></i> Professional Summary</h4>
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="file-text"></i> Professional Summary</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')" title="Toggle section">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <textarea id="builderSummary" rows="4" placeholder="Brief 2-4 sentence overview of your domain expertise, quantifiable achievements, and technical specializations..."></textarea>
+                <div class="flex-row justify-end mt-1">
+                  <span class="text-xs text-muted" id="builderSummaryCharCount">0 characters</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Work Experience -->
+            <div class="panel" id="secEditorExperience">
+              <div class="panel-head flex-row justify-between align-center">
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="briefcase"></i> Work Experience</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="secondary-btn xs" type="button" id="builderAddExperienceBtn">
+                    <i data-lucide="plus"></i><span>Add Role</span>
+                  </button>
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="builderExperienceList" class="column-stack gap-3"></div>
+              </div>
+            </div>
+
+            <!-- Section 4: Key Projects -->
+            <div class="panel" id="secEditorProjects">
+              <div class="panel-head flex-row justify-between align-center">
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="folder-git-2"></i> Key Projects</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="secondary-btn xs" type="button" id="builderAddProjectBtn">
+                    <i data-lucide="plus"></i><span>Add Project</span>
+                  </button>
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="builderProjectsList" class="column-stack gap-3"></div>
+              </div>
+            </div>
+
+            <!-- Section 5: Skills & Technologies -->
+            <div class="panel" id="secEditorSkills">
+              <div class="panel-head flex-row justify-between align-center">
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="award"></i> Skills & Technologies</h4>
+                </div>
                 <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
                   <i data-lucide="chevron-down"></i>
                 </button>
               </div>
               <div class="panel-body">
-                <textarea id="builderSummary" rows="4" placeholder="Brief 2-3 sentence overview of your career, core specializations, and quantifiable achievements..."></textarea>
-              </div>
-            </div>
-
-            <!-- Section 3: Experience -->
-            <div class="panel">
-              <div class="panel-head flex-row justify-between align-center">
-                <h4><i data-lucide="briefcase"></i> Work Experience</h4>
-                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
-                  <i data-lucide="plus"></i><span>Manage in Profile</span>
-                </button>
-              </div>
-              <div class="panel-body" id="builderExperienceList">
-                <p class="text-xs text-muted">Experience items are synchronized with your Master Profile.</p>
-              </div>
-            </div>
-
-            <!-- Section 4: Projects -->
-            <div class="panel">
-              <div class="panel-head flex-row justify-between align-center">
-                <h4><i data-lucide="folder-git-2"></i> Key Projects</h4>
-                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
-                  <i data-lucide="plus"></i><span>Manage in Profile</span>
-                </button>
-              </div>
-              <div class="panel-body" id="builderProjectsList">
-                <p class="text-xs text-muted">Project entries are synchronized with your Master Profile.</p>
-              </div>
-            </div>
-
-            <!-- Section 5: Skills -->
-            <div class="panel">
-              <div class="panel-head flex-row justify-between align-center">
-                <h4><i data-lucide="award"></i> Skills</h4>
-                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
-                  <i data-lucide="plus"></i><span>Manage in Profile</span>
-                </button>
-              </div>
-              <div class="panel-body" id="builderSkillsList">
-                <p class="text-xs text-muted">Skills are synchronized with your Master Profile.</p>
+                <label class="text-xs text-muted mb-1">Enter skills separated by commas:</label>
+                <textarea id="builderSkillsInput" rows="3" placeholder="e.g. Python, FastAPI, PostgreSQL, Docker, Redis, React, TypeScript, Git, AWS"></textarea>
+                <div id="builderSkillsBadges" class="flex-row flex-wrap gap-1 mt-2"></div>
               </div>
             </div>
 
             <!-- Section 6: Education -->
-            <div class="panel">
+            <div class="panel" id="secEditorEducation">
               <div class="panel-head flex-row justify-between align-center">
-                <h4><i data-lucide="graduation-cap"></i> Education</h4>
-                <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
-                  <i data-lucide="plus"></i><span>Manage in Profile</span>
-                </button>
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="graduation-cap"></i> Education</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="secondary-btn xs" type="button" id="builderAddEducationBtn">
+                    <i data-lucide="plus"></i><span>Add Education</span>
+                  </button>
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
               </div>
-              <div class="panel-body" id="builderEducationList">
-                <p class="text-xs text-muted">Education records are synchronized with your Master Profile.</p>
+              <div class="panel-body">
+                <div id="builderEducationList" class="column-stack gap-3"></div>
+              </div>
+            </div>
+
+            <!-- Section 7: Certifications -->
+            <div class="panel" id="secEditorCertifications">
+              <div class="panel-head flex-row justify-between align-center">
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="check-circle-2"></i> Certifications</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="secondary-btn xs" type="button" id="builderAddCertificationBtn">
+                    <i data-lucide="plus"></i><span>Add Cert</span>
+                  </button>
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="builderCertificationsList" class="column-stack gap-3"></div>
+              </div>
+            </div>
+
+            <!-- Section 8: Achievements & Honors -->
+            <div class="panel" id="secEditorAchievements">
+              <div class="panel-head flex-row justify-between align-center">
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="trophy"></i> Achievements & Awards</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="secondary-btn xs" type="button" id="builderAddAchievementBtn">
+                    <i data-lucide="plus"></i><span>Add Achievement</span>
+                  </button>
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="builderAchievementsList" class="column-stack gap-3"></div>
+              </div>
+            </div>
+
+            <!-- Section 9: Languages -->
+            <div class="panel" id="secEditorLanguages">
+              <div class="panel-head flex-row justify-between align-center">
+                <div class="flex-row align-center gap-2">
+                  <h4><i data-lucide="languages"></i> Languages</h4>
+                </div>
+                <div class="flex-row align-center gap-1">
+                  <button class="secondary-btn xs" type="button" id="builderAddLanguageBtn">
+                    <i data-lucide="plus"></i><span>Add Language</span>
+                  </button>
+                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="builderLanguagesList" class="column-stack gap-3"></div>
               </div>
             </div>
           </div>
 
           <!-- Right Column: Live Resume Preview Sheet -->
           <div class="builder-preview-container" style="position: sticky; top: 80px;">
-            <div class="resume-preview-sheet" id="builderLivePreviewSheet">
+            <div class="resume-preview-sheet tpl-classic-ats" id="builderLivePreviewSheet">
               <div class="resume-preview-canvas" id="builderPreviewCanvas">
                 <div class="preview-canvas-header">
-                  <h2 id="prevCanvasName">Candidate Name</h2>
-                  <p class="preview-headline" id="prevCanvasHeadline">Professional Headline</p>
-                  <p class="preview-contact" id="prevCanvasContact">email@domain.com | Location | Phone</p>
+                  <h2 id="prevCanvasName" class="prev-canvas-name">Candidate Name</h2>
+                  <p class="prev-canvas-headline" id="prevCanvasHeadline">Professional Headline</p>
+                  <div class="prev-canvas-contact" id="prevCanvasContact"></div>
                 </div>
                 <div class="preview-canvas-divider" id="prevCanvasDivider"></div>
                 
-                <div id="prevSectionSummary" class="prev-section">
-                  <h3 class="preview-section-title">Summary</h3>
-                  <p id="prevCanvasSummary" class="text-xs">Professional summary highlighting verified experience...</p>
-                </div>
-
-                <div id="prevSectionExperience" class="prev-section">
-                  <h3 class="preview-section-title">Professional Experience</h3>
-                  <div id="prevCanvasExperience" class="prev-items-list"></div>
-                </div>
-
-                <div id="prevSectionProjects" class="prev-section">
-                  <h3 class="preview-section-title">Key Projects</h3>
-                  <div id="prevCanvasProjects" class="prev-items-list"></div>
-                </div>
-
-                <div id="prevSectionSkills" class="prev-section">
-                  <h3 class="preview-section-title">Skills & Technologies</h3>
-                  <p id="prevCanvasSkills" class="text-xs"></p>
-                </div>
-
-                <div id="prevSectionEducation" class="prev-section">
-                  <h3 class="preview-section-title">Education</h3>
-                  <div id="prevCanvasEducation" class="prev-items-list"></div>
+                <div id="prevSectionsContainer" class="prev-sections-container">
+                  <!-- Dynamically rendered according to configured section order & data existence -->
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fullscreen Preview Modal -->
+        <div id="resumeFullscreenModal" class="modal-backdrop hidden" style="z-index: 10000;">
+          <div class="modal-content" style="max-width: 900px; max-height: 95vh; display: flex; flex-direction: column; padding: 0; background: var(--surface-2, #f8fafc); border-radius: var(--radius-lg, 12px); overflow: hidden;">
+            <div class="p-3 bg-surface flex-row justify-between align-center border-bottom">
+              <div class="flex-row align-center gap-2">
+                <i data-lucide="file-text" style="color: var(--primary);"></i>
+                <strong id="fullscreenModalTitle">Document Preview</strong>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <button class="secondary-btn sm" type="button" onclick="window.print();"><i data-lucide="printer"></i><span>Print</span></button>
+                <button class="primary-btn sm" type="button" id="fullscreenDownloadPdfBtn"><i data-lucide="download"></i><span>Download PDF</span></button>
+                <button class="icon-btn sm" type="button" onclick="$('#resumeFullscreenModal').classList.add('hidden')"><i data-lucide="x"></i></button>
+              </div>
+            </div>
+            <div class="p-4" style="overflow-y: auto; flex: 1; display: flex; justify-content: center; background: #e2e8f0;">
+              <div id="fullscreenCanvasContainer" style="width: 100%; max-width: 794px;"></div>
             </div>
           </div>
         </div>

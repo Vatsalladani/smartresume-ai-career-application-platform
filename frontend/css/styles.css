@@ -3292,50 +3292,251 @@ svg {
   font-size: 0.82rem;
 }
 
-/* Live Resume Canvas in Preview Modal */
-.resume-preview-canvas {
-  background: white;
+/* ==========================================================================
+   LIVE RESUME CANVAS & TEMPLATE TYPOGRAPHY (PRODUCTION SUITE)
+   ========================================================================== */
+.resume-preview-sheet {
+  background: #ffffff;
   color: #1f2937;
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  padding: 36px 40px;
-  max-width: 800px;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  width: 100%;
+  max-width: 794px;
+  min-height: 1000px;
   margin: 0 auto;
-  min-height: 700px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  line-height: 1.4;
+  overflow: visible;
+  position: relative;
+  transition: box-shadow 0.2s ease;
 }
 
-.preview-canvas-header h2 {
-  font-size: 1.6rem;
+.resume-preview-canvas {
+  --resume-font-size: 13px;
+  --resume-line-height: 1.4;
+  --resume-spacing: 12px;
+  --resume-accent: #1e3a8a;
+
+  background: #ffffff;
+  color: #1f2937;
+  padding: 36px 44px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--resume-font-size);
+  line-height: var(--resume-line-height);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Centered Header */
+.preview-canvas-header {
+  text-align: center;
+  margin-bottom: calc(var(--resume-spacing) * 0.7);
+}
+
+.preview-canvas-header h2,
+.prev-canvas-name {
+  font-size: calc(var(--resume-font-size) * 1.75);
   font-weight: 800;
-  margin-bottom: 2px;
+  color: var(--resume-accent);
+  letter-spacing: -0.2px;
+  margin: 0 0 3px 0;
+  line-height: 1.15;
+  text-align: center;
 }
 
-.preview-canvas-header .preview-headline {
-  font-size: 0.95rem;
+.preview-canvas-header .preview-headline,
+.prev-canvas-headline {
+  font-size: calc(var(--resume-font-size) * 1.05);
+  font-weight: 500;
   color: #4b5563;
-  margin-bottom: 4px;
+  margin: 0 0 5px 0;
+  line-height: 1.25;
+  text-align: center;
 }
 
-.preview-canvas-header .preview-contact {
-  font-size: 0.82rem;
-  color: #6b7280;
+.preview-canvas-header .preview-contact,
+.prev-canvas-contact {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(var(--resume-font-size) * 0.86);
+  color: #4b5563;
+  line-height: 1.35;
+  margin: 0;
+  text-align: center;
+}
+
+.prev-canvas-contact a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(75, 85, 99, 0.4);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.prev-canvas-contact a:hover {
+  color: var(--resume-accent);
+  border-color: var(--resume-accent);
+}
+
+.prev-contact-sep {
+  color: #9ca3af;
+  font-weight: 400;
+  margin: 0 1px;
 }
 
 .preview-canvas-divider {
-  height: 2px;
-  background: var(--primary);
-  margin: 8px 0 16px 0;
+  height: 1.5px;
+  background: var(--resume-accent);
+  margin: 8px 0 var(--resume-spacing) 0;
+  border: none;
 }
 
+/* Section Titles */
 .preview-section-title {
-  font-size: 0.95rem;
+  font-size: calc(var(--resume-font-size) * 1.05);
   font-weight: 800;
-  color: var(--primary);
+  color: var(--resume-accent);
   letter-spacing: 0.5px;
-  margin: 14px 0 6px 0;
   text-transform: uppercase;
+  margin: var(--resume-spacing) 0 calc(var(--resume-spacing) * 0.45) 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding-bottom: 3px;
+}
+
+/* Entries */
+.prev-section {
+  margin-bottom: var(--resume-spacing);
+}
+
+.prev-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--resume-spacing) * 0.65);
+}
+
+.prev-item-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prev-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.prev-item-title-col {
+  font-weight: 700;
+  color: #111827;
+  font-size: calc(var(--resume-font-size) * 0.98);
+}
+
+.prev-item-date {
+  font-size: calc(var(--resume-font-size) * 0.88);
+  color: #4b5563;
+  white-space: nowrap;
+  font-weight: 500;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.prev-item-sub {
+  font-size: calc(var(--resume-font-size) * 0.88);
+  color: #4b5563;
+  font-style: italic;
+}
+
+.prev-item-bullets {
+  margin: 3px 0 0 18px;
+  padding: 0;
+  list-style-type: disc;
+}
+
+.prev-item-bullets li {
+  font-size: calc(var(--resume-font-size) * 0.94);
+  line-height: var(--resume-line-height);
+  color: #374151;
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+/* Skills */
+.prev-skills-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prev-skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: baseline;
+  font-size: calc(var(--resume-font-size) * 0.92);
+}
+
+.prev-skill-category-label {
+  font-weight: 700;
+  color: #111827;
+}
+
+.prev-skill-pill {
+  display: inline-block;
+  background: #f3f4f6;
+  color: #1f2937;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: calc(var(--resume-font-size) * 0.85);
+  border: 1px solid #e5e7eb;
+}
+
+/* Template Specific Variants */
+.resume-preview-sheet.tpl-classic-ats .resume-preview-canvas {
+  font-family: Georgia, "Times New Roman", Times, serif;
+}
+.resume-preview-sheet.tpl-classic-ats .prev-canvas-name,
+.resume-preview-sheet.tpl-classic-ats .preview-section-title {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.resume-preview-sheet.tpl-modern-professional .resume-preview-canvas {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+}
+
+.resume-preview-sheet.tpl-minimal-professional .preview-canvas-divider {
+  height: 1px;
+  background: #374151;
+}
+.resume-preview-sheet.tpl-minimal-professional .preview-section-title {
+  border-bottom: 1px solid #374151;
+  color: #111827;
+}
+
+.resume-preview-sheet.tpl-technical-ats .prev-item-title-col code,
+.resume-preview-sheet.tpl-technical-ats .prev-skill-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Autosave indicator */
+.builder-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.builder-save-status .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+}
+.builder-save-status.saving .status-dot {
+  background: #f59e0b;
+  animation: pulse 1s infinite;
 }
 
 /* ==========================================================================
@@ -4320,5 +4521,91 @@ svg {
   margin: 0 0 16px 0;
 }
 
+/* ==========================================================================
+   PRINT ISOLATION STYLESHEET (@media print)
+   Ensures ONLY the resume document prints, hiding all application UI
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
 
+  *, *:before, *:after {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
 
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Completely suppress all application chrome and builder controls */
+  #appSidebar,
+  .app-header,
+  .view-header,
+  .subnav-pills-bar,
+  #builderEditorColumn,
+  .builder-toolbar,
+  .mobile-bottom-nav,
+  .modal-backdrop,
+  .toast-container,
+  .pre-export-issue-card,
+  button,
+  .panel:not(.resume-preview-sheet),
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Make the resume canvas the only visible container */
+  .app-layout,
+  .app-main,
+  .tab-panel.active,
+  .builder-grid,
+  .builder-preview-container,
+  .resume-preview-sheet,
+  .resume-preview-canvas {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .resume-preview-canvas {
+    padding: 0 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+  }
+
+  .preview-canvas-header h2,
+  .prev-canvas-name {
+    color: #000000 !important;
+  }
+
+  .preview-section-title {
+    break-after: avoid;
+    page-break-after: avoid;
+    color: #000000 !important;
+    border-bottom: 1pt solid #000000 !important;
+  }
+
+  .prev-item-entry {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
