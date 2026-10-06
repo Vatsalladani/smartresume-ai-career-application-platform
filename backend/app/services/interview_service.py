@@ -10,9 +10,138 @@ from sqlalchemy.orm import Session
 from app.models.interview import InterviewSession, InterviewMessage, InterviewEvaluation
 from app.models.master_profile import Profile
 from app.models.job_fit import JobPosting
+from app.models.resume import Resume
 from app.schemas.interview import InterviewSessionCreate
 from app.services.company_verification_service import get_cached_verification, verify_company
 from app.schemas.company_verification import CompanyVerificationRequest
+
+
+def get_preparation_guide(
+    db: Session,
+    user_id: int,
+    resume_id: Optional[int] = None,
+    job_id: Optional[int] = None,
+    target_role: Optional[str] = None,
+    target_company: Optional[str] = None,
+    job_description: Optional[str] = None,
+) -> dict:
+    resume = None
+    if resume_id:
+        resume = db.query(Resume).filter(Resume.id == resume_id, Resume.user_id == user_id).first()
+    if not resume:
+        resume = db.query(Resume).filter(Resume.user_id == user_id, Resume.is_archived.is_(False)).order_by(Resume.updated_at.desc()).first()
+
+    pc = (resume.parsed_content or {}) if resume else {}
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+
+    role = target_role or (resume.target_role if resume else None) or (profile.headline if profile else None) or "Software Engineer"
+    company = target_company or (resume.target_company if resume else None) or "Target Company"
+
+    cand_skills = []
+    if pc.get("skills"):
+        for s in pc["skills"]:
+            if isinstance(s, str) and s.strip(): cand_skills.append(s.strip())
+            elif isinstance(s, dict) and s.get("name"): cand_skills.append(s["name"].strip())
+    elif profile and profile.skills:
+        cand_skills = [s.name for s in profile.skills]
+
+    cand_projects = []
+    if pc.get("projects"):
+        cand_projects = [p for p in pc["projects"] if not p.get("is_hidden") and (p.get("title") or p.get("name"))]
+    elif profile and profile.projects:
+        cand_projects = profile.projects
+
+    cand_experiences = []
+    if pc.get("experiences"):
+        cand_experiences = [e for e in pc["experiences"] if not e.get("is_hidden")]
+    elif profile and profile.experiences:
+        cand_experiences = profile.experiences
+
+    total_exp_years = len(cand_experiences) * 1.5
+
+    jd_text = job_description or ""
+    if job_id and not jd_text:
+        job = db.query(JobPosting).filter(JobPosting.id == job_id, JobPosting.user_id == user_id).first()
+        if job:
+            jd_text = getattr(job, "raw_description", getattr(job, "description", "")) or ""
+            role = job.title or role
+            company = job.company or company
+
+    verification = get_cached_verification(company)
+    if not verification and company and company != "Target Company":
+        verification = verify_company(CompanyVerificationRequest(company_name=company))
+
+    if verification and verification.verification_status in ("VERIFIED", "LIKELY_VERIFIED"):
+        comp_note = f"Verified company context: {company}. Questions will incorporate publicly known domain and product context."
+    else:
+        comp_note = "Company-specific context is limited. Questions will focus on your resume, role, and job description."
+
+    jd_lower = jd_text.lower()
+    common_tech_keywords = [
+        "python", "fastapi", "django", "flask", "postgresql", "mysql", "mongodb", "redis",
+        "docker", "kubernetes", "aws", "gcp", "azure", "ci/cd", "rest", "graphql",
+        "react", "typescript", "javascript", "node", "microservices", "kafka", "rabbitmq",
+        "system design", "distributed systems", "git", "linux", "testing", "pytest", "security"
+    ]
+    jd_skills_found = [kw.title() for kw in common_tech_keywords if kw in jd_lower]
+    cand_skills_lower = [s.lower() for s in cand_skills]
+    missing_skills = [s for s in jd_skills_found if s.lower() not in cand_skills_lower]
+
+    matching_skills = [s for s in cand_skills if s.lower() in jd_lower]
+    relevant_topics = []
+    for s in (matching_skills or cand_skills[:4]):
+        relevant_topics.append(f"{s} Core Architecture & Practical Usage")
+    if "rest" in jd_lower or "api" in jd_lower or not relevant_topics:
+        relevant_topics.append("REST API Design, Validation & Error Handling")
+    if "sql" in jd_lower or "postgres" in jd_lower or "database" in jd_lower:
+        relevant_topics.append("Database Query Optimization, Indexing & Transactions")
+    if "docker" in jd_lower or "cloud" in jd_lower or "aws" in jd_lower:
+        relevant_topics.append("Cloud Deployments & Microservices Resilience")
+
+    eligibility_gap = None
+    req_exp_match = re.search(r"(\d+)\+?\s*(?:-\s*\d+\s*)?(?:years?|yrs?)(?:\s+of)?\s+experience", jd_lower)
+    if req_exp_match:
+        years_req = int(req_exp_match.group(1))
+        if years_req > 2 and total_exp_years < years_req:
+            eligibility_gap = {
+                "gap_type": "Years of Experience",
+                "required": f"{years_req}+ years required",
+                "demonstrated": f"~{round(total_exp_years)} years demonstrated on resume",
+                "guidance": (
+                    f"The job posting specifies {years_req}+ years of experience. Your selected resume currently demonstrates approximately {round(total_exp_years)} years. "
+                    "Preparation should focus on technical depth, ownership, and complex engineering hurdles to demonstrate high competence without misrepresenting your timeline."
+                )
+            }
+
+    likely_areas = [
+        {"area": "Project Deep-Dive", "description": "Expect deep questions on your architecture choices, component boundaries, and specific code authored."},
+        {"area": "Technical Fundamentals", "description": f"Core principles of {', '.join(cand_skills[:3]) if cand_skills else role} and API/data flow design."},
+        {"area": "Debugging & Incident Triage", "description": "How you diagnose production latency, query timeouts, and edge-case exceptions."},
+        {"area": "Scenarios & Scaling Tradeoffs", "description": "System behavior under 10x traffic, concurrency bottlenecks, and data integrity."},
+        {"area": "Behavioral & Engineering Ownership", "description": "Cross-functional collaboration, technical disagreement, and handling shifting deadlines."},
+    ]
+
+    p_title = cand_projects[0].get("title", "your primary project") if (cand_projects and isinstance(cand_projects[0], dict)) else (cand_projects[0].title if cand_projects else "your primary project")
+    practice_qs = [
+        {"category": "Project Defense", "question": f"In '{p_title}', walk me through the lifecycle of a request from client to storage and the single hardest bug you solved."},
+        {"category": "Technical Depth", "question": f"When building services with {cand_skills[0] if cand_skills else 'your stack'}, how do you handle idempotency and consistent error responses?"},
+        {"category": "Production Scenario", "question": "A critical production endpoint suddenly experiences a 4x latency spike during peak traffic. Walk me through your triage workflow."},
+        {"category": "Role-Specific", "question": f"What architectural considerations would you prioritize when building scalable systems for {role} at {company}?"},
+        {"category": "Behavioral", "question": "Describe a scenario where requirements changed late in a delivery sprint. How did you adapt your architecture and communicate tradeoffs?"}
+    ]
+
+    return {
+        "target_role": role,
+        "target_company": company,
+        "resume_title": resume.title if resume else "Active Resume",
+        "most_relevant_topics": relevant_topics[:5],
+        "likely_interview_areas": likely_areas,
+        "weak_areas_to_revise": [f"Review {s} syntax and best practices (mentioned in job description)" for s in missing_skills[:4]],
+        "eligibility_gap": eligibility_gap,
+        "practice_questions": practice_qs,
+        "company_context_note": comp_note,
+        "disclaimer": "Likely areas to prepare based on your selected resume and job description. These questions are for preparation practice; actual employer interview questions may vary."
+    }
 
 
 def get_claims_to_defend(db: Session, user_id: int, job_id: Optional[int] = None) -> list[dict]:
@@ -79,49 +208,74 @@ def get_claims_to_defend(db: Session, user_id: int, job_id: Optional[int] = None
 
 
 def create_interview_session(db: Session, user_id: int, session_in: InterviewSessionCreate) -> InterviewSession:
-    target_role = session_in.target_role or "Software Engineer"
-    target_company = session_in.target_company or "Target Company"
+    # 1. Resolve selected resume or fallback
+    resume = None
+    if session_in.resume_id:
+        resume = db.query(Resume).filter(Resume.id == session_in.resume_id, Resume.user_id == user_id).first()
+
+    pc = (resume.parsed_content or {}) if resume else {}
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+
+    target_role = session_in.target_role or (resume.target_role if resume else None) or (profile.headline if profile else None) or "Software Engineer"
+    target_company = session_in.target_company or (resume.target_company if resume else None) or "Target Company"
     career_level = (session_in.career_level or "DEVELOPING").upper()
     difficulty = getattr(session_in, "difficulty", "MEDIUM").upper()
     practice_mode = getattr(session_in, "practice_mode", "STANDARD").upper()
 
-    job_desc = ""
+    job_desc = session_in.job_description or ""
     if session_in.job_id:
         job = db.query(JobPosting).filter(JobPosting.id == session_in.job_id, JobPosting.user_id == user_id).first()
         if job:
             target_role = job.title or target_role
             target_company = job.company or target_company
-            job_desc = getattr(job, "raw_description", getattr(job, "description", "")) or ""
+            job_desc = getattr(job, "raw_description", getattr(job, "description", "")) or job_desc
 
     # Check company verification status
     verification = get_cached_verification(target_company)
-    if not verification and target_company:
+    if not verification and target_company and target_company != "Target Company":
         verification = verify_company(CompanyVerificationRequest(company_name=target_company))
 
+    loc_clause = f" in {session_in.target_location}" if session_in.target_location else ""
     company_context_str = ""
     if verification and verification.verification_status in ("VERIFIED", "LIKELY_VERIFIED"):
-        company_context_str = f" This role at {target_company} has been verified against official company sources."
+        company_context_str = f" This role at {target_company}{loc_clause} has been verified against official company sources."
     elif verification and verification.verification_status == "COULD_NOT_VERIFY":
         company_context_str = " Company-specific information is limited; questions will focus directly on the job description and your resume context."
 
-    # Load candidate profile for grounded opening
-    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
-    projects = profile.projects if profile and profile.projects else []
-    skills = [s.name for s in profile.skills] if profile and profile.skills else []
+    # Extract candidate projects and skills from selected resume (or fallback to profile)
+    cand_projects = []
+    if pc.get("projects"):
+        cand_projects = [p for p in pc["projects"] if not p.get("is_hidden") and (p.get("title") or p.get("name"))]
+    elif profile and profile.projects:
+        cand_projects = profile.projects
 
-    top_proj_name = projects[0].title if projects else "your key project"
-    top_skills_str = ", ".join(skills[:3]) if skills else "your primary technical stack"
+    cand_skills = []
+    if pc.get("skills"):
+        for s in pc["skills"]:
+            if isinstance(s, str) and s.strip(): cand_skills.append(s.strip())
+            elif isinstance(s, dict) and s.get("name"): cand_skills.append(s["name"].strip())
+    elif profile and profile.skills:
+        cand_skills = [s.name for s in profile.skills]
+
+    top_proj_name = (
+        (cand_projects[0].get("title") or cand_projects[0].get("name"))
+        if (cand_projects and isinstance(cand_projects[0], dict))
+        else (cand_projects[0].title if cand_projects else "your key project")
+    )
+    top_skills_str = ", ".join(cand_skills[:3]) if cand_skills else "your primary technical stack"
 
     session = InterviewSession(
         user_id=user_id,
         job_id=session_in.job_id,
         version_id=session_in.version_id,
+        resume_id=session_in.resume_id,
         target_role=target_role,
         target_company=target_company,
         session_mode=session_in.session_mode.upper(),
         status="IN_PROGRESS",
         readiness_score=70,
         feedback_summary=f"Mode: {practice_mode} | Difficulty: {difficulty} | Target: {target_role} at {target_company}",
+        job_description_snapshot=job_desc,
     )
     db.add(session)
     db.commit()
@@ -177,15 +331,38 @@ def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text
     if not session:
         raise ValueError("Interview session not found")
 
-    # Candidate profile context
+    # Candidate profile & selected resume context
     profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     projects = profile.projects if profile and profile.projects else []
     skills = [s.name for s in profile.skills] if profile and profile.skills else []
     experiences = profile.experiences if profile and profile.experiences else []
 
-    top_proj = projects[0] if projects else None
-    proj_title = top_proj.title if top_proj else "your primary project"
-    proj_tech = (top_proj.technologies if isinstance(top_proj.technologies, str) else ", ".join(top_proj.technologies or [])) if top_proj else "your tech stack"
+    if session.resume_id:
+        resume = db.query(Resume).filter(Resume.id == session.resume_id, Resume.user_id == user_id).first()
+        if resume and resume.parsed_content:
+            pc = resume.parsed_content
+            r_projs = [p for p in (pc.get("projects") or []) if not p.get("is_hidden") and (p.get("title") or p.get("name"))]
+            if r_projs:
+                projects = r_projs
+            r_skills = []
+            for s in (pc.get("skills") or []):
+                if isinstance(s, str) and s.strip(): r_skills.append(s.strip())
+                elif isinstance(s, dict) and s.get("name"): r_skills.append(s["name"].strip())
+            if r_skills:
+                skills = r_skills
+
+    if projects:
+        p0 = projects[0]
+        if isinstance(p0, dict):
+            proj_title = p0.get("title") or p0.get("name") or "your primary project"
+            t = p0.get("technologies") or []
+            proj_tech = ", ".join(t) if isinstance(t, list) else str(t)
+        else:
+            proj_title = p0.title
+            proj_tech = (p0.technologies if isinstance(p0.technologies, str) else ", ".join(p0.technologies or [])) if hasattr(p0, "technologies") else "your tech stack"
+    else:
+        proj_title = "your primary project"
+        proj_tech = "your tech stack"
 
     # Analyze candidate answer text
     text_lower = user_text.lower()
@@ -201,7 +378,6 @@ def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text
         InterviewMessage.sender == "USER"
     ).count()
     turn_index = prev_user_count + 1
-
 
     # Evaluate turn
     strong_feedback = []
@@ -247,9 +423,9 @@ def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text
     # Dynamic 10-Stage Multi-Turn Deep-Dive Progression (Requirements 55, 56, 57, 58, 59)
     if turn_index == 1:
         # Move to Stage 2: Resume Project Deep-Dive (Dig Deep Part 1)
-        question_type = "Role Fundamentals & Project Architecture"
+        question_type = "Project Architecture Deep-Dive"
         ai_reply = (
-            f"[Stage 2: Role Fundamentals & Project Architecture Deep-Dive]\n"
+            f"[Stage 2: Project Architecture Deep-Dive — Role Fundamentals]\n"
             f"You mentioned working on '{proj_title}'. Let's drill into the architecture: "
             f"Can you walk me through the lifecycle of a request from client initiation to database persistence? "
             f"What specific components did you personally author, and why did you choose {proj_tech} over other alternatives?"
@@ -263,7 +439,7 @@ def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text
 
         if auth_mentioned:
             ai_reply = (
-                f"[Stage 3: Technical Depth — Authentication & Security]\n"
+                f"[Stage 3: Deep-Dive — Authentication & Security — Technical Depth]\n"
                 f"You brought up authentication in '{proj_title}'. Let's dig deeper: "
                 f"Walk me through the exact authentication flow from credentials submission to token validation. "
                 f"What security risks exist in that implementation (e.g. CSRF, session hijacking, replay attacks), "
@@ -271,13 +447,13 @@ def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text
             )
         elif db_mentioned:
             ai_reply = (
-                f"[Stage 3: Technical Depth — Data Consistency & Query Design]\n"
+                f"[Stage 3: Deep-Dive — Data Consistency & Query Design — Technical Depth]\n"
                 f"You mentioned database operations. In '{proj_title}', how did you structure your schema and index design? "
                 f"How did you guarantee data consistency during concurrent operations or partial write failures?"
             )
         else:
             ai_reply = (
-                f"[Stage 3: Technical Depth — Personal Implementation Details]\n"
+                f"[Stage 3: Deep-Dive — Personal Implementation Details — Technical Depth]\n"
                 f"In '{proj_title}', walk me through one specific component or endpoint you found most difficult to build. "
                 f"What unexpected bug or bottleneck arose during implementation, and how did you diagnose the root cause?"
             )
@@ -285,7 +461,7 @@ def process_candidate_turn(db: Session, user_id: int, session_id: int, user_text
         # Move to Stage 4: Twisted / Edge-Case Question (Requirement 57)
         question_type = "Resume Claim Defense & System Resilience"
         ai_reply = (
-            f"[Stage 4: Resume Claim Defense — Edge Cases & High Load Scenarios]\n"
+            f"[Stage 4: Edge Cases & High Load Scenarios — Resume Claim Defense]\n"
             f"Let's test the resilience of your architecture in '{proj_title}':\n"
             f"1. What happens if your service receives 10x normal traffic and the database latency spikes to 5 seconds?\n"
             f"2. What happens if a user submits a state-modifying action twice in rapid succession?\n"

@@ -30,6 +30,8 @@ const state = {
     spacing: "standard",
     accentColor: "#1e3a8a",
   },
+  resumes: [],
+  activeResumeId: localStorage.getItem("smartresume_active_resume_id") || null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -39,6 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireTheme();
   wireAuth();
   wireNavigation();
+  wireMultiResumeWorkspace();
   wireResumeBuilder();
   wireMasterProfile();
   wireJobFit();
@@ -1037,6 +1040,7 @@ async function loadApp() {
       loadPaymentHistory(),
       loadNotifications(),
       loadTemplatesCatalogOnly(),
+      loadResumes(),
     ]);
     renderDashboard();
     drawIcons();
@@ -1117,6 +1121,9 @@ function renderDashboard() {
       resumeBadgeEl.className = "badge-sub";
     }
   }
+
+  // 2B. Render My Resumes List (Multi-resume support)
+  renderDashboardMyResumes();
 
   // 3. Dynamic Next Best Action Calculation
   computeAndRenderNextBestAction(hasProfileData, score);
@@ -1289,20 +1296,13 @@ function computeAndRenderNextBestAction(hasProfileData, score) {
 
   if (!titleEl || !btnEl) return;
 
-  if (!hasProfileData) {
+  const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+  if (activeResumes.length === 0) {
     if (iconEl) iconEl.setAttribute("data-lucide", "file-plus");
     titleEl.textContent = "Create your first resume";
     if (descEl) descEl.textContent = "Start with our guided builder to generate an ATS-ready resume in minutes.";
     if (btnTextEl) btnTextEl.textContent = "Create My Resume";
-    btnEl.onclick = () => {
-      const modal = $("#onboardingModal");
-      if (modal) {
-        modal.classList.remove("hidden");
-        resetOnboardingWizard();
-      } else {
-        navigateToTab("resume-builder");
-      }
-    };
+    btnEl.onclick = () => openCreateResumeModal();
   } else if (!state.jobs || state.jobs.length === 0) {
     if (iconEl) iconEl.setAttribute("data-lucide", "crosshair");
     titleEl.textContent = "Match your resume to a target job";
@@ -1823,52 +1823,79 @@ function getCleanResumeBuilderState() {
   };
 }
 
+async function flushBuilderAutosave() {
+  if (builderAutosaveTimeout) {
+    clearTimeout(builderAutosaveTimeout);
+    builderAutosaveTimeout = null;
+  }
+  try {
+    localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
+    if (state.activeResumeId) {
+      await API.request(`/resumes/${state.activeResumeId}`, {
+        method: "PATCH",
+        body: {
+          parsed_content: resumeBuilderState,
+        },
+      });
+    }
+  } catch (err) {
+    console.warn("Autosave flush error:", err);
+  }
+}
+
 function loadResumeBuilderState() {
   try {
-    const raw = localStorage.getItem("smartresume_builder_state");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object" && parsed.header) {
-        const clean = getCleanResumeBuilderState();
-        resumeBuilderState = Object.assign(clean, parsed);
-        resumeBuilderState.sectionTitles = Object.assign({}, DEFAULT_SECTION_TITLES, parsed.sectionTitles || {});
-        if (resumeBuilderState.sectionTitles.skills === "Skills & Technologies") {
-          resumeBuilderState.sectionTitles.skills = "Skills";
-        }
-        if (!Array.isArray(resumeBuilderState.sectionOrder)) {
-          resumeBuilderState.sectionOrder = clean.sectionOrder;
-        }
-        if (!resumeBuilderState.dateFormat) resumeBuilderState.dateFormat = "MMM YYYY";
-        if (!resumeBuilderState.skillsLayout) resumeBuilderState.skillsLayout = "inline";
-        if (!Array.isArray(resumeBuilderState.skillCategories)) resumeBuilderState.skillCategories = [];
-        if (!Array.isArray(resumeBuilderState.customSections)) resumeBuilderState.customSections = [];
-        if (!resumeBuilderState.template) {
-          resumeBuilderState.template = state.activeTemplateId || localStorage.getItem("activeTemplateId") || "classic_ats";
-        }
-        const tconf = RESUME_BUILDER_TEMPLATES[resumeBuilderState.template] || {};
-        if (!resumeBuilderState.fontFamily) resumeBuilderState.fontFamily = tconf.fontId || "inter";
-        if (!resumeBuilderState.layout) resumeBuilderState.layout = tconf.layout || "single";
-        if (!resumeBuilderState.pageSize) resumeBuilderState.pageSize = "a4";
-        if (!resumeBuilderState.margins) resumeBuilderState.margins = "standard";
-        if (!resumeBuilderState.lineHeight) resumeBuilderState.lineHeight = "standard";
-        if (!resumeBuilderState.contactSeparator) resumeBuilderState.contactSeparator = tconf.contactSeparator || "|";
-        if (!resumeBuilderState.bulletStyle) resumeBuilderState.bulletStyle = "disc";
-        if (!resumeBuilderState.dateAlignment) resumeBuilderState.dateAlignment = "right";
-        if (typeof resumeBuilderState.photoEnabled !== "boolean") resumeBuilderState.photoEnabled = false;
-        if (!resumeBuilderState.photoUrl) resumeBuilderState.photoUrl = "";
-        if (!resumeBuilderState.photoShape) resumeBuilderState.photoShape = "circle";
-        if (!resumeBuilderState.photoSize) resumeBuilderState.photoSize = "md";
-        if (!resumeBuilderState.elementColors || typeof resumeBuilderState.elementColors !== "object") {
-          resumeBuilderState.elementColors = {};
-        }
-        if (!resumeBuilderState.sectionStyles || typeof resumeBuilderState.sectionStyles !== "object") {
-          resumeBuilderState.sectionStyles = {};
-        }
+    // 1. Check if active resume exists in loaded resumes
+    const activeResume = (state.resumes || []).find(r => r.id === state.activeResumeId);
+    let parsed = null;
+    if (activeResume && activeResume.parsed_content && typeof activeResume.parsed_content === "object" && activeResume.parsed_content.header) {
+      parsed = activeResume.parsed_content;
+    } else {
+      const raw = localStorage.getItem("smartresume_builder_state");
+      if (raw) parsed = JSON.parse(raw);
+    }
 
-        state.activeTemplateId = resumeBuilderState.template;
-        localStorage.setItem("activeTemplateId", resumeBuilderState.template);
-        return;
+    if (parsed && typeof parsed === "object" && parsed.header) {
+      const clean = getCleanResumeBuilderState();
+      resumeBuilderState = Object.assign(clean, parsed);
+      resumeBuilderState.sectionTitles = Object.assign({}, DEFAULT_SECTION_TITLES, parsed.sectionTitles || {});
+      if (resumeBuilderState.sectionTitles.skills === "Skills & Technologies") {
+        resumeBuilderState.sectionTitles.skills = "Skills";
       }
+      if (!Array.isArray(resumeBuilderState.sectionOrder)) {
+        resumeBuilderState.sectionOrder = clean.sectionOrder;
+      }
+      if (!resumeBuilderState.dateFormat) resumeBuilderState.dateFormat = "MMM YYYY";
+      if (!resumeBuilderState.skillsLayout) resumeBuilderState.skillsLayout = "inline";
+      if (!Array.isArray(resumeBuilderState.skillCategories)) resumeBuilderState.skillCategories = [];
+      if (!Array.isArray(resumeBuilderState.customSections)) resumeBuilderState.customSections = [];
+      if (!resumeBuilderState.template) {
+        resumeBuilderState.template = state.activeTemplateId || localStorage.getItem("activeTemplateId") || "classic_ats";
+      }
+      const tconf = RESUME_BUILDER_TEMPLATES[resumeBuilderState.template] || {};
+      if (!resumeBuilderState.fontFamily) resumeBuilderState.fontFamily = tconf.fontId || "inter";
+      if (!resumeBuilderState.layout) resumeBuilderState.layout = tconf.layout || "single";
+      if (!resumeBuilderState.pageSize) resumeBuilderState.pageSize = "a4";
+      if (!resumeBuilderState.margins) resumeBuilderState.margins = "standard";
+      if (!resumeBuilderState.lineHeight) resumeBuilderState.lineHeight = "standard";
+      if (!resumeBuilderState.contactSeparator) resumeBuilderState.contactSeparator = tconf.contactSeparator || "|";
+      if (!resumeBuilderState.bulletStyle) resumeBuilderState.bulletStyle = "disc";
+      if (!resumeBuilderState.dateAlignment) resumeBuilderState.dateAlignment = "right";
+      if (typeof resumeBuilderState.photoEnabled !== "boolean") resumeBuilderState.photoEnabled = false;
+      if (!resumeBuilderState.photoUrl) resumeBuilderState.photoUrl = "";
+      if (!resumeBuilderState.photoShape) resumeBuilderState.photoShape = "circle";
+      if (!resumeBuilderState.photoSize) resumeBuilderState.photoSize = "md";
+      if (!resumeBuilderState.elementColors || typeof resumeBuilderState.elementColors !== "object") {
+        resumeBuilderState.elementColors = {};
+      }
+      if (!resumeBuilderState.sectionStyles || typeof resumeBuilderState.sectionStyles !== "object") {
+        resumeBuilderState.sectionStyles = {};
+      }
+
+      state.activeTemplateId = resumeBuilderState.template;
+      localStorage.setItem("activeTemplateId", resumeBuilderState.template);
+      updateBuilderHeaderUI(activeResume);
+      return;
     }
   } catch (e) {
     console.warn("Failed to load builder state from storage", e);
@@ -1877,29 +1904,611 @@ function loadResumeBuilderState() {
   if (state.activeTemplateId) {
     resumeBuilderState.template = state.activeTemplateId;
   }
+  updateBuilderHeaderUI();
 }
 
 function triggerBuilderAutosave() {
   const statusEl = $("#builderSaveStatus");
+  const statusText = $("#builderSaveStatusText");
   if (statusEl) {
     statusEl.className = "builder-save-status saving";
-    statusEl.innerHTML = '<span class="status-dot"></span><span>Saving...</span>';
+    if (statusText) statusText.textContent = "Saving draft...";
   }
   if (builderAutosaveTimeout) clearTimeout(builderAutosaveTimeout);
-  builderAutosaveTimeout = setTimeout(() => {
+  builderAutosaveTimeout = setTimeout(async () => {
     try {
       localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
+      if (state.activeResumeId) {
+        await API.request(`/resumes/${state.activeResumeId}`, {
+          method: "PATCH",
+          body: {
+            parsed_content: resumeBuilderState,
+          },
+        }).catch(e => console.warn("Backend autosave skipped:", e));
+      }
       if (statusEl) {
         statusEl.className = "builder-save-status";
-        statusEl.innerHTML = '<span class="status-dot"></span><span>Saved</span>';
+        if (statusText) statusText.textContent = "Draft saved";
       }
     } catch (e) {
       if (statusEl) {
         statusEl.className = "builder-save-status";
-        statusEl.innerHTML = '<span class="status-dot" style="background:#ef4444;"></span><span>Local save error</span>';
+        if (statusText) statusText.textContent = "Saved locally";
       }
     }
-  }, 400);
+  }, 450);
+}
+
+// ==========================================================================
+// MULTI-RESUME WORKSPACE & DRAFT MANAGEMENT
+// ==========================================================================
+
+async function loadResumes() {
+  try {
+    const list = await API.request("/resumes?include_archived=true");
+    state.resumes = Array.isArray(list) ? list : [];
+    
+    // Set initial active resume if not set or invalid
+    const activeResumes = state.resumes.filter(r => !r.is_archived);
+    if (!state.activeResumeId || !state.resumes.find(r => r.id === state.activeResumeId)) {
+      if (activeResumes.length > 0) {
+        state.activeResumeId = activeResumes[0].id;
+        localStorage.setItem("smartresume_active_resume_id", state.activeResumeId);
+      }
+    }
+
+    // If active resume exists and has parsed content, load it into builder state
+    const current = state.resumes.find(r => r.id === state.activeResumeId);
+    if (current && current.parsed_content && typeof current.parsed_content === "object" && current.parsed_content.header) {
+      resumeBuilderState = Object.assign(getCleanResumeBuilderState(), current.parsed_content);
+    }
+
+    renderDashboardMyResumes();
+    updateBuilderHeaderUI(current);
+    populateInterviewResumeSelect();
+  } catch (err) {
+    console.warn("Failed to load resumes from backend:", err);
+  }
+}
+
+function updateBuilderHeaderUI(resume) {
+  if (!resume && state.activeResumeId) {
+    resume = (state.resumes || []).find(r => r.id === state.activeResumeId);
+  }
+  if (!resume) {
+    const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+    resume = activeResumes[0];
+  }
+  if (!resume) return;
+
+  const titleEl = $("#builderResumeTitle");
+  if (titleEl) titleEl.textContent = resume.title || "Resume Draft";
+
+  const statusSel = $("#builderResumeStatusSelect");
+  if (statusSel) statusSel.value = resume.status || "Draft";
+
+  const targetChip = $("#builderResumeTargetChip");
+  if (targetChip) {
+    if (resume.target_role) {
+      targetChip.textContent = resume.target_company
+        ? `${resume.target_role} · ${resume.target_company}`
+        : resume.target_role;
+      targetChip.className = "badge-sub badge-primary";
+    } else {
+      targetChip.textContent = "General";
+      targetChip.className = "badge-sub";
+    }
+  }
+
+  const metaEl = $("#builderResumeMetaInfo");
+  if (metaEl) {
+    metaEl.textContent = `Independent document · Status: ${resume.status || "Draft"} · Automatically saved as Draft`;
+  }
+}
+
+async function switchActiveResume(newResumeId) {
+  if (!newResumeId) return;
+  await flushBuilderAutosave();
+
+  state.activeResumeId = newResumeId;
+  localStorage.setItem("smartresume_active_resume_id", newResumeId);
+
+  try {
+    const res = await API.request(`/resumes/${newResumeId}`);
+    const idx = (state.resumes || []).findIndex(r => r.id === newResumeId);
+    if (idx !== -1) {
+      state.resumes[idx] = res;
+    } else {
+      state.resumes.push(res);
+    }
+
+    if (res.parsed_content && typeof res.parsed_content === "object" && res.parsed_content.header) {
+      const clean = getCleanResumeBuilderState();
+      resumeBuilderState = Object.assign(clean, res.parsed_content);
+    } else {
+      resumeBuilderState = getCleanResumeBuilderState();
+    }
+    localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
+
+    updateBuilderHeaderUI(res);
+    renderBuilderEditorFromState();
+    renderResumePreviewCanvas();
+    renderDashboardMyResumes();
+    renderResumeSwitcherModal();
+    populateInterviewResumeSelect();
+
+    $("#resumeSwitcherModal")?.classList.add("hidden");
+    toast(`Switched to "${res.title}".`);
+  } catch (err) {
+    toast(`Failed to switch resume: ${err.message}`, "error");
+  }
+}
+
+async function duplicateActiveResume() {
+  if (!state.activeResumeId) {
+    toast("No active resume to duplicate.", "warning");
+    return;
+  }
+  await flushBuilderAutosave();
+  const current = (state.resumes || []).find(r => r.id === state.activeResumeId);
+  const newTitle = current ? `${current.title} — Copy` : "Resume — Copy";
+  try {
+    toast("Duplicating resume...");
+    const dup = await API.request(`/resumes/${state.activeResumeId}/duplicate`, {
+      method: "POST",
+      body: { title: newTitle },
+    });
+    state.resumes.unshift(dup);
+    await switchActiveResume(dup.id);
+    toast(`Created independent copy "${dup.title}".`);
+  } catch (err) {
+    toast(`Failed to duplicate resume: ${err.message}`, "error");
+  }
+}
+
+async function duplicateResumeById(resumeId) {
+  await flushBuilderAutosave();
+  const current = (state.resumes || []).find(r => r.id === resumeId);
+  const newTitle = current ? `${current.title} — Copy` : "Resume — Copy";
+  try {
+    toast("Duplicating resume...");
+    const dup = await API.request(`/resumes/${resumeId}/duplicate`, {
+      method: "POST",
+      body: { title: newTitle },
+    });
+    state.resumes.unshift(dup);
+    renderDashboardMyResumes();
+    renderResumeSwitcherModal();
+    toast(`Duplicated "${dup.title}".`);
+    return dup;
+  } catch (err) {
+    toast(`Failed to duplicate: ${err.message}`, "error");
+  }
+}
+
+function openCreateResumeModal() {
+  const modal = $("#createResumeModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  
+  const titleInput = $("#newResumeTitleInput");
+  const roleInput = $("#newResumeTargetRoleInput");
+  const compInput = $("#newResumeTargetCompanyInput");
+  const locInput = $("#newResumeTargetLocationInput");
+
+  if (titleInput) titleInput.value = "New Resume Draft";
+  if (roleInput) roleInput.value = "";
+  if (compInput) compInput.value = "";
+  if (locInput) locInput.value = "";
+
+  $$(".source-card").forEach(c => {
+    c.classList.toggle("active", c.dataset.source === "profile");
+  });
+  drawIcons();
+}
+
+async function submitCreateResume() {
+  const title = $("#newResumeTitleInput")?.value.trim() || "Untitled Resume";
+  const targetRole = $("#newResumeTargetRoleInput")?.value.trim() || null;
+  const targetCompany = $("#newResumeTargetCompanyInput")?.value.trim() || null;
+  const targetLocation = $("#newResumeTargetLocationInput")?.value.trim() || null;
+  const activeCard = $(".source-card.active");
+  const source = activeCard?.dataset.source || "profile";
+
+  await flushBuilderAutosave();
+
+  let initialParsedContent;
+  if (source === "duplicate" && resumeBuilderState) {
+    initialParsedContent = JSON.parse(JSON.stringify(resumeBuilderState));
+  } else if (source === "blank") {
+    initialParsedContent = getCleanResumeBuilderState();
+    initialParsedContent.header.full_name = state.user?.full_name || state.profile?.full_name || "";
+    initialParsedContent.header.email = state.user?.email || state.profile?.email || "";
+  } else {
+    // Start from Profile
+    initialParsedContent = getCleanResumeBuilderState();
+    if (state.profile) {
+      initialParsedContent.header.full_name = state.profile.full_name || state.user?.full_name || "";
+      initialParsedContent.header.headline = state.profile.headline || "";
+      initialParsedContent.header.email = state.profile.email || state.user?.email || "";
+      initialParsedContent.header.phone = state.profile.phone || "";
+      initialParsedContent.header.location = state.profile.location || "";
+      initialParsedContent.header.linkedin = state.profile.linkedin_url || "";
+      initialParsedContent.header.github = state.profile.github_url || "";
+      initialParsedContent.summary = state.profile.summary || "";
+      initialParsedContent.skills = (state.profile.skills || []).map(s => s.name || s);
+      initialParsedContent.experiences = (state.profile.experiences || []).map(e => ({
+        company: e.company || "",
+        role: e.title || e.role || "",
+        location: e.location || "",
+        start_date: e.start_date || "",
+        end_date: e.end_date || "",
+        is_current: !!e.is_current,
+        description: e.description || "",
+        bullets: Array.isArray(e.bullets) ? e.bullets : (e.description ? [e.description] : [])
+      }));
+      initialParsedContent.education = (state.profile.education || []).map(ed => ({
+        institution: ed.institution || "",
+        degree: ed.degree || "",
+        field_of_study: ed.field_of_study || "",
+        start_date: ed.start_date || "",
+        end_date: ed.end_date || "",
+        gpa: ed.gpa || ""
+      }));
+    }
+  }
+
+  try {
+    toast("Creating independent resume...");
+    const created = await API.request("/resumes", {
+      method: "POST",
+      body: {
+        title: title,
+        status: "Draft",
+        target_role: targetRole,
+        target_company: targetCompany,
+        target_location: targetLocation,
+        parsed_content: initialParsedContent,
+      },
+    });
+
+    state.resumes.unshift(created);
+    $("#createResumeModal")?.classList.add("hidden");
+    await switchActiveResume(created.id);
+    navigateToTab("resume-builder");
+    toast(`Created new resume "${created.title}" as Draft.`);
+  } catch (err) {
+    toast(`Failed to create resume: ${err.message}`, "error");
+  }
+}
+
+let _renameResumeTargetId = null;
+
+function openRenameResumeModal(resumeId) {
+  _renameResumeTargetId = resumeId || state.activeResumeId;
+  const current = (state.resumes || []).find(r => r.id === _renameResumeTargetId);
+  if (!current) return;
+  const modal = $("#renameResumeModal");
+  if (!modal) return;
+  const input = $("#renameResumeTitleInput");
+  if (input) input.value = current.title || "";
+  modal.classList.remove("hidden");
+}
+
+async function submitRenameResume() {
+  if (!_renameResumeTargetId) return;
+  const input = $("#renameResumeTitleInput");
+  const newTitle = input?.value.trim();
+  if (!newTitle) return;
+
+  try {
+    const updated = await API.request(`/resumes/${_renameResumeTargetId}`, {
+      method: "PATCH",
+      body: { title: newTitle },
+    });
+    const idx = (state.resumes || []).findIndex(r => r.id === _renameResumeTargetId);
+    if (idx !== -1) state.resumes[idx] = updated;
+
+    if (state.activeResumeId === _renameResumeTargetId) {
+      updateBuilderHeaderUI(updated);
+    }
+    renderDashboardMyResumes();
+    renderResumeSwitcherModal();
+    $("#renameResumeModal")?.classList.add("hidden");
+    toast(`Renamed resume to "${newTitle}".`);
+  } catch (err) {
+    toast(`Failed to rename: ${err.message}`, "error");
+  }
+}
+
+async function archiveResume(resumeId) {
+  try {
+    await API.request(`/resumes/${resumeId}/archive`, { method: "POST" });
+    const r = (state.resumes || []).find(x => x.id === resumeId);
+    if (r) r.is_archived = true;
+    toast("Resume archived.");
+    if (state.activeResumeId === resumeId) {
+      const nextActive = (state.resumes || []).find(x => !x.is_archived);
+      if (nextActive) {
+        await switchActiveResume(nextActive.id);
+      }
+    }
+    renderDashboardMyResumes();
+    renderResumeSwitcherModal();
+  } catch (err) {
+    toast(`Failed to archive resume: ${err.message}`, "error");
+  }
+}
+
+async function unarchiveResume(resumeId) {
+  try {
+    await API.request(`/resumes/${resumeId}/unarchive`, { method: "POST" });
+    const r = (state.resumes || []).find(x => x.id === resumeId);
+    if (r) r.is_archived = false;
+    toast("Resume restored.");
+    renderDashboardMyResumes();
+    renderResumeSwitcherModal();
+  } catch (err) {
+    toast(`Failed to restore resume: ${err.message}`, "error");
+  }
+}
+
+async function deleteResume(resumeId) {
+  const r = (state.resumes || []).find(x => x.id === resumeId);
+  const name = r ? r.title : "this resume";
+  if (!confirm(`Are you sure you want to permanently delete "${name}"? This action cannot be undone.`)) {
+    return;
+  }
+  try {
+    await API.request(`/resumes/${resumeId}`, { method: "DELETE" });
+    state.resumes = (state.resumes || []).filter(x => x.id !== resumeId);
+    toast("Resume deleted.");
+    if (state.activeResumeId === resumeId) {
+      const nextActive = (state.resumes || []).find(x => !x.is_archived) || state.resumes[0];
+      if (nextActive) {
+        await switchActiveResume(nextActive.id);
+      } else {
+        state.activeResumeId = null;
+        localStorage.removeItem("smartresume_active_resume_id");
+      }
+    }
+    renderDashboardMyResumes();
+    renderResumeSwitcherModal();
+  } catch (err) {
+    toast(`Failed to delete resume: ${err.message}`, "error");
+  }
+}
+
+let _switcherFilter = "active";
+
+function openResumeSwitcherModal() {
+  const modal = $("#resumeSwitcherModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  _switcherFilter = "active";
+  renderResumeSwitcherModal();
+}
+
+function renderResumeSwitcherModal() {
+  const container = $("#switcherResumeList");
+  if (!container) return;
+
+  const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+  const archivedResumes = (state.resumes || []).filter(r => !!r.is_archived);
+
+  $("#switcherActiveCount") && ($("#switcherActiveCount").textContent = activeResumes.length);
+  $("#switcherArchivedCount") && ($("#switcherArchivedCount").textContent = archivedResumes.length);
+
+  $("#switcherTabActiveBtn")?.classList.toggle("active", _switcherFilter === "active");
+  $("#switcherTabArchivedBtn")?.classList.toggle("active", _switcherFilter === "archived");
+
+  const query = ($("#switcherSearchInput")?.value || "").toLowerCase().trim();
+  let list = _switcherFilter === "active" ? activeResumes : archivedResumes;
+  if (query) {
+    list = list.filter(r =>
+      (r.title && r.title.toLowerCase().includes(query)) ||
+      (r.target_role && r.target_role.toLowerCase().includes(query)) ||
+      (r.target_company && r.target_company.toLowerCase().includes(query))
+    );
+  }
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-structured p-4 text-center">
+        <i data-lucide="folder" style="color: var(--muted); margin: 0 auto 8px auto;"></i>
+        <h4 style="font-size: 0.95rem;">${_switcherFilter === "active" ? "No active resumes found" : "No archived resumes"}</h4>
+        <p class="text-xs text-muted mb-3">${_switcherFilter === "active" ? "Create a new resume to get started." : "Archived resumes will appear here."}</p>
+        ${_switcherFilter === "active" ? `<button class="primary-btn sm" type="button" onclick="$('#closeResumeSwitcherModalBtn').click(); openCreateResumeModal();"><i data-lucide="plus"></i><span>Create New Resume</span></button>` : ""}
+      </div>
+    `;
+    drawIcons();
+    return;
+  }
+
+  container.innerHTML = list.map(r => {
+    const isCurrent = r.id === state.activeResumeId;
+    const statusClass = (r.status || "Draft").toLowerCase();
+    const targetText = r.target_role ? (r.target_company ? `${r.target_role} · ${r.target_company}` : r.target_role) : "General";
+    const updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : "Recently";
+
+    return `
+      <div class="switcher-resume-row ${isCurrent ? 'is-active' : ''}">
+        <div class="my-resume-item-info">
+          <div class="my-resume-item-header">
+            <h4 class="my-resume-item-title">${escapeHtml(r.title || "Resume")}</h4>
+            <span class="badge-status ${statusClass}">${escapeHtml(r.status || "Draft")}</span>
+            ${isCurrent ? '<span class="badge-sub badge-primary">Current</span>' : ''}
+          </div>
+          <div class="my-resume-item-sub">
+            <span><i data-lucide="briefcase" style="width:12px;height:12px;"></i> ${escapeHtml(targetText)}</span>
+            <span>·</span>
+            <span>Updated ${escapeHtml(updated)}</span>
+          </div>
+        </div>
+        <div class="my-resume-item-actions">
+          ${!isCurrent ? `<button class="primary-btn xs" type="button" onclick="switchActiveResume('${r.id}'); navigateToTab('resume-builder');"><i data-lucide="check"></i><span>Open</span></button>` : `<button class="secondary-btn xs" type="button" onclick="$('#closeResumeSwitcherModalBtn').click(); navigateToTab('resume-builder');"><i data-lucide="edit-3"></i><span>Edit</span></button>`}
+          <button class="secondary-btn xs" type="button" title="Duplicate resume" onclick="duplicateResumeById('${r.id}')"><i data-lucide="copy"></i></button>
+          <button class="secondary-btn xs" type="button" title="Rename resume" onclick="openRenameResumeModal('${r.id}')"><i data-lucide="edit-2"></i></button>
+          ${!r.is_archived ? `<button class="ghost-btn xs" type="button" title="Archive resume" onclick="archiveResume('${r.id}')"><i data-lucide="archive"></i></button>` : `<button class="ghost-btn xs" type="button" title="Restore resume" onclick="unarchiveResume('${r.id}')"><i data-lucide="rotate-ccw"></i></button>`}
+          <button class="ghost-btn xs text-danger" type="button" title="Delete resume" onclick="deleteResume('${r.id}')"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  drawIcons();
+}
+
+function renderDashboardMyResumes() {
+  const container = $("#dashMyResumesList");
+  if (!container) return;
+
+  const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+  const countBadge = $("#dashResumesCountBadge");
+  if (countBadge) countBadge.textContent = activeResumes.length;
+
+  const viewAllBtn = $("#dashViewAllResumesBtn");
+  if (viewAllBtn) {
+    viewAllBtn.classList.toggle("hidden", activeResumes.length <= 3);
+    viewAllBtn.onclick = () => openResumeSwitcherModal();
+  }
+
+  if (activeResumes.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-structured" style="padding: 24px 16px; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center;">
+        <div class="empty-icon" style="margin: 0 auto 10px auto;"><i data-lucide="file-plus"></i></div>
+        <h4 style="font-size: 0.95rem; margin-bottom: 4px;">You haven't created a resume yet.</h4>
+        <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 14px;">Build tailored resumes for different roles and companies, each independently saved as a draft.</p>
+        <div class="flex-row justify-center gap-2 flex-wrap">
+          <button class="primary-btn sm" type="button" onclick="openCreateResumeModal()">
+            <i data-lucide="plus"></i><span>Create My First Resume</span>
+          </button>
+          <button class="secondary-btn sm" type="button" onclick="$('#openImportModalBtn')?.click()">
+            <i data-lucide="file-up"></i><span>Import Existing Resume</span>
+          </button>
+        </div>
+      </div>
+    `;
+    drawIcons();
+    return;
+  }
+
+  // Show up to 3-5 recent resumes
+  const displayList = activeResumes.slice(0, 4);
+  container.innerHTML = displayList.map(r => {
+    const isCurrent = r.id === state.activeResumeId;
+    const statusClass = (r.status || "Draft").toLowerCase();
+    const targetText = r.target_role ? (r.target_company ? `${r.target_role} · ${r.target_company}` : r.target_role) : "General Resume";
+    const updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : "Today";
+
+    return `
+      <div class="my-resume-item-card">
+        <div class="my-resume-item-info">
+          <div class="my-resume-item-header">
+            <h4 class="my-resume-item-title">${escapeHtml(r.title || "Resume")}</h4>
+            <span class="badge-status ${statusClass}">${escapeHtml(r.status || "Draft")}</span>
+            ${isCurrent ? '<span class="badge-sub badge-primary">Active</span>' : ''}
+          </div>
+          <div class="my-resume-item-sub">
+            <span><i data-lucide="briefcase" style="width:12px;height:12px;"></i> ${escapeHtml(targetText)}</span>
+            <span>·</span>
+            <span>Updated ${escapeHtml(updated)}</span>
+          </div>
+        </div>
+        <div class="my-resume-item-actions">
+          <button class="primary-btn xs" type="button" onclick="switchActiveResume('${r.id}'); navigateToTab('resume-builder');">
+            <i data-lucide="edit-3"></i><span>Edit</span>
+          </button>
+          <button class="secondary-btn xs" type="button" title="Duplicate resume" onclick="duplicateResumeById('${r.id}')">
+            <i data-lucide="copy"></i><span>Copy</span>
+          </button>
+          <button class="ghost-btn xs" type="button" title="Archive" onclick="archiveResume('${r.id}')">
+            <i data-lucide="archive"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  drawIcons();
+}
+
+function wireMultiResumeWorkspace() {
+  // Dashboard triggers
+  $("#dashCreateNewResumeBtn")?.addEventListener("click", () => openCreateResumeModal());
+  $("#dashViewAllResumesBtn")?.addEventListener("click", () => openResumeSwitcherModal());
+
+  // Builder header triggers
+  $("#builderOpenSwitcherBtn")?.addEventListener("click", () => openResumeSwitcherModal());
+  $("#builderCreateResumeBtn")?.addEventListener("click", () => openCreateResumeModal());
+  $("#builderDuplicateResumeBtn")?.addEventListener("click", () => duplicateActiveResume());
+  $("#builderRenameResumeBtn")?.addEventListener("click", () => openRenameResumeModal(state.activeResumeId));
+  $("#builderResumeTitle")?.addEventListener("click", () => openRenameResumeModal(state.activeResumeId));
+
+  // Builder status select change
+  $("#builderResumeStatusSelect")?.addEventListener("change", async (e) => {
+    const val = e.target.value;
+    if (state.activeResumeId) {
+      try {
+        await API.request(`/resumes/${state.activeResumeId}`, {
+          method: "PATCH",
+          body: { status: val },
+        });
+        const current = (state.resumes || []).find(r => r.id === state.activeResumeId);
+        if (current) current.status = val;
+        updateBuilderHeaderUI(current);
+        renderDashboardMyResumes();
+        toast(`Resume marked as ${val}.`);
+      } catch (err) {
+        toast(`Failed to update status: ${err.message}`, "error");
+      }
+    }
+  });
+
+  // Create Resume Modal
+  $("#closeCreateResumeModalBtn")?.addEventListener("click", () => {
+    $("#createResumeModal")?.classList.add("hidden");
+  });
+  $("#cancelCreateResumeBtn")?.addEventListener("click", () => {
+    $("#createResumeModal")?.classList.add("hidden");
+  });
+  $("#submitCreateResumeBtn")?.addEventListener("click", () => submitCreateResume());
+
+  $$(".source-card").forEach(card => {
+    card.addEventListener("click", () => {
+      $$(".source-card").forEach(c => c.classList.remove("active"));
+      card.classList.add("active");
+    });
+  });
+
+  // Switcher Modal
+  $("#closeResumeSwitcherModalBtn")?.addEventListener("click", () => {
+    $("#resumeSwitcherModal")?.classList.add("hidden");
+  });
+  $("#switcherModalNewBtn")?.addEventListener("click", () => {
+    $("#resumeSwitcherModal")?.classList.add("hidden");
+    openCreateResumeModal();
+  });
+  $("#switcherTabActiveBtn")?.addEventListener("click", () => {
+    _switcherFilter = "active";
+    renderResumeSwitcherModal();
+  });
+  $("#switcherTabArchivedBtn")?.addEventListener("click", () => {
+    _switcherFilter = "archived";
+    renderResumeSwitcherModal();
+  });
+  $("#switcherSearchInput")?.addEventListener("input", () => {
+    renderResumeSwitcherModal();
+  });
+
+  // Rename Modal
+  $("#closeRenameResumeModalBtn")?.addEventListener("click", () => {
+    $("#renameResumeModal")?.classList.add("hidden");
+  });
+  $("#cancelRenameResumeBtn")?.addEventListener("click", () => {
+    $("#renameResumeModal")?.classList.add("hidden");
+  });
+  $("#submitRenameResumeBtn")?.addEventListener("click", () => submitRenameResume());
 }
 
 function wireResumeBuilder() {
@@ -7292,7 +7901,151 @@ function stopLiveInterviewMedia() {
   $("#liveMicToggleBtn")?.classList.remove("active-muted");
 }
 
+async function loadInterviewPreparationGuide(resumeId, role, company) {
+  const panel = $("#interviewPrepGuidePanel");
+  if (!panel) return;
+
+  const topicsList = $("#prepGuideTopicsList");
+  const likelyList = $("#prepGuideLikelyAreasList");
+  const weakWrap = $("#prepGuideWeakAreasWrapper");
+  const weakList = $("#prepGuideWeakAreasList");
+  const projList = $("#prepGuideProjectsList");
+  const gapNotice = $("#prepGuideGapNotice");
+  const gapText = $("#prepGuideGapNoticeText");
+  const targetBadge = $("#prepGuideTargetBadge");
+
+  try {
+    const params = new URLSearchParams();
+    if (resumeId) params.append("resume_id", resumeId);
+    if (role) params.append("target_role", role);
+    if (company && company !== "Target Company") params.append("target_company", company);
+    if (state.activeJobContext?.jobId) params.append("job_id", state.activeJobContext.jobId);
+
+    const guide = await API.request(`/interview/preparation-guide?${params.toString()}`);
+    if (!guide) return;
+
+    if (targetBadge) {
+      targetBadge.textContent = guide.resume_title ? `Targeting: ${guide.resume_title}` : "Calibrated with Resume";
+    }
+
+    if (topicsList && guide.relevant_topics) {
+      topicsList.innerHTML = guide.relevant_topics.map(t => `<span class="badge-sub">${escapeHtml(t)}</span>`).join("");
+    }
+
+    if (likelyList && guide.likely_question_areas) {
+      likelyList.innerHTML = guide.likely_question_areas.map(a => `<li>${escapeHtml(a)}</li>`).join("");
+    }
+
+    if (weakWrap && weakList) {
+      if (guide.weak_areas_to_revise && guide.weak_areas_to_revise.length > 0) {
+        weakWrap.classList.remove("hidden");
+        weakList.innerHTML = guide.weak_areas_to_revise.map(w => `<li>${escapeHtml(w)}</li>`).join("");
+      } else {
+        weakWrap.classList.add("hidden");
+      }
+    }
+
+    if (projList) {
+      if (guide.resume_projects_to_question && guide.resume_projects_to_question.length > 0) {
+        projList.innerHTML = guide.resume_projects_to_question.map(p => `
+          <div class="panel p-2 text-xs" style="background: var(--surface-2); border-radius: 6px;">
+            <strong>${escapeHtml(p.name)}</strong>
+            <p class="text-xs text-muted mb-0 mt-1">${escapeHtml(p.focus_question)}</p>
+          </div>
+        `).join("");
+      } else {
+        projList.innerHTML = `<p class="text-xs text-muted">Add projects with metrics to your resume to practice project architecture defense.</p>`;
+      }
+    }
+
+    if (gapNotice && gapText) {
+      if (guide.eligibility_gap) {
+        gapNotice.classList.remove("hidden");
+        gapText.textContent = guide.eligibility_gap;
+      } else {
+        gapNotice.classList.add("hidden");
+      }
+    }
+    drawIcons();
+  } catch (err) {
+    console.warn("Failed to load interview preparation guide:", err);
+  }
+}
+
+function syncInterviewSelectedResumeUI(resume) {
+  if (!resume && state.activeResumeId) {
+    resume = (state.resumes || []).find(r => r.id === state.activeResumeId);
+  }
+  const label = $("#interviewSelectedResumeLabel");
+  const statusBadge = $("#interviewSelectedResumeStatus");
+  if (label && resume) label.textContent = resume.title || "Resume";
+  if (statusBadge && resume) {
+    statusBadge.textContent = resume.status || "Draft";
+    statusBadge.className = `badge-sub ${(resume.status || 'Draft').toLowerCase() === 'ready' ? 'badge-pro' : ''}`;
+  }
+}
+
+function populateInterviewResumeSelect() {
+  const select = $("#interviewResumeSelect");
+  if (!select) return;
+  const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+  if (activeResumes.length === 0) {
+    select.innerHTML = '<option value="">No resumes found</option>';
+    return;
+  }
+  select.innerHTML = activeResumes.map(r => {
+    const isSelected = r.id === state.activeResumeId;
+    const targetLabel = r.target_role ? ` (${r.target_role})` : '';
+    return `<option value="${r.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(r.title)}${escapeHtml(targetLabel)}</option>`;
+  }).join("");
+
+  const current = activeResumes.find(r => r.id === state.activeResumeId) || activeResumes[0];
+  syncInterviewSelectedResumeUI(current);
+  if (current) {
+    loadInterviewPreparationGuide(current.id, state.activeJobContext?.role, state.activeJobContext?.company);
+  }
+}
+
 function wireInterviewCopilot() {
+  // Populate resumes
+  populateInterviewResumeSelect();
+
+  // Resume selector change
+  $("#interviewResumeSelect")?.addEventListener("change", async (e) => {
+    const resumeId = e.target.value;
+    const resume = (state.resumes || []).find(r => r.id === resumeId);
+    if (!resume) return;
+
+    syncInterviewSelectedResumeUI(resume);
+
+    if (resume.target_role) {
+      const roleInp = $("#interviewRoleInput");
+      if (roleInp) roleInp.value = resume.target_role;
+      state.activeJobContext.role = resume.target_role;
+      if ($("#interviewActiveRole")) $("#interviewActiveRole").textContent = resume.target_role;
+    }
+    if (resume.target_company) {
+      const compInp = $("#interviewCompanyInput");
+      if (compInp) compInp.value = resume.target_company;
+      state.activeJobContext.company = resume.target_company;
+      if ($("#interviewActiveCompany")) $("#interviewActiveCompany").textContent = resume.target_company;
+      verifyCompanyContext(resume.target_company);
+    }
+    if (resume.target_location) {
+      const locInp = $("#interviewLocationInput");
+      if (locInp) locInp.value = resume.target_location;
+      const locBadge = $("#interviewActiveLocationBadge");
+      if (locBadge) {
+        locBadge.textContent = resume.target_location;
+        locBadge.classList.remove("hidden");
+      }
+    } else {
+      $("#interviewActiveLocationBadge")?.classList.add("hidden");
+    }
+
+    await loadInterviewPreparationGuide(resume.id, state.activeJobContext?.role, state.activeJobContext?.company);
+  });
+
   // Context edit toggle
   $("#interviewEditContextBtn")?.addEventListener("click", () => {
     const row = $("#interviewContextInputsRow");
@@ -7348,6 +8101,9 @@ function wireInterviewCopilot() {
     const level = $("#interviewCareerLevelSelect")?.value || "DEVELOPING";
     const difficulty = $("#interviewDifficultySelect")?.value || "MEDIUM";
     const practice_mode = $("#interviewPracticeModeSelect")?.value || "STANDARD_20";
+    const selectedResumeId = $("#interviewResumeSelect")?.value || state.activeResumeId || null;
+    const targetLoc = $("#interviewLocationInput")?.value.trim() || null;
+    const targetJD = $("#interviewJobDescriptionInput")?.value.trim() || null;
 
     try {
       toast("Initializing Interview Practice Session...");
@@ -7356,6 +8112,9 @@ function wireInterviewCopilot() {
         body: {
           target_role: role,
           target_company: company,
+          target_location: targetLoc,
+          resume_id: selectedResumeId,
+          job_description: targetJD,
           session_mode: "TEXT",
           career_level: level,
           difficulty: difficulty,

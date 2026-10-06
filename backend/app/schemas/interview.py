@@ -6,12 +6,31 @@ from pydantic import BaseModel, Field
 class InterviewSessionCreate(BaseModel):
     job_id: Optional[int] = None
     version_id: Optional[int] = None
+    resume_id: Optional[int] = None
     target_role: str = Field(default="", max_length=150)
     target_company: str = Field(default="", max_length=150)
+    target_location: Optional[str] = Field(default=None, max_length=150)
+    job_description: Optional[str] = None
     session_mode: str = Field(default="TEXT", max_length=20)  # TEXT, LIVE
     career_level: Optional[str] = Field(default="DEVELOPING", max_length=30)  # EARLY_CAREER, DEVELOPING, EXPERIENCED
     difficulty: str = Field(default="MEDIUM", max_length=30)  # EASY, MEDIUM, HARD, VERY_HARD, ADAPTIVE
     practice_mode: str = Field(default="STANDARD", max_length=30)  # QUICK, STANDARD, DEEP, FULL_PRESSURE
+
+
+class PreparationGuideOut(BaseModel):
+    target_role: str
+    target_company: str
+    resume_title: Optional[str] = None
+    most_relevant_topics: list[str] = Field(default_factory=list)
+    likely_interview_areas: list[dict[str, str]] = Field(default_factory=list)
+    weak_areas_to_revise: list[str] = Field(default_factory=list)
+    eligibility_gap: Optional[dict[str, str]] = None
+    practice_questions: list[dict[str, str]] = Field(default_factory=list)
+    company_context_note: str = ""
+    disclaimer: str = (
+        "Likely areas to prepare based on your selected resume and job description. "
+        "Questions are designed for realistic practice and preparation. Actual employer interview questions may vary."
+    )
 
 
 class ClaimsToDefendOut(BaseModel):
@@ -79,12 +98,15 @@ class InterviewSessionOut(BaseModel):
     user_id: int
     job_id: Optional[int] = None
     version_id: Optional[int] = None
+    resume_id: Optional[int] = None
+    resume_title: Optional[str] = None
     target_role: str
     target_company: str
     session_mode: str
     status: str
     readiness_score: int
     feedback_summary: str
+    job_description_snapshot: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     messages: list[InterviewMessageOut] = Field(default_factory=list)

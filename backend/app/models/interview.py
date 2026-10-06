@@ -13,18 +13,21 @@ class InterviewSession(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     job_id: Mapped[int | None] = mapped_column(ForeignKey("job_postings.id", ondelete="SET NULL"), nullable=True)
     version_id: Mapped[int | None] = mapped_column(ForeignKey("application_versions.id", ondelete="SET NULL"), nullable=True)
+    resume_id: Mapped[int | None] = mapped_column(ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
     target_role: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     target_company: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     session_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="TEXT")  # TEXT, VOICE
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="IN_PROGRESS")  # IN_PROGRESS, COMPLETED, CANCELLED
     readiness_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     feedback_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    job_description_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", backref="interview_sessions")
     job = relationship("JobPosting")
     version = relationship("ApplicationVersion")
+    resume = relationship("Resume")
     messages = relationship("InterviewMessage", back_populates="session", cascade="all, delete-orphan", order_by="InterviewMessage.created_at")
     evaluation = relationship("InterviewEvaluation", back_populates="session", uselist=False, cascade="all, delete-orphan")
 

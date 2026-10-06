@@ -6283,3 +6283,291 @@ svg {
     padding: 60px 8px 60px 8px;
   }
 }
+
+/* ==========================================================================
+   MULTI-RESUME WORKSPACE & JOB-TARGETED INTERVIEW PREPARATION
+   ========================================================================== */
+
+/* My Resumes List (Dashboard) */
+.my-resumes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.my-resume-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.15s ease;
+  gap: 12px;
+}
+
+.my-resume-item-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.my-resume-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.my-resume-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.my-resume-item-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my-resume-item-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.my-resume-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Status Badges */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badge-status.draft {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.badge-status.ready {
+  background: var(--success-subtle);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-status.archived {
+  background: var(--surface-3);
+  color: var(--muted);
+  border: 1px dashed var(--border);
+}
+
+/* Builder Header & Top Bar */
+.builder-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 900px) {
+  .builder-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.builder-title-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.builder-resume-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: all 0.15s ease;
+}
+
+.builder-resume-title:hover {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+}
+
+.builder-status-badge {
+  width: auto !important;
+  padding: 2px 8px !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  border-radius: 9999px !important;
+  height: 24px !important;
+  background: var(--surface-2) !important;
+}
+
+/* Create Resume Source Selector Grid */
+.create-resume-source-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 500px) {
+  .create-resume-source-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.source-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.source-card:hover {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.source-card.active {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+}
+
+.source-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.source-card strong {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.source-card p {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* Resume Switcher Modal Rows */
+.switcher-resume-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.switcher-resume-row:hover {
+  border-color: var(--primary);
+  background: var(--surface-2);
+}
+
+.switcher-resume-row.is-active {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+}
+
+/* Interview What to Prepare Guidance Panel */
+.interview-prep-guide-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.prep-guide-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 680px) {
+  .prep-guide-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.prep-guide-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.prep-bullets-list {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+  color: var(--text);
+  font-size: 0.82rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prep-bullets-list li {
+  line-height: 1.4;
+}
+
+.honesty-reminder-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--primary);
+}
+
+.gap-advice-box {
+  background: var(--warning-subtle);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-top: 6px;
+}
+

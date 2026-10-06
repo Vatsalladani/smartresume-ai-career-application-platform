@@ -13,6 +13,7 @@ from app.schemas.interview import (
     InterviewMessageCreate,
     InterviewEvaluationOut,
     ClaimsToDefendOut,
+    PreparationGuideOut,
     LiveConfigOut,
 )
 from app.services import interview_service
@@ -50,6 +51,29 @@ def get_claims_to_defend_endpoint(
     return success_response(claims)
 
 
+@router.get("/preparation-guide")
+def get_preparation_guide_endpoint(
+    resume_id: Optional[int] = Query(default=None),
+    job_id: Optional[int] = Query(default=None),
+    target_role: Optional[str] = Query(default=None),
+    target_company: Optional[str] = Query(default=None),
+    job_description: Optional[str] = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Returns grounded preparation topics, likely question categories, weak areas, and eligibility analysis."""
+    guide = interview_service.get_preparation_guide(
+        db,
+        current_user.id,
+        resume_id=resume_id,
+        job_id=job_id,
+        target_role=target_role,
+        target_company=target_company,
+        job_description=job_description,
+    )
+    return success_response(PreparationGuideOut.model_validate(guide).model_dump())
+
+
 @router.post("/sessions")
 def create_session(
     payload: InterviewSessionCreate,
@@ -57,8 +81,11 @@ def create_session(
     db: Session = Depends(get_db),
 ) -> dict:
     session = interview_service.create_interview_session(db, current_user.id, payload)
+    out = InterviewSessionOut.model_validate(session)
+    if session.resume:
+        out.resume_title = session.resume.title
     return success_response(
-        InterviewSessionOut.model_validate(session).model_dump(),
+        out.model_dump(),
         "Interview session created. Copilot is ready."
     )
 
@@ -74,7 +101,13 @@ def list_sessions(
         .order_by(InterviewSession.created_at.desc())
         .all()
     )
-    return success_response([InterviewSessionOut.model_validate(s).model_dump() for s in sessions])
+    results = []
+    for s in sessions:
+        out = InterviewSessionOut.model_validate(s)
+        if s.resume:
+            out.resume_title = s.resume.title
+        results.append(out.model_dump())
+    return success_response(results)
 
 
 @router.get("/sessions/{session_id}")
@@ -90,7 +123,10 @@ def get_session(
     )
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interview session not found.")
-    return success_response(InterviewSessionOut.model_validate(session).model_dump())
+    out = InterviewSessionOut.model_validate(session)
+    if session.resume:
+        out.resume_title = session.resume.title
+    return success_response(out.model_dump())
 
 
 @router.post("/sessions/{session_id}/turns")

@@ -381,53 +381,45 @@
           </button>
         </div>
 
-        <!-- 2. CURRENT RESUME & PROFILE READINESS (2-COLUMN CARDS) -->
+        <!-- 2. MY RESUMES & PROFILE READINESS (2-COLUMN CARDS) -->
         <div class="dash-primary-grid">
-          <!-- Left: My Active Resume -->
-          <div class="dash-resume-card" id="dashCurrentResumeHeroCard">
-            <div class="dash-resume-header">
-              <div class="dash-resume-preview-thumb">
-                <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
-                <span style="font-size: 0.65rem; font-weight: 700;">PDF</span>
-              </div>
-              <div class="dash-resume-info">
-                <div class="flex-row align-center gap-2 mb-1">
-                  <span class="text-xs text-muted font-bold tracking-wider">ACTIVE RESUME</span>
-                  <span id="dashCurrentResumeBadge" class="badge-sub">Standard</span>
+          <!-- Left: My Resumes Card Section -->
+          <div class="dash-resume-card" id="dashMyResumesCard">
+            <div class="dash-resume-header flex-between align-center mb-2" style="border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+              <div class="flex-row align-center gap-2">
+                <div class="dash-resume-preview-thumb" style="width: 34px; height: 34px; min-width: 34px;">
+                  <i data-lucide="folder-kanban" style="width: 18px; height: 18px; color: var(--primary);"></i>
                 </div>
-                <h3 id="dashCurrentResumeName" class="dash-resume-title">Classic ATS</h3>
-                <p id="dashCurrentResumeDesc" class="dash-resume-sub">Clean, machine-readable formatting linked to your Career Profile.</p>
+                <div>
+                  <div class="flex-row align-center gap-2">
+                    <h3 class="dash-resume-title" style="font-size: 1.05rem; margin: 0;">My Resumes</h3>
+                    <span id="dashResumesCountBadge" class="badge-sub">0</span>
+                  </div>
+                  <span class="text-xs text-muted">Independent drafts & target versions</span>
+                </div>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <button class="primary-btn xs" type="button" id="dashCreateNewResumeBtn">
+                  <i data-lucide="plus"></i><span>New Resume</span>
+                </button>
+                <button class="ghost-btn xs hidden" type="button" id="dashViewAllResumesBtn">
+                  <span>View All</span> &rarr;
+                </button>
               </div>
             </div>
-            <div class="button-row mt-2">
-              <button class="primary-btn sm" type="button" id="dashImproveResumeBtn" onclick="navigateToTab('resume-builder')">
-                <i data-lucide="edit-3"></i><span>Improve My Resume</span>
-              </button>
-              <button class="secondary-btn sm" type="button" id="dashPreviewResumeBtn" onclick="openActiveResumePreview()">
-                <i data-lucide="eye"></i><span>Preview</span>
-              </button>
-              <button class="secondary-btn sm" type="button" id="dashChangeResumeBtn" onclick="navigateToTab('templates')">
-                <i data-lucide="layout-template"></i><span>Change Style</span>
-              </button>
-            </div>
-          </div>
 
-          <!-- Left Alternative: No Resume Yet State -->
-          <div class="dash-resume-card hidden" id="dashNoResumeHeroCard">
-            <div class="dash-resume-header">
-              <div class="dash-resume-preview-thumb" style="color: var(--muted); border-style: dashed;">
-                <i data-lucide="file-plus" style="width: 24px; height: 24px;"></i>
-              </div>
-              <div class="dash-resume-info">
-                <span class="text-xs text-muted font-bold tracking-wider">GET STARTED</span>
-                <h3 class="dash-resume-title">Create your first resume</h3>
-                <p class="dash-resume-sub">Build a recruiter-ready resume directly from your experience in minutes.</p>
-              </div>
+            <!-- List of 3-5 Resumes or No Resume State -->
+            <div id="dashMyResumesList" class="my-resumes-container mt-2">
+              <!-- Populated dynamically via renderDashboardMyResumes() -->
             </div>
-            <div class="button-row mt-2">
-              <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
-                <i data-lucide="file-plus"></i><span>Build My Resume</span>
-              </button>
+
+            <!-- Legacy compatibility anchors (hidden) -->
+            <div class="hidden" style="display:none !important;">
+              <div id="dashCurrentResumeHeroCard">
+                <span id="dashCurrentResumeName"></span>
+                <span id="dashCurrentResumeBadge"></span>
+              </div>
+              <div id="dashNoResumeHeroCard"></div>
             </div>
           </div>
 
@@ -742,21 +734,42 @@
 
       <!-- TAB: RESUME BUILDER -->
       <section id="tabResumeBuilder" class="tab-panel">
-        <div class="view-header">
+        <div class="view-header builder-header">
           <div class="view-header-content">
-            <div class="flex-row align-center gap-3">
-              <h2 style="margin: 0;">Resume Builder</h2>
+            <div class="flex-row align-center gap-2 flex-wrap mb-1">
+              <span class="text-xs text-muted font-bold tracking-wider uppercase">Current Resume:</span>
+              <div class="builder-title-wrapper flex-row align-center gap-1">
+                <h2 id="builderResumeTitle" class="builder-resume-title" title="Click to rename">Software Engineer Resume</h2>
+                <button id="builderRenameResumeBtn" class="icon-btn xs" type="button" title="Rename resume"><i data-lucide="edit-2"></i></button>
+              </div>
+              <select id="builderResumeStatusSelect" class="form-select xs builder-status-badge" title="Set resume status">
+                <option value="Draft">Draft</option>
+                <option value="Ready">Ready</option>
+              </select>
+              <span id="builderResumeTargetChip" class="badge-sub">General</span>
               <div class="builder-save-status" id="builderSaveStatus">
                 <span class="status-dot"></span>
-                <span>Saved</span>
+                <span id="builderSaveStatusText">Draft saved</span>
               </div>
             </div>
-            <p>Design, customize, and edit your resume with live preview and instant export.</p>
+            <p class="text-xs text-muted" id="builderResumeMetaInfo">Independent document · Automatically saved as Draft</p>
           </div>
-          <div class="view-header-actions">
+          <div class="view-header-actions flex-wrap">
+            <button class="secondary-btn sm" type="button" id="builderOpenSwitcherBtn" title="Switch or manage resumes">
+              <i data-lucide="folder-kanban"></i>
+              <span>My Resumes</span>
+            </button>
+            <button class="secondary-btn sm" type="button" id="builderCreateResumeBtn" title="Create new independent resume">
+              <i data-lucide="plus"></i>
+              <span>New Resume</span>
+            </button>
+            <button class="secondary-btn sm" type="button" id="builderDuplicateResumeBtn" title="Duplicate current resume as copy">
+              <i data-lucide="copy"></i>
+              <span>Duplicate</span>
+            </button>
             <button class="secondary-btn sm" type="button" id="builderCheckScoreBtn" title="Check evidence-based resume score">
               <i data-lucide="award"></i>
-              <span>Resume Score</span>
+              <span>Score</span>
             </button>
             <button class="secondary-btn sm" type="button" id="builderSyncProfileBtn" title="Sync data from Career Profile">
               <i data-lucide="refresh-cw"></i>
@@ -771,7 +784,6 @@
               <span>Download DOCX</span>
             </button>
           </div>
-
         </div>
 
         <!-- Progressive Disclosure Sub-Pills -->
@@ -2292,24 +2304,38 @@
         <div class="interview-context-bar panel mb-4">
           <div class="flex-between align-center wrap-gap">
             <div class="context-bar-info">
-              <span class="text-xs text-muted uppercase font-bold">Interview Context</span>
+              <div class="flex-row align-center gap-2 mb-1">
+                <span class="text-xs text-muted uppercase font-bold tracking-wider">Interview Target</span>
+                <span id="interviewCompanyBadge" class="badge-sub">Standard</span>
+                <span id="interviewResumeVersionBadge" class="badge-sub">Resume Version: #1</span>
+              </div>
               <div class="context-bar-title-row">
                 <h3 id="interviewActiveRole">Software Engineer</h3>
                 <span class="text-muted">at</span>
                 <strong id="interviewActiveCompany">Target Company</strong>
-                <span id="interviewCompanyBadge" class="badge-sub">Standard</span>
-                <span id="interviewResumeVersionBadge" class="badge-sub">Resume Version: #1</span>
+                <span id="interviewActiveLocationBadge" class="badge-sub hidden"></span>
+              </div>
+              <div class="flex-row align-center gap-2 mt-1">
+                <span class="text-xs text-muted">Selected Resume:</span>
+                <strong id="interviewSelectedResumeLabel" class="text-xs text-primary">Software Engineer Resume</strong>
+                <span id="interviewSelectedResumeStatus" class="badge-sub">Draft</span>
               </div>
             </div>
             <div class="context-bar-actions">
-              <button class="secondary-btn sm" type="button" id="interviewEditContextBtn"><i data-lucide="edit-2"></i><span>Edit Target Details</span></button>
+              <button class="secondary-btn sm" type="button" id="interviewEditContextBtn"><i data-lucide="edit-2"></i><span>Edit Target & Resume</span></button>
             </div>
           </div>
 
           <!-- Collapsible context edit inputs (hidden by default) -->
           <div id="interviewContextInputsRow" class="grid four mt-3 pt-3 border-t hidden">
+            <label>Select Target Resume
+              <select id="interviewResumeSelect" class="form-select sm">
+                <option value="">(Loading resumes...)</option>
+              </select>
+            </label>
             <label>Target Role<input id="interviewRoleInput" placeholder="e.g. Senior Backend Engineer" value="Software Engineer"></label>
             <label>Target Company<input id="interviewCompanyInput" placeholder="e.g. Razorpay or Acme Corp" value="Target Company"></label>
+            <label>Target Location (optional)<input id="interviewLocationInput" placeholder="e.g. Bengaluru, Remote"></label>
             <label>Career Level
               <select id="interviewCareerLevelSelect">
                 <option value="EARLY_CAREER">Early Career (Projects & Fundamentals)</option>
@@ -2334,8 +2360,79 @@
                 <option value="FULL_PRESSURE">Full Pressure (Maximum Rigor)</option>
               </select>
             </label>
+            <label class="span-2">Job Description (optional text snippet)
+              <textarea id="interviewJobDescriptionInput" rows="2" placeholder="Paste job description or requirements to ground interview questions..."></textarea>
+            </label>
           </div>
+        </div>
 
+        <!-- 2. "WHAT TO PREPARE" GUIDANCE PANEL -->
+        <div id="interviewPrepGuidePanel" class="panel mb-4 interview-prep-guide-panel">
+          <div class="panel-head flex-between align-center">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="compass" style="color: var(--primary); width: 20px; height: 20px;"></i>
+              <h4 style="margin:0;">What to Prepare for this Interview</h4>
+            </div>
+            <span class="badge-sub" id="prepGuideTargetBadge">Calibrated with Selected Resume</span>
+          </div>
+          <div class="prep-guide-body mt-2">
+            <!-- Topics & Likely Areas Grid -->
+            <div class="prep-guide-grid">
+              <div class="prep-guide-col">
+                <strong class="text-xs uppercase text-muted tracking-wider">Relevant Topics & Core Areas</strong>
+                <div id="prepGuideTopicsList" class="flex-row flex-wrap gap-1 mt-2">
+                  <span class="badge-sub">System Design</span>
+                  <span class="badge-sub">APIs</span>
+                  <span class="badge-sub">Data Structures</span>
+                </div>
+              </div>
+              <div class="prep-guide-col">
+                <strong class="text-xs uppercase text-muted tracking-wider">Likely Technical & Behavioral Areas</strong>
+                <ul id="prepGuideLikelyAreasList" class="prep-bullets-list mt-2">
+                  <li>System architecture, service boundaries, and data modelling</li>
+                  <li>Production debugging, observability, and incident recovery</li>
+                  <li>Cross-functional collaboration and technical prioritization</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Weak Areas to Revise -->
+            <div id="prepGuideWeakAreasWrapper" class="mt-3 hidden">
+              <strong class="text-xs uppercase text-warning tracking-wider">Areas to Revise / Strengthen</strong>
+              <ul id="prepGuideWeakAreasList" class="prep-bullets-list mt-1 text-xs"></ul>
+            </div>
+
+            <!-- Resume Projects likely questioned -->
+            <div id="prepGuideProjectsWrapper" class="mt-3">
+              <strong class="text-xs uppercase text-muted tracking-wider">Resume Projects Likely to be Questioned</strong>
+              <div id="prepGuideProjectsList" class="grid two gap-2 mt-1"></div>
+            </div>
+
+            <!-- Eligibility Gap Notice (Condition-based) -->
+            <div id="prepGuideGapNotice" class="alert-warning mt-3 hidden" style="border-radius: var(--radius); padding: 12px 14px;">
+              <div class="flex-row align-center gap-2 mb-1">
+                <i data-lucide="alert-circle" style="color: var(--warning); width: 16px; height: 16px;"></i>
+                <strong class="text-xs" id="prepGuideGapNoticeTitle">Eligibility Gap Notice</strong>
+              </div>
+              <p class="text-xs mb-2" id="prepGuideGapNoticeText">Your resume does not clearly show experience with some role requirements.</p>
+              <div class="gap-advice-box text-xs">
+                <strong class="text-xs">How to handle this in the interview:</strong>
+                <ul class="prep-bullets-list mt-1">
+                  <li>Be honest about your current level and hands-on exposure</li>
+                  <li>Explain related fundamentals, adjacent patterns, and fast-learning examples</li>
+                  <li>Do not invent experience or claim production ownership you did not have</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Honesty Reminder Banner -->
+            <div class="honesty-reminder-box mt-3">
+              <i data-lucide="shield-check" style="color: var(--primary); width: 16px; height: 16px; flex-shrink: 0;"></i>
+              <span class="text-xs text-muted">
+                <strong>Honesty & Grounding:</strong> Explain your real contributions and architectural trade-offs. Never fabricate skills or fake company projects.
+              </span>
+            </div>
+          </div>
         </div>
 
         <!-- 2. Two Primary Mode Selection Cards (Requirements 11 & 31) -->
@@ -3527,6 +3624,128 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
       </div>
       <div class="modal-footer">
         <button id="dismissGeminiModalBtn" class="primary-btn sm w-full" type="button">Understood</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE NEW RESUME (Requirement 3) -->
+  <div id="createResumeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="createResumeModalTitle">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="createResumeModalTitle"><i data-lucide="file-plus"></i> Create New Resume</h3>
+          <p class="text-sm text-muted">Create an independent resume with its own content, design, and target role.</p>
+        </div>
+        <button id="closeCreateResumeModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="createResumeForm" onsubmit="return false;">
+          <label class="font-bold text-xs uppercase tracking-wider mb-2 block">Choose Starting Point:</label>
+          <div class="create-resume-source-grid mb-3">
+            <div class="source-card active" data-source="profile" tabindex="0">
+              <div class="source-card-icon"><i data-lucide="user-check"></i></div>
+              <div>
+                <strong>Start from My Profile</strong>
+                <p class="text-xs text-muted mb-0">Prefill with verified experience, education, and skills from your Master Profile.</p>
+              </div>
+            </div>
+            <div class="source-card" data-source="duplicate" tabindex="0">
+              <div class="source-card-icon"><i data-lucide="copy"></i></div>
+              <div>
+                <strong>Duplicate Current Resume</strong>
+                <p class="text-xs text-muted mb-0">Clone content, layout, styling, and order of current resume into an independent document.</p>
+              </div>
+            </div>
+            <div class="source-card" data-source="blank" tabindex="0">
+              <div class="source-card-icon"><i data-lucide="file"></i></div>
+              <div>
+                <strong>Blank Resume</strong>
+                <p class="text-xs text-muted mb-0">Start fresh with empty sections and clean default formatting.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid mb-3">
+            <label class="span-2">Resume Name <span class="text-danger">*</span>
+              <input id="newResumeTitleInput" type="text" placeholder="e.g. Software Engineer Resume or Backend Developer — Razorpay" required>
+            </label>
+            <label>Target Role (optional)
+              <input id="newResumeTargetRoleInput" type="text" placeholder="e.g. Backend Developer">
+            </label>
+            <label>Target Company (optional)
+              <input id="newResumeTargetCompanyInput" type="text" placeholder="e.g. Razorpay">
+            </label>
+            <label class="span-2">Target Location (optional)
+              <input id="newResumeTargetLocationInput" type="text" placeholder="e.g. Bengaluru, Remote">
+            </label>
+          </div>
+
+          <p class="text-xs text-muted mb-0">
+            <i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:text-bottom;color:var(--success);"></i>
+            Your existing resume remains safely saved as Draft and will not be overwritten.
+          </p>
+        </form>
+      </div>
+      <div class="modal-footer flex-between">
+        <button class="secondary-btn sm" type="button" id="cancelCreateResumeBtn">Cancel</button>
+        <button class="primary-btn sm" type="button" id="submitCreateResumeBtn">
+          <i data-lucide="check"></i><span>Create Resume</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RESUME SWITCHER & WORKSPACE (Requirements 9, 10, 15) -->
+  <div id="resumeSwitcherModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="resumeSwitcherModalTitle">
+    <div class="modal-dialog" style="max-width: 680px;">
+      <div class="modal-header">
+        <div class="flex-row align-center gap-2">
+          <div class="dash-resume-preview-thumb" style="width: 32px; height: 32px; min-width: 32px;">
+            <i data-lucide="folder-kanban" style="width: 18px; height: 18px; color: var(--primary);"></i>
+          </div>
+          <div>
+            <h3 id="resumeSwitcherModalTitle" style="margin: 0;">My Resumes</h3>
+            <p class="text-sm text-muted">Manage, switch, duplicate, or archive your independent resume documents.</p>
+          </div>
+        </div>
+        <div class="flex-row align-center gap-2">
+          <button class="primary-btn xs" type="button" id="switcherModalNewBtn"><i data-lucide="plus"></i><span>New Resume</span></button>
+          <button id="closeResumeSwitcherModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- Filter pills -->
+        <div class="subnav-pills-bar mb-3" style="border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+          <button class="subnav-pill active" type="button" id="switcherTabActiveBtn"><span>Active Resumes</span> <span id="switcherActiveCount" class="badge-sub">0</span></button>
+          <button class="subnav-pill" type="button" id="switcherTabArchivedBtn"><span>Archived</span> <span id="switcherArchivedCount" class="badge-sub">0</span></button>
+        </div>
+        <!-- Search input -->
+        <div class="mb-3">
+          <input type="text" id="switcherSearchInput" class="w-full text-sm" placeholder="Search resumes by title, role, or company...">
+        </div>
+        <!-- List container -->
+        <div id="switcherResumeList" class="switcher-resumes-container cards-list">
+          <!-- Populated dynamically via renderResumeSwitcherModal() -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RENAME RESUME -->
+  <div id="renameResumeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="renameResumeModalTitle">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 id="renameResumeModalTitle"><i data-lucide="edit-3"></i> Rename Resume</h3>
+        <button id="closeRenameResumeModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Resume Name
+          <input id="renameResumeTitleInput" type="text" placeholder="Enter resume name" required>
+        </label>
+      </div>
+      <div class="modal-footer flex-end gap-2">
+        <button class="secondary-btn sm" type="button" id="cancelRenameResumeBtn">Cancel</button>
+        <button class="primary-btn sm" type="button" id="submitRenameResumeBtn">Save Name</button>
       </div>
     </div>
   </div>
