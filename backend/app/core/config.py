@@ -106,6 +106,7 @@ class Settings:
             "AED": {"symbol": "AED ", "single": 0.50, "pro_monthly": 7.50, "pro_annual": 55.00, "pack_10": 3.50, "pack_20": 5.50, "pack_50": 9.00},
             "CAD": {"symbol": "CA$", "single": 0.20, "pro_monthly": 2.69, "pro_annual": 19.99, "pack_10": 1.29, "pack_20": 1.99, "pack_50": 3.49},
             "AUD": {"symbol": "A$", "single": 0.25, "pro_monthly": 2.99, "pro_annual": 22.99, "pack_10": 1.49, "pack_20": 2.29, "pack_50": 3.99},
+            "NZD": {"symbol": "NZ$", "single": 0.25, "pro_monthly": 3.29, "pro_annual": 24.99, "pack_10": 1.59, "pack_20": 2.49, "pack_50": 4.29},
             "SGD": {"symbol": "S$", "single": 0.20, "pro_monthly": 2.69, "pro_annual": 19.99, "pack_10": 1.29, "pack_20": 1.99, "pack_50": 3.49},
             "JPY": {"symbol": "¥", "single": 25, "pro_monthly": 300, "pro_annual": 2500, "pack_10": 150, "pack_20": 200, "pack_50": 350},
         }

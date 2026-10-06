@@ -45,6 +45,28 @@ def get_pricing_tables() -> dict:
         "payment_mode": settings.payment_mode,
         "currencies": settings.currency_prices,
         "test_upi_id": settings.test_upi_id if settings.payment_mode == "test" else None,
+        "checkout_currency": "INR",
+        "checkout_disclaimer": "Processed in INR via Razorpay at checkout. International cards convert at daily bank rate with zero hidden markup.",
+        "plan_entitlements": {
+            "FREE": [
+                "1 Active Resume Workspace (switchable anytime)",
+                "2 Job Match Analyses per month",
+                "2 Application Tailor Snapshots per month",
+                "2 ATS-Safe PDF / DOCX Exports per month",
+                "Standard Interview Practice Questions",
+                "Basic Application Tracker",
+            ],
+            "PRO": [
+                "Unlimited Independent Resumes with Draft/Ready status",
+                "Full International Market Guidance (12 countries: US, CA, UK, EU, IN, SG, etc.)",
+                "Job-Targeted Interview Simulator with Resume Claim Defense ('Led', 'Built', 'Managed')",
+                "50 Job Match & ATS Gap Analyses per month",
+                "30 Application Tailoring Packs with Cover Letters",
+                "20 ATS-Safe PDF & DOCX Exports with Professional File Naming",
+                "Company Archetype Interview Expectations (Fintech, Big Tech, Startups, Enterprise)",
+                "Achievement Proof & Evidence Grounding",
+            ]
+        }
     })
 
 

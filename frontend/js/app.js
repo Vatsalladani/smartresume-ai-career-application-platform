@@ -6984,6 +6984,16 @@ function updateCurrencyDisplay() {
   if ($("#pricePack10")) $("#pricePack10").textContent = `${p.symbol}${p.pack_10}`;
   if ($("#pricePack20")) $("#pricePack20").textContent = `${p.symbol}${p.pack_20}`;
   if ($("#pricePack50")) $("#pricePack50").textContent = `${p.symbol}${p.pack_50}`;
+
+  // Update localized checkout disclosure banner
+  const noticeEl = $("#billingCheckoutNoticeText");
+  if (noticeEl) {
+    if (curr === "INR") {
+      noticeEl.textContent = "Processed in INR via Razorpay at checkout: ₹49/month or ₹399/year. Full tax invoice provided.";
+    } else {
+      noticeEl.textContent = `Processed in INR via Razorpay at checkout: ₹49/mo (~${p.symbol}${p.pro_monthly}) or ₹399/yr (~${p.symbol}${p.pro_annual}). Converted by your card issuer at standard daily rate with zero hidden markup.`;
+    }
+  }
 }
 
 async function openRecurringConsentModal(planKey) {
@@ -6997,6 +7007,7 @@ async function openRecurringConsentModal(planKey) {
     if ($("#consentRenewalDate")) $("#consentRenewalDate").textContent = `${info.next_renewal_days} days from today`;
     if ($("#consentAuthAmount")) $("#consentAuthAmount").textContent = `${info.currency_symbol}1 (recurring mandate setup)`;
     if ($("#consentNoticeText")) $("#consentNoticeText").textContent = info.regulatory_note || info.mandate_notice;
+    if ($("#consentCheckoutDisclaimer")) $("#consentCheckoutDisclaimer").textContent = info.checkout_disclaimer || "Processed in INR via Razorpay at checkout.";
   } catch (_) {
     if ($("#consentPlanName")) $("#consentPlanName").textContent = planKey === "PRO_ANNUAL" ? "Annual Power Plan" : "Pro Monthly Plan";
     if ($("#consentAmount")) $("#consentAmount").textContent = planKey === "PRO_ANNUAL" ? "₹399 / year" : "₹49 / month";
@@ -7004,6 +7015,7 @@ async function openRecurringConsentModal(planKey) {
     if ($("#consentRenewalDate")) $("#consentRenewalDate").textContent = planKey === "PRO_ANNUAL" ? "365 days from today" : "30 days from today";
     if ($("#consentAuthAmount")) $("#consentAuthAmount").textContent = "₹1 (recurring mandate setup)";
     if ($("#consentNoticeText")) $("#consentNoticeText").textContent = "₹1 authorisation is for setting up recurring payment authorization. It is not a one-time resume export. You can manage or cancel renewals at any time from your subscription dashboard.";
+    if ($("#consentCheckoutDisclaimer")) $("#consentCheckoutDisclaimer").textContent = "Processed in INR via Razorpay at checkout: ₹49/month or ₹399/year.";
   }
 
   if ($("#consentAcknowledgeCheck")) $("#consentAcknowledgeCheck").checked = false;

@@ -1770,9 +1770,19 @@
               <option value="AED">AED (AED)</option>
               <option value="CAD">CAD (CA$)</option>
               <option value="AUD">AUD (A$)</option>
+              <option value="NZD">NZD (NZ$)</option>
               <option value="SGD">SGD (S$)</option>
               <option value="JPY">JPY (¥)</option>
             </select>
+          </div>
+        </div>
+
+        <!-- Localized Transparent Checkout Disclaimer Banner -->
+        <div id="localizedBillingNotice" class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-left: 3px solid var(--primary); border-radius: var(--radius-md);">
+          <i data-lucide="credit-card" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <div class="text-xs text-muted mb-0">
+            <strong id="billingCheckoutNoticeTitle" class="text-primary block">Transparent Global Pricing & Fair Value</strong>
+            <span id="billingCheckoutNoticeText">Processed in INR via Razorpay at checkout: ₹49/month or ₹399/year. International payment methods convert at daily bank rate with zero hidden markup.</span>
           </div>
         </div>
 
@@ -3118,6 +3128,10 @@
           <div class="consent-row" id="consentAuthRow">
             <span>Setup Authorization:</span>
             <span id="consentAuthAmount">₹1 (recurring mandate setup)</span>
+          </div>
+          <div class="consent-row" id="consentCheckoutRow">
+            <span>Payment Processing:</span>
+            <span id="consentCheckoutDisclaimer" class="text-xs text-muted">Processed in INR via Razorpay</span>
           </div>
         </div>
 

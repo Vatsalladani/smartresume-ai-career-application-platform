@@ -328,6 +328,14 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
     plan_upper = plan_key.upper()
     is_one_time = plan_upper in {"SINGLE_EXPORT", "SINGLE", "EXPORT_1"} or "PACK" in plan_upper
 
+    # Calculate corresponding INR base amount for transparent checkout disclosure
+    _, inr_disp, _ = get_plan_price(plan_key, currency="INR")
+    inr_amt_str = f"₹{int(inr_disp) if inr_disp == int(inr_disp) else inr_disp}"
+    if curr == "INR":
+        checkout_disclaimer = f"Processed in INR via Razorpay at checkout: {inr_amt_str}."
+    else:
+        checkout_disclaimer = f"Processed in INR via Razorpay at checkout: {inr_amt_str} (~{curr_symbol}{disp_amt}). Your payment provider converts at standard rates with no platform markup."
+
     if is_one_time:
         notice = "Pay once for one export. Does not start a subscription. Does not create a recurring mandate."
         return {
@@ -336,6 +344,8 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
             "amount": disp_amt,
             "currency": curr,
             "currency_symbol": curr_symbol,
+            "inr_equivalent_amount": inr_disp,
+            "checkout_disclaimer": checkout_disclaimer,
             "billing_frequency": "one_time",
             "frequency": "One-time",
             "recurring": False,
@@ -358,6 +368,8 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
         "amount": disp_amt,
         "currency": curr,
         "currency_symbol": curr_symbol,
+        "inr_equivalent_amount": inr_disp,
+        "checkout_disclaimer": checkout_disclaimer,
         "billing_frequency": "annual" if is_annual else "monthly",
         "frequency": "Annual" if is_annual else "Monthly",
         "recurring": True,
