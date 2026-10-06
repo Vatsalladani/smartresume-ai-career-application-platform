@@ -1773,13 +1773,38 @@ function cleanBulletHtml(html) {
     .filter(Boolean);
 }
 
-window.applyRichTextColor = function(color, inputEl) {
-  const wrapper = inputEl.closest(".rich-text-wrapper");
-  const content = wrapper ? wrapper.querySelector('.rich-text-content[contenteditable="true"]') : null;
+window.toggleRichColorPopover = function(btn) {
+  const dropdown = btn.closest(".rich-toolbar-color-dropdown");
+  const popover = dropdown?.querySelector(".rich-color-popover");
+  if (!popover) return;
+  const isHidden = popover.classList.contains("hidden");
+  document.querySelectorAll(".rich-color-popover").forEach(p => p.classList.add("hidden"));
+  if (isHidden) {
+    popover.classList.remove("hidden");
+  }
+};
+
+window.applyRichTextColor = function(color, triggerEl) {
+  const wrapper = triggerEl.closest(".rich-text-wrapper");
+  const content = wrapper ? wrapper.querySelector('.rich-text-content[contenteditable="true"]') : (window._savedRichTextEditable || null);
   if (!content) return;
   content.focus();
-  document.execCommand("foreColor", false, color);
+  if (window._savedRichTextRange) {
+    try {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(window._savedRichTextRange);
+    } catch (_) {}
+  }
+  if (!color || color === "reset") {
+    document.execCommand("removeFormat", false, null);
+    document.execCommand("foreColor", false, "#1f2937");
+  } else {
+    document.execCommand("foreColor", false, color);
+  }
   content.dispatchEvent(new Event("input", { bubbles: true }));
+  const pop = triggerEl.closest(".rich-color-popover");
+  if (pop) pop.classList.add("hidden");
 };
 
 function renderRichToolbar(editorId) {
@@ -1788,12 +1813,31 @@ function renderRichToolbar(editorId) {
       <button type="button" class="rich-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
       <button type="button" class="rich-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
       <button type="button" class="rich-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
-      <label class="rich-toolbar-color-btn" title="Text Color">
-        <span class="rich-color-preview-badge">A</span>
-        <input type="color" class="rich-color-picker" value="#1f2937" onchange="applyRichTextColor(this.value, this)" onclick="event.stopPropagation()">
-      </label>
-      <span class="rich-toolbar-sep"></span>
+      <div class="rich-toolbar-color-dropdown">
+        <button type="button" class="rich-toolbar-btn" onclick="toggleRichColorPopover(this)" title="Text Color">
+          <span style="font-weight: 700; border-bottom: 2px solid var(--primary, #0284c7); line-height: 1;">A</span>
+        </button>
+        <div class="rich-color-popover hidden">
+          <div class="rich-color-swatches">
+            <button type="button" class="rich-color-swatch" style="background:#0f172a;" title="Dark Slate" onmousedown="event.preventDefault(); applyRichTextColor('#0f172a', this);"></button>
+            <button type="button" class="rich-color-swatch" style="background:#1e3a8a;" title="Navy" onmousedown="event.preventDefault(); applyRichTextColor('#1e3a8a', this);"></button>
+            <button type="button" class="rich-color-swatch" style="background:#0284c7;" title="Blue" onmousedown="event.preventDefault(); applyRichTextColor('#0284c7', this);"></button>
+            <button type="button" class="rich-color-swatch" style="background:#0f766e;" title="Teal" onmousedown="event.preventDefault(); applyRichTextColor('#0f766e', this);"></button>
+            <button type="button" class="rich-color-swatch" style="background:#15803d;" title="Green" onmousedown="event.preventDefault(); applyRichTextColor('#15803d', this);"></button>
+            <button type="button" class="rich-color-swatch" style="background:#b91c1c;" title="Red" onmousedown="event.preventDefault(); applyRichTextColor('#b91c1c', this);"></button>
+            <button type="button" class="rich-color-swatch" style="background:#4b5563;" title="Muted Gray" onmousedown="event.preventDefault(); applyRichTextColor('#4b5563', this);"></button>
+          </div>
+          <div class="rich-color-custom-row">
+            <label class="text-xs text-muted" style="display: flex; align-items: center; gap: 4px; margin: 0;">
+              Custom: <input type="color" value="#1e3a8a" style="width: 20px; height: 20px; border: none; padding: 0; cursor: pointer;" onchange="applyRichTextColor(this.value, this)">
+            </label>
+            <button type="button" class="text-btn xs" onmousedown="event.preventDefault(); applyRichTextColor('reset', this);">Reset</button>
+          </div>
+        </div>
+      </div>
+      <span class="rich-toolbar-sep" style="width: 1px; height: 14px; background: var(--border); margin: 0 2px;"></span>
       <button type="button" class="rich-toolbar-btn" data-command="insertUnorderedList" title="Bullet List">• list</button>
+      <button type="button" class="rich-toolbar-btn" data-command="insertOrderedList" title="Numbered List">1. list</button>
       <button type="button" class="rich-toolbar-btn" data-command="createLink" title="Insert Link">🔗</button>
       <button type="button" class="rich-toolbar-btn" data-command="removeFormat" title="Clear Formatting">Tx</button>
     </div>
@@ -1833,6 +1877,12 @@ function getCleanResumeBuilderState() {
     accentColor: state.customizer?.accentColor || tplConf.accentColor || "#1e3a8a",
     secondaryColor: tplConf.secondaryColor || "#475569",
     layout: tplConf.layout || "single",
+    headerAlignment: "left",
+    columnLayout: {
+      main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+      side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+      column_width: "balanced"
+    },
     pageSize: "a4",
     margins: "standard",
     lineHeight: "standard",
@@ -1899,12 +1949,16 @@ function getCleanResumeBuilderState() {
       end_date: ed.end_date || ed.graduation_year || "",
       grade: ed.grade || ed.gpa || "",
       location: ed.location || "",
+      description: ed.description || "",
+      coursework: ed.coursework || "",
+      honors: ed.honors || "",
       is_hidden: false
     })),
     certifications: (p.certifications || []).map(c => ({
       name: typeof c === "string" ? c : (c.name || ""),
       issuer: typeof c === "object" ? (c.issuer || "") : "",
       date: typeof c === "object" ? (c.issue_date || c.date || "") : "",
+      description: typeof c === "object" ? (c.description || "") : "",
       is_hidden: false
     })),
     achievements: [],
@@ -1989,6 +2043,14 @@ function loadResumeBuilderState() {
       }
       if (!resumeBuilderState.sectionStyles || typeof resumeBuilderState.sectionStyles !== "object") {
         resumeBuilderState.sectionStyles = {};
+      }
+      if (!resumeBuilderState.headerAlignment) resumeBuilderState.headerAlignment = "left";
+      if (!resumeBuilderState.columnLayout || typeof resumeBuilderState.columnLayout !== "object") {
+        resumeBuilderState.columnLayout = {
+          main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+          side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+          column_width: "balanced"
+        };
       }
 
       state.activeTemplateId = resumeBuilderState.template;
@@ -3015,11 +3077,11 @@ function wireResumeBuilder() {
     }
   };
 
-  // Section Styling Controls
+  // Section Styling Controls (Simplified Title Styling, Divider, Spacing)
   window.onSectionStyleTargetChange = function() {
     const target = $("#builderStyleTargetSection")?.value || "all";
     const styles = (resumeBuilderState.sectionStyles || {})[target] || {};
-    if ($("#builderSecHeadingAlign")) $("#builderSecHeadingAlign").value = styles.alignment || "left";
+    if ($("#builderSecTitleStyle")) $("#builderSecTitleStyle").value = styles.titleStyle || "uppercase";
     if ($("#builderSecHeadingColor")) $("#builderSecHeadingColor").value = styles.titleColor || resumeBuilderState.accentColor || "#0f172a";
     if ($("#builderSecDividerStyle")) $("#builderSecDividerStyle").value = styles.dividerStyle || "solid";
     if ($("#builderSecDividerColor")) $("#builderSecDividerColor").value = styles.dividerColor || "#e2e8f0";
@@ -3035,7 +3097,7 @@ function wireResumeBuilder() {
     renderResumePreviewCanvas();
   }
 
-  $("#builderSecHeadingAlign")?.addEventListener("change", (e) => updateActiveSectionStyle("alignment", e.target.value));
+  $("#builderSecTitleStyle")?.addEventListener("change", (e) => updateActiveSectionStyle("titleStyle", e.target.value));
   $("#builderSecHeadingColor")?.addEventListener("input", (e) => updateActiveSectionStyle("titleColor", e.target.value));
   $("#builderSecDividerStyle")?.addEventListener("change", (e) => updateActiveSectionStyle("dividerStyle", e.target.value));
   $("#builderSecDividerColor")?.addEventListener("input", (e) => updateActiveSectionStyle("dividerColor", e.target.value));
@@ -3050,6 +3112,160 @@ function wireResumeBuilder() {
     triggerBuilderAutosave();
     renderResumePreviewCanvas();
     toast(`Reset styling for ${target === "all" ? "all sections" : target}.`);
+  };
+
+  // Unified Header Alignment
+  window.setBuilderHeaderAlign = function(align) {
+    resumeBuilderState.headerAlignment = align;
+    const group = $("#builderHeaderAlignGroup");
+    if (group) {
+      group.querySelectorAll("button").forEach(b => {
+        b.classList.toggle("active", b.dataset.align === align);
+      });
+    }
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  };
+
+  // Two-Column Section Routing & Placement
+  window.updateTwoColumnPlacementVisibility = function() {
+    const bar = $("#builderTwoColPlacementBar");
+    const isTwoCol = (resumeBuilderState.layout === "two_column");
+    if (bar) {
+      bar.classList.toggle("hidden", !isTwoCol);
+      if (isTwoCol) {
+        renderTwoColumnPlacementEditor();
+      }
+    }
+  };
+
+  window.onBuilderColWidthChange = function(val) {
+    if (!resumeBuilderState.columnLayout) {
+      resumeBuilderState.columnLayout = {
+        main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+        side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+        column_width: "balanced"
+      };
+    }
+    resumeBuilderState.columnLayout.column_width = val;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  };
+
+  window.moveTwoColSection = function(secKey, targetCol) {
+    if (!resumeBuilderState.columnLayout) {
+      resumeBuilderState.columnLayout = {
+        main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+        side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+        column_width: "balanced"
+      };
+    }
+    const cfg = resumeBuilderState.columnLayout;
+    if (!Array.isArray(cfg.main_sections)) cfg.main_sections = [];
+    if (!Array.isArray(cfg.side_sections)) cfg.side_sections = [];
+
+    cfg.main_sections = cfg.main_sections.filter(s => s !== secKey);
+    cfg.side_sections = cfg.side_sections.filter(s => s !== secKey);
+
+    if (targetCol === "main") {
+      cfg.main_sections.push(secKey);
+    } else {
+      cfg.side_sections.push(secKey);
+    }
+
+    renderTwoColumnPlacementEditor();
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  };
+
+  window.reorderTwoColSection = function(colName, idx, delta) {
+    if (!resumeBuilderState.columnLayout) return;
+    const list = colName === "main" ? resumeBuilderState.columnLayout.main_sections : resumeBuilderState.columnLayout.side_sections;
+    if (!list || idx < 0 || idx >= list.length) return;
+    const targetIdx = idx + delta;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+    const item = list.splice(idx, 1)[0];
+    list.splice(targetIdx, 0, item);
+
+    renderTwoColumnPlacementEditor();
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  };
+
+  window.renderTwoColumnPlacementEditor = function() {
+    const editor = $("#builderTwoColPlacementEditor");
+    if (!editor) return;
+
+    if (!resumeBuilderState.columnLayout) {
+      resumeBuilderState.columnLayout = {
+        main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+        side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+        column_width: "balanced"
+      };
+    }
+
+    const cfg = resumeBuilderState.columnLayout;
+    if (!Array.isArray(cfg.main_sections)) cfg.main_sections = [];
+    if (!Array.isArray(cfg.side_sections)) cfg.side_sections = [];
+
+    const allSecs = resumeBuilderState.sectionOrder || [];
+    const SECONDARY_DEFAULTS = ["skills", "certifications", "achievements", "awards", "languages", "courses"];
+    allSecs.forEach(sec => {
+      if (!cfg.main_sections.includes(sec) && !cfg.side_sections.includes(sec)) {
+        if (SECONDARY_DEFAULTS.includes(sec)) {
+          cfg.side_sections.push(sec);
+        } else {
+          cfg.main_sections.push(sec);
+        }
+      }
+    });
+
+    const colWidthSelect = $("#builderColWidthSelect");
+    if (colWidthSelect) colWidthSelect.value = cfg.column_width || "balanced";
+
+    const getTitle = (key) => (resumeBuilderState.sectionTitles || {})[key] || DEFAULT_SECTION_TITLES[key] || key;
+
+    const renderColItems = (items, colName) => {
+      if (!items || items.length === 0) {
+        return '<p class="text-xs text-muted" style="margin: 8px 0;">No sections in this column.</p>';
+      }
+      return items.map((secKey, idx) => {
+        const title = getTitle(secKey);
+        const isMain = colName === "main";
+        return `
+          <div class="two-col-section-item">
+            <span class="item-label" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+            <div class="item-actions">
+              <button type="button" class="icon-btn xs" onclick="reorderTwoColSection('${colName}', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up">↑</button>
+              <button type="button" class="icon-btn xs" onclick="reorderTwoColSection('${colName}', ${idx}, 1)" ${idx === items.length - 1 ? "disabled" : ""} title="Move Down">↓</button>
+              ${isMain
+                ? `<button type="button" class="secondary-btn xs" onclick="moveTwoColSection('${secKey}', 'side')" title="Move to Side Column">→ Side</button>`
+                : `<button type="button" class="secondary-btn xs" onclick="moveTwoColSection('${secKey}', 'main')" title="Move to Main Column">← Main</button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join("");
+    };
+
+    editor.innerHTML = `
+      <div class="two-col-placement-grid">
+        <div class="two-col-dropzone">
+          <div class="two-col-dropzone-header">
+            <span>Primary Column (Main)</span>
+            <span class="text-muted">(${cfg.main_sections.length})</span>
+          </div>
+          ${renderColItems(cfg.main_sections, "main")}
+        </div>
+        <div class="two-col-dropzone">
+          <div class="two-col-dropzone-header">
+            <span>Sidebar Column (Side)</span>
+            <span class="text-muted">(${cfg.side_sections.length})</span>
+          </div>
+          ${renderColItems(cfg.side_sections, "side")}
+        </div>
+      </div>
+    `;
   };
 
   // Advanced Controls
@@ -3243,6 +3459,18 @@ function wireResumeBuilder() {
           document.execCommand("underline", false, null);
           editable.dispatchEvent(new Event("input", { bubbles: true }));
         }
+      }
+    });
+
+    document.addEventListener("selectionchange", () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const anchorNode = sel.anchorNode;
+      const el = anchorNode ? (anchorNode.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode.parentElement) : null;
+      const editable = el ? el.closest('.rich-text-content[contenteditable="true"]') : null;
+      if (editable) {
+        window._savedRichTextRange = sel.getRangeAt(0).cloneRange();
+        window._savedRichTextEditable = editable;
       }
     });
 
@@ -3497,6 +3725,12 @@ async function executeResumeBuilderExport(format = "pdf") {
       font_size: resumeBuilderState.fontSize || "medium",
       spacing: resumeBuilderState.spacing || "standard",
       layout: resumeBuilderState.layout || "single",
+      header_alignment: resumeBuilderState.headerAlignment || "left",
+      column_layout: resumeBuilderState.columnLayout || {
+        main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+        side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+        column_width: "balanced"
+      },
       page_size: resumeBuilderState.pageSize || "a4",
       margins: resumeBuilderState.margins || "standard",
       line_height: resumeBuilderState.lineHeight || "standard",
@@ -3532,6 +3766,7 @@ async function executeResumeBuilderExport(format = "pdf") {
           start_date: e.start_date || "",
           end_date: e.end_date || "",
           is_current: !!e.is_current,
+          description: e.description || "",
           bullet_points: e.bullets || [],
           is_hidden: !!e.is_hidden
         })),
@@ -3553,12 +3788,16 @@ async function executeResumeBuilderExport(format = "pdf") {
           end_date: ed.end_date || "",
           gpa: ed.grade || "",
           location: ed.location || "",
+          description: ed.description || "",
+          coursework: ed.coursework || "",
+          honors: ed.honors || "",
           is_hidden: !!ed.is_hidden
         })),
         certifications: (resumeBuilderState.certifications || []).map(c => ({
           name: c.name || "",
           issuer: c.issuer || "",
           issue_date: c.date || "",
+          description: c.description || "",
           is_hidden: !!c.is_hidden
         })),
         achievements: (resumeBuilderState.achievements || []).map(a => typeof a === "string" ? { text: a, is_hidden: false } : a),
@@ -4092,6 +4331,16 @@ function renderBuilderEditorFromState() {
   setVal("builderGithub", h.github);
   setVal("builderWebsite", h.website);
 
+  const hAlign = resumeBuilderState.headerAlignment || "left";
+  $("#builderHeaderAlignGroup")?.querySelectorAll("button").forEach(b => {
+    b.classList.toggle("active", b.dataset.align === hAlign);
+  });
+  if ($("#builderPageSize")) $("#builderPageSize").value = resumeBuilderState.pageSize || "a4";
+  if ($("#builderLayoutSelect")) $("#builderLayoutSelect").value = resumeBuilderState.layout || "single";
+  if (typeof updateTwoColumnPlacementVisibility === "function") {
+    updateTwoColumnPlacementVisibility();
+  }
+
   const container = $("#builderDynamicSectionsList");
   if (!container) return;
 
@@ -4280,9 +4529,16 @@ function renderBuilderEditorFromState() {
                   <input type="text" value="${escapeHtml(p.end_date || "")}" placeholder="e.g. Present" oninput="updateBuilderItemField('projects', ${idx}, 'end_date', this.value)">
                 </label>
               </div>
-              <label class="text-xs text-muted mt-2 block">Short Summary:
-                <input type="text" value="${escapeHtml(p.description || "")}" oninput="updateBuilderItemField('projects', ${idx}, 'description', this.value)">
-              </label>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Project Description & Overview:</div>
+                ${renderSharedRichTextField({
+                  id: `proj-desc-${idx}`,
+                  value: sanitizeHtmlForPreview(p.description || ""),
+                  placeholder: "Overview of what was built, core architecture, or objectives...",
+                  onInputExpr: `updateBuilderItemField('projects', ${idx}, 'description', this.innerHTML)`,
+                  minHeight: "50px"
+                })}
+              </div>
               <div class="mt-2">
                 <div class="text-xs text-muted mb-1">Key Outcomes & Bullets:</div>
                 ${renderSharedRichTextField({
@@ -4339,6 +4595,16 @@ function renderBuilderEditorFromState() {
                   <input type="text" value="${escapeHtml(ed.grade || "")}" placeholder="e.g. Magna Cum Laude, GPA 3.8/4.0" oninput="updateBuilderItemField('education', ${idx}, 'grade', this.value)">
                 </label>
               </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Details, Coursework or Honors:</div>
+                ${renderSharedRichTextField({
+                  id: `edu-desc-${idx}`,
+                  value: sanitizeHtmlForPreview(ed.description || ""),
+                  placeholder: "e.g. Dean's List, Relevant Coursework: Data Structures, Algorithms...",
+                  onInputExpr: `updateBuilderItemField('education', ${idx}, 'description', this.innerHTML)`,
+                  minHeight: "50px"
+                })}
+              </div>
             </div>
           `).join("")}</div>`;
     } else if (secKey === "certifications") {
@@ -4375,6 +4641,16 @@ function renderBuilderEditorFromState() {
                 <label class="span-2">Issue Date / Year
                   <input type="text" value="${escapeHtml(c.date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('certifications', ${idx}, 'date', this.value)">
                 </label>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Details & Description (Optional):</div>
+                ${renderSharedRichTextField({
+                  id: `cert-desc-${idx}`,
+                  value: sanitizeHtmlForPreview(c.description || ""),
+                  placeholder: "Credential ID, topics covered, or expiration...",
+                  onInputExpr: `updateBuilderItemField('certifications', ${idx}, 'description', this.innerHTML)`,
+                  minHeight: "45px"
+                })}
               </div>
             </div>
           `).join("")}</div>`;
@@ -4608,6 +4884,16 @@ function renderBuilderEditorFromState() {
                   <input type="text" value="${escapeHtml(pb.url || "")}" placeholder="https://..." oninput="updateBuilderItemField('publications', ${idx}, 'url', this.value)">
                 </label>
               </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Abstract / Description:</div>
+                ${renderSharedRichTextField({
+                  id: `pub-desc-${idx}`,
+                  value: sanitizeHtmlForPreview(pb.description || ""),
+                  placeholder: "Key findings, co-authors, or abstract...",
+                  onInputExpr: `updateBuilderItemField('publications', ${idx}, 'description', this.innerHTML)`,
+                  minHeight: "50px"
+                })}
+              </div>
             </div>
           `).join("")}</div>`;
     } else if (secKey === "courses") {
@@ -4722,10 +5008,12 @@ function renderResumePreviewCanvas() {
   const pageSize = resumeBuilderState.pageSize || "a4";
   const margins = resumeBuilderState.margins || "standard";
   const dateAlign = resumeBuilderState.dateAlignment || "right";
+  const headerAlign = resumeBuilderState.headerAlignment || "left";
+  const colWidth = resumeBuilderState.columnLayout?.column_width || "balanced";
 
   const sheet = $("#builderLivePreviewSheet");
   if (sheet) {
-    sheet.className = `resume-preview-sheet tpl-${tplId} tpl-${tplId.replace(/_/g, "-")} layout-${layout} size-${pageSize} margin-${margins} date-align-${dateAlign}`;
+    sheet.className = `resume-preview-sheet tpl-${tplId} tpl-${tplId.replace(/_/g, "-")} layout-${layout} size-${pageSize} margin-${margins} date-align-${dateAlign} header-align-${headerAlign} col-width-${colWidth}`;
     sheet.dataset.template = tplId;
     sheet.dataset.layout = layout;
   }
@@ -4815,6 +5103,8 @@ function renderResumePreviewCanvas() {
 
   const SECONDARY_SECTIONS = ["skills", "education", "certifications", "achievements", "awards", "languages", "courses"];
 
+  const renderedSecNodes = {};
+
   function applySectionStyling(secNode, key) {
     const allStyles = (resumeBuilderState.sectionStyles || {}).all || {};
     const specificStyles = (resumeBuilderState.sectionStyles || {})[key] || {};
@@ -4823,43 +5113,52 @@ function renderResumePreviewCanvas() {
     const titleEl = secNode.querySelector(".preview-section-title");
     if (titleEl) {
       if (s.titleColor) titleEl.style.color = s.titleColor;
-      if (s.alignment) titleEl.style.textAlign = s.alignment;
+      const ts = (s.titleStyle || "uppercase").toLowerCase();
+      if (ts === "uppercase") {
+        titleEl.style.textTransform = "uppercase";
+        titleEl.style.fontWeight = "700";
+      } else if (ts === "title_case" || ts === "capitalize") {
+        titleEl.style.textTransform = "capitalize";
+        titleEl.style.fontWeight = "700";
+      } else if (ts === "bold") {
+        titleEl.style.textTransform = "none";
+        titleEl.style.fontWeight = "800";
+      } else {
+        titleEl.style.textTransform = "none";
+        titleEl.style.fontWeight = "600";
+      }
+
       if (s.dividerStyle === "none") {
         titleEl.style.borderBottom = "none";
+        titleEl.style.borderLeft = "none";
+      } else if (s.dividerStyle === "thin" || s.dividerStyle === "hairline") {
+        titleEl.style.borderBottom = `1px solid ${s.dividerColor || "#e2e8f0"}`;
         titleEl.style.borderLeft = "none";
       } else if (s.dividerStyle === "accent_bar") {
         titleEl.style.borderBottom = "none";
         titleEl.style.borderLeft = `4px solid ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
         titleEl.style.paddingLeft = "8px";
-      } else if (s.dividerStyle === "hairline") {
-        titleEl.style.borderBottom = `1px solid ${s.dividerColor || "#e2e8f0"}`;
       } else if (s.dividerStyle === "double") {
         titleEl.style.borderBottom = `3px double ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
-      } else if (s.dividerStyle === "solid") {
+        titleEl.style.borderLeft = "none";
+      } else {
         titleEl.style.borderBottom = `2px solid ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
-      } else if (s.dividerColor) {
-        titleEl.style.borderColor = s.dividerColor;
+        titleEl.style.borderLeft = "none";
       }
     }
 
     if (s.spacing === "compact") {
       secNode.style.marginBottom = "calc(var(--resume-spacing) * 0.5)";
-    } else if (s.spacing === "relaxed") {
+    } else if (s.spacing === "comfortable" || s.spacing === "relaxed") {
       secNode.style.marginBottom = "calc(var(--resume-spacing) * 1.5)";
+    } else {
+      secNode.style.marginBottom = "calc(var(--resume-spacing) * 1.0)";
     }
   }
 
   function appendSection(secNode, key) {
     applySectionStyling(secNode, key);
-    if (isTwoCol) {
-      if (SECONDARY_SECTIONS.includes(key)) {
-        sideCol.appendChild(secNode);
-      } else {
-        mainCol.appendChild(secNode);
-      }
-    } else {
-      container.appendChild(secNode);
-    }
+    renderedSecNodes[key] = secNode;
   }
 
   const sectionOrder = resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
@@ -4985,6 +5284,7 @@ function renderResumePreviewCanvas() {
               const field = ed.field_of_study ? ` in ${escapeHtml(ed.field_of_study)}` : "";
               const titleStr = deg + field + (ed.institution ? ` — ${escapeHtml(ed.institution)}` : "");
               const meta = [ed.location, ed.grade ? `Honors / GPA: ${ed.grade}` : ""].filter(Boolean).join(" | ");
+              const hasDesc = ed.description && ed.description.replace(/<[^>]+>/g, "").trim();
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
@@ -4992,6 +5292,7 @@ function renderResumePreviewCanvas() {
                     ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
                   </div>
                   ${meta ? `<div class="prev-item-sub">${escapeHtml(meta)}</div>` : ""}
+                  ${hasDesc ? `<div class="prev-item-sub" style="margin-top: 2px;">${sanitizeHtmlForPreview(ed.description)}</div>` : ""}
                 </div>
               `;
             }).join("")}
@@ -5009,12 +5310,14 @@ function renderResumePreviewCanvas() {
           <div class="prev-items-list">
             ${certs.map(c => {
               const d = formatDateStrClient(c.date, fmt);
+              const hasDesc = c.description && c.description.replace(/<[^>]+>/g, "").trim();
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
                     <span class="prev-item-title-col"><strong>${escapeHtml(c.name)}</strong>${c.issuer ? ` — ${escapeHtml(c.issuer)}` : ""}</span>
                     ${d ? `<span class="prev-item-date">${escapeHtml(d)}</span>` : ""}
                   </div>
+                  ${hasDesc ? `<div class="prev-item-sub" style="margin-top: 2px;">${sanitizeHtmlForPreview(c.description)}</div>` : ""}
                 </div>
               `;
             }).join("")}
@@ -5134,6 +5437,7 @@ function renderResumePreviewCanvas() {
           <div class="prev-items-list">
             ${pubs.map(pb => {
               const dateStr = formatDateStrClient(pb.date, fmt);
+              const hasDesc = pb.description && pb.description.replace(/<[^>]+>/g, "").trim();
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
@@ -5141,6 +5445,7 @@ function renderResumePreviewCanvas() {
                     ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
                   </div>
                   ${pb.url ? `<div class="prev-item-sub"><a href="${escapeHtml(pb.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(pb.url)}</a></div>` : ""}
+                  ${hasDesc ? `<div class="prev-item-sub" style="margin-top: 2px;">${sanitizeHtmlForPreview(pb.description)}</div>` : ""}
                 </div>
               `;
             }).join("")}
@@ -5192,6 +5497,51 @@ function renderResumePreviewCanvas() {
       }
     }
   });
+
+  // Assemble sections into container or columns
+  if (isTwoCol) {
+    const colCfg = resumeBuilderState.columnLayout || {
+      main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+      side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+      column_width: "balanced"
+    };
+    const mainList = colCfg.main_sections || [];
+    const sideList = colCfg.side_sections || [];
+
+    // Append main sections in order
+    mainList.forEach(k => {
+      if (renderedSecNodes[k] && mainCol) {
+        mainCol.appendChild(renderedSecNodes[k]);
+      }
+    });
+
+    // Append side sections in order
+    sideList.forEach(k => {
+      if (renderedSecNodes[k] && sideCol) {
+        sideCol.appendChild(renderedSecNodes[k]);
+      }
+    });
+
+    // Fallback: any rendered section not assigned to either list
+    Object.keys(renderedSecNodes).forEach(k => {
+      if (!mainList.includes(k) && !sideList.includes(k)) {
+        if (mainCol) mainCol.appendChild(renderedSecNodes[k]);
+      }
+    });
+  } else {
+    // Single column: append in sectionOrder
+    sectionOrder.forEach(k => {
+      if (renderedSecNodes[k] && container) {
+        container.appendChild(renderedSecNodes[k]);
+      }
+    });
+    // Any remaining custom sections
+    Object.keys(renderedSecNodes).forEach(k => {
+      if (!sectionOrder.includes(k) && container) {
+        container.appendChild(renderedSecNodes[k]);
+      }
+    });
+  }
 }
 
 function applyCustomizerStylesToCanvas() {

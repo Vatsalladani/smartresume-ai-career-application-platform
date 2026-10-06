@@ -232,6 +232,8 @@ def export_profile_resume_post(
     element_colors = payload.get("element_colors")
     section_styles = payload.get("section_styles")
     section_order = payload.get("section_order")
+    header_alignment = payload.get("header_alignment")
+    column_layout = payload.get("column_layout")
 
     content = payload.get("content") or payload
     date_format = payload.get("date_format") or (content.get("date_format") if isinstance(content, dict) else None) or "MMM YYYY"
@@ -263,6 +265,8 @@ def export_profile_resume_post(
             section_styles=section_styles,
             section_order=section_order,
             date_format=date_format,
+            header_alignment=header_alignment,
+            column_layout=column_layout,
         )
         media_type = "application/pdf"
     else:
@@ -288,6 +292,8 @@ def export_profile_resume_post(
             section_styles=section_styles,
             section_order=section_order,
             date_format=date_format,
+            header_alignment=header_alignment,
+            column_layout=column_layout,
         )
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 

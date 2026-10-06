@@ -973,6 +973,13 @@
                 </select>
               </div>
               <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderPageSize">Paper:</label>
+                <select id="builderPageSize" class="form-select sm" style="width: 95px;">
+                  <option value="a4" selected>A4</option>
+                  <option value="letter">Letter</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
                 <label class="text-xs text-muted" for="builderAccentColor">Color:</label>
                 <div class="flex-row align-center gap-1">
                   <div class="color-palette-swatches">
@@ -1088,11 +1095,12 @@
                 </select>
               </div>
               <div class="flex-row align-center gap-2">
-                <label class="text-xs text-muted" for="builderSecHeadingAlign">Heading Alignment:</label>
-                <select id="builderSecHeadingAlign" class="form-select sm" style="width: 95px;">
-                  <option value="left" selected>Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
+                <label class="text-xs text-muted" for="builderSecTitleStyle">Title Style:</label>
+                <select id="builderSecTitleStyle" class="form-select sm" style="width: 115px;">
+                  <option value="uppercase" selected>UPPERCASE</option>
+                  <option value="title_case">Title Case</option>
+                  <option value="bold">Bold</option>
+                  <option value="default">Default</option>
                 </select>
               </div>
               <div class="flex-row align-center gap-2">
@@ -1100,13 +1108,11 @@
                 <input type="color" id="builderSecHeadingColor" value="#0f172a" style="width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
               </div>
               <div class="flex-row align-center gap-2">
-                <label class="text-xs text-muted" for="builderSecDividerStyle">Divider Line:</label>
-                <select id="builderSecDividerStyle" class="form-select sm" style="width: 110px;">
-                  <option value="solid" selected>Solid Line</option>
-                  <option value="accent_bar">Accent Bar</option>
-                  <option value="hairline">Hairline</option>
-                  <option value="double">Double Line</option>
-                  <option value="none">No Divider</option>
+                <label class="text-xs text-muted" for="builderSecDividerStyle">Divider:</label>
+                <select id="builderSecDividerStyle" class="form-select sm" style="width: 105px;">
+                  <option value="solid" selected>Solid</option>
+                  <option value="thin">Thin</option>
+                  <option value="none">None</option>
                 </select>
               </div>
               <div class="flex-row align-center gap-2">
@@ -1115,10 +1121,10 @@
               </div>
               <div class="flex-row align-center gap-2">
                 <label class="text-xs text-muted" for="builderSecSpacingSelect">Section Spacing:</label>
-                <select id="builderSecSpacingSelect" class="form-select sm" style="width: 95px;">
+                <select id="builderSecSpacingSelect" class="form-select sm" style="width: 115px;">
                   <option value="compact">Compact</option>
                   <option value="standard" selected>Standard</option>
-                  <option value="relaxed">Relaxed</option>
+                  <option value="comfortable">Comfortable</option>
                 </select>
               </div>
             </div>
@@ -1174,14 +1180,7 @@
               <!-- Sub-Column 2: Page Geometry & Formatting -->
               <div class="p-2" style="background: var(--surface-2); border-radius: 6px;">
                 <div class="text-xs font-bold text-muted mb-2">PAGE GEOMETRY & FORMATTING</div>
-                <div class="grid three gap-2">
-                  <div class="flex-row align-center gap-1">
-                    <label class="text-xs text-muted" for="builderPageSize">Paper:</label>
-                    <select id="builderPageSize" class="form-select xs" style="width: 80px;">
-                      <option value="a4" selected>A4</option>
-                      <option value="letter">Letter</option>
-                    </select>
-                  </div>
+                <div class="grid two gap-2">
                   <div class="flex-row align-center gap-1">
                     <label class="text-xs text-muted" for="builderMargins">Margins:</label>
                     <select id="builderMargins" class="form-select xs" style="width: 85px;">
@@ -1242,6 +1241,27 @@
         <div class="grid two gap-4 align-start builder-grid">
           <!-- Left Column: Focused Section Editors -->
           <div class="column-stack gap-3" id="builderEditorColumn">
+            <!-- Two-Column Placement Card (visible only when layout is two_column) -->
+            <div class="panel hidden" id="builderTwoColPlacementBar" style="background: var(--surface-2); border: 1px solid var(--border);">
+              <div class="panel-head flex-row justify-between align-center p-3" style="border-bottom: 1px solid var(--border);">
+                <div class="flex-row align-center gap-2">
+                  <i data-lucide="columns" style="width: 16px; height: 16px; color: var(--primary);"></i>
+                  <span class="text-xs font-bold uppercase tracking-wider">Two-Column Section Routing</span>
+                </div>
+                <div class="flex-row align-center gap-2">
+                  <label class="text-xs text-muted" for="builderColWidthSelect">Width Ratio:</label>
+                  <select id="builderColWidthSelect" class="form-select xs" style="width: 135px;" onchange="onBuilderColWidthChange(this.value)">
+                    <option value="balanced" selected>Balanced (65 / 35)</option>
+                    <option value="main_wider">Main Wider (70 / 30)</option>
+                    <option value="side_wider">Side Wider (60 / 40)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="p-3" id="builderTwoColPlacementEditor">
+                <!-- Dynamically populated by renderTwoColumnPlacementEditor() -->
+              </div>
+            </div>
+
             <!-- Section 1: Contact & Headline -->
             <div class="panel" id="secEditorContact">
               <div class="panel-head flex-row justify-between align-center">
@@ -1251,6 +1271,14 @@
                 </button>
               </div>
               <div class="panel-body">
+                <div class="flex-row align-center justify-between pb-2 mb-3 border-bottom">
+                  <span class="text-xs font-semibold text-muted">Header Alignment:</span>
+                  <div class="button-group-pills" id="builderHeaderAlignGroup">
+                    <button type="button" class="pill-btn xs active" data-align="left" onclick="setBuilderHeaderAlign('left')" title="Align Header Left">Left</button>
+                    <button type="button" class="pill-btn xs" data-align="center" onclick="setBuilderHeaderAlign('center')" title="Center Align Header">Center</button>
+                    <button type="button" class="pill-btn xs" data-align="right" onclick="setBuilderHeaderAlign('right')" title="Align Header Right">Right</button>
+                  </div>
+                </div>
                 <div class="form-grid">
                   <label class="span-2">Full Name
                     <input id="builderFullName" type="text" placeholder="Candidate Name">

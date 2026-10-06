@@ -225,6 +225,7 @@ def build_pdf_styles(
     font_family: str | None = None,
     element_colors: dict[str, str] | None = None,
     line_height_scale: float = 1.0,
+    header_alignment: str | None = None,
 ):
     try:
         accent = colors.HexColor(accent_hex)
@@ -254,10 +255,18 @@ def build_pdf_styles(
         bold_font = "Helvetica-Bold"
         oblique_font = "Helvetica-Oblique"
 
-    if t_norm in ("classic_ats", "executive_professional", "executive"):
-        hdr_align = 1  # Centered
+    if header_alignment:
+        ha_norm = header_alignment.lower()
+        if ha_norm == "center":
+            hdr_align = 1
+        elif ha_norm == "right":
+            hdr_align = 2
+        else:
+            hdr_align = 0
+    elif t_norm in ("classic_ats", "executive_professional", "executive"):
+        hdr_align = 1  # Centered default
     else:
-        hdr_align = 0  # Left-aligned
+        hdr_align = 0  # Left-aligned default
 
     # Template-specific defaults
     if t_norm == "classic_ats":
@@ -463,6 +472,8 @@ def generate_resume_pdf(
     section_styles: dict[str, Any] | None = None,
     section_order: list[str] | None = None,
     date_format: str = "MMM YYYY",
+    header_alignment: str | None = None,
+    column_layout: dict[str, Any] | None = None,
 ) -> bytes:
     buffer = BytesIO()
 
@@ -503,6 +514,7 @@ def generate_resume_pdf(
         font_family=font_family,
         element_colors=element_colors,
         line_height_scale=line_height_scale,
+        header_alignment=header_alignment,
     )
     story = []
 
@@ -613,28 +625,36 @@ def generate_resume_pdf(
     def get_sec_header_flowables(sec_key: str, default_title: str) -> list:
         st = sec_st.get(sec_key) or sec_st.get("all") or {}
         raw_title = sec_titles.get(sec_key) or default_title
-        title_text = raw_title.upper()
+        ts = (st.get("titleStyle") or "uppercase").lower()
+        if ts == "uppercase":
+            title_text = raw_title.upper()
+        elif ts in ("capitalize", "title_case"):
+            title_text = raw_title.title()
+        elif ts == "bold":
+            title_text = f"<b>{raw_title}</b>"
+        else:
+            title_text = raw_title
 
         h_style = styles["SectionHeader"]
-        if st.get("titleColor") or st.get("alignment"):
+        if st.get("titleColor"):
             tc = colors.HexColor(st["titleColor"]) if st.get("titleColor") else h_style.textColor
-            al = 1 if st.get("alignment") == "center" else (2 if st.get("alignment") == "right" else 0)
             h_style = ParagraphStyle(
                 name=f"SecHdr_{sec_key}_{len(story)}",
                 parent=styles["SectionHeader"],
                 textColor=tc,
-                alignment=al,
             )
         res = [Paragraph(title_text, h_style)]
         div_style = st.get("dividerStyle")
         div_c = colors.HexColor(st["dividerColor"]) if st.get("dividerColor") else div_color
         if div_style == "none":
             pass
-        elif div_style == "hairline":
+        elif div_style in ("thin", "hairline"):
             res.append(HRFlowable(width="100%", thickness=0.5, color=div_c, spaceBefore=1, spaceAfter=2))
+        elif div_style == "accent_bar":
+            res.append(HRFlowable(width="100%", thickness=3.0, color=div_c, spaceBefore=1, spaceAfter=2))
         elif div_style == "double":
             res.append(HRFlowable(width="100%", thickness=2.5, color=div_c, spaceBefore=1, spaceAfter=2))
-        elif div_style == "solid":
+        else:
             res.append(HRFlowable(width="100%", thickness=1.5, color=div_c, spaceBefore=1, spaceAfter=2))
         return res
 
@@ -726,6 +746,8 @@ def generate_resume_pdf(
             fl.append(make_title_date_row(title_str, date_str, col_w))
             loc = exp.get("location", "").strip()
             if loc: fl.append(Paragraph(loc, styles["ItemSub"]))
+            desc = (exp.get("description") or "").strip()
+            if desc: fl.append(Paragraph(sanitize_reportlab_html(desc), styles["ResumeBody"]))
 
             bullets = exp.get("bullet_points") or exp.get("bullets") or []
             for b in bullets:
@@ -791,6 +813,12 @@ def generate_resume_pdf(
             if loc: meta_parts.append(loc)
             if gpa: meta_parts.append(f"CGPA / GPA: {gpa}")
             if meta_parts: fl.append(Paragraph(" | ".join(meta_parts), styles["ItemSub"]))
+            desc = (edu.get("description") or "").strip()
+            if desc: fl.append(Paragraph(sanitize_reportlab_html(desc), styles["ResumeBody"]))
+            cw = (edu.get("coursework") or edu.get("relevant_coursework") or "").strip()
+            if cw: fl.append(Paragraph(f"<b>Relevant Coursework:</b> {sanitize_reportlab_html(cw)}", styles["ItemSub"]))
+            honors = (edu.get("honors") or "").strip()
+            if honors: fl.append(Paragraph(f"<b>Honors:</b> {sanitize_reportlab_html(honors)}", styles["ItemSub"]))
             fl.append(Spacer(1, max(2, round(2 * spacing_scale))))
         return fl
 
@@ -808,6 +836,8 @@ def generate_resume_pdf(
             title_str = f"<b>{cname.strip()}</b>"
             if issuer: title_str += f" — {issuer.strip()}"
             fl.append(make_title_date_row(title_str, date_str, col_w))
+            desc = (cert.get("description") or "").strip() if isinstance(cert, dict) else ""
+            if desc: fl.append(Paragraph(sanitize_reportlab_html(desc), styles["ResumeBody"]))
         fl.append(Spacer(1, max(2, round(3 * spacing_scale))))
         return fl
 
@@ -1001,22 +1031,46 @@ def generate_resume_pdf(
             elif sec.startswith("custom"):
                 story.extend(render_custom_section(sec, printable_width))
     else:
-        PRIMARY_KEYS = {"summary", "experiences", "projects", "volunteer", "leadership"}
-        primary_w = round(printable_width * 0.65)
+        col_cfg = column_layout or {}
+        user_main = [s for s in (col_cfg.get("main_sections") or []) if s]
+        user_side = [s for s in (col_cfg.get("side_sections") or []) if s]
+        c_width = (col_cfg.get("column_width") or "balanced").lower()
+
+        if c_width == "main_wider":
+            ratio = 0.70
+        elif c_width == "side_wider":
+            ratio = 0.60
+        else:
+            ratio = 0.65
+
+        primary_w = round(printable_width * ratio)
         secondary_w = printable_width - primary_w
 
         primary_flowables = []
         secondary_flowables = []
 
-        for sec in order:
-            if sec in PRIMARY_KEYS or sec.startswith("custom"):
+        if user_main or user_side:
+            for sec in user_main:
                 if sec in section_renderers:
                     primary_flowables.extend(section_renderers[sec](primary_w))
                 elif sec.startswith("custom"):
                     primary_flowables.extend(render_custom_section(sec, primary_w))
-            else:
+            for sec in user_side:
                 if sec in section_renderers:
                     secondary_flowables.extend(section_renderers[sec](secondary_w))
+                elif sec.startswith("custom"):
+                    secondary_flowables.extend(render_custom_section(sec, secondary_w))
+        else:
+            PRIMARY_KEYS = {"summary", "experiences", "projects", "education", "volunteer", "leadership"}
+            for sec in order:
+                if sec in PRIMARY_KEYS or sec.startswith("custom"):
+                    if sec in section_renderers:
+                        primary_flowables.extend(section_renderers[sec](primary_w))
+                    elif sec.startswith("custom"):
+                        primary_flowables.extend(render_custom_section(sec, primary_w))
+                else:
+                    if sec in section_renderers:
+                        secondary_flowables.extend(section_renderers[sec](secondary_w))
 
         if primary_flowables or secondary_flowables:
             col1 = primary_flowables or [Spacer(1, 1)]
@@ -1095,6 +1149,8 @@ def generate_resume_docx(
     section_styles: dict[str, Any] | None = None,
     section_order: list[str] | None = None,
     date_format: str = "MMM YYYY",
+    header_alignment: str | None = None,
+    column_layout: dict[str, Any] | None = None,
 ) -> bytes:
     doc = Document()
     margin_val = 0.35 if margins == "narrow" else (0.75 if margins == "wide" else 0.5)
@@ -1149,7 +1205,21 @@ def generate_resume_docx(
     else:
         doc_font_name = "Calibri"
 
-    if t_norm in ("classic_ats", "executive_professional", "executive"):
+    is_italic_head = False
+    is_bold_head = False
+    if header_alignment:
+        ha_norm = header_alignment.lower()
+        if ha_norm == "center":
+            hdr_alignment = WD_ALIGN_PARAGRAPH.CENTER
+        elif ha_norm == "right":
+            hdr_alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        else:
+            hdr_alignment = WD_ALIGN_PARAGRAPH.LEFT
+        if t_norm in ("classic_ats", "executive_professional", "executive"):
+            is_italic_head = True
+        elif t_norm in ("modern_professional", "technical_ats", "two_column_professional", "creative_professional"):
+            is_bold_head = True
+    elif t_norm in ("classic_ats", "executive_professional", "executive"):
         hdr_alignment = WD_ALIGN_PARAGRAPH.CENTER
         is_italic_head = True
         is_bold_head = False
@@ -1228,10 +1298,34 @@ def generate_resume_docx(
         p_contact.alignment = hdr_alignment
 
     # SECTION RENDERERS FOR DOCX
+    def docx_add_sec_heading(title_text: str, sec_key: str, target=doc):
+        sec_st = section_styles or {}
+        st = sec_st.get(sec_key) or sec_st.get("all") or {}
+        ts = (st.get("titleStyle") or "uppercase").lower()
+        if ts == "uppercase":
+            disp = title_text.upper()
+        elif ts in ("capitalize", "title_case"):
+            disp = title_text.title()
+        else:
+            disp = title_text
+
+        p = target.add_paragraph(disp, style="Heading 2")
+        tc = st.get("titleColor") or (element_colors or {}).get("section_titles") or accent_color
+        if tc:
+            try:
+                tc_hex = tc.lstrip("#")
+                if len(tc_hex) == 6:
+                    r, g, b = int(tc_hex[0:2], 16), int(tc_hex[2:4], 16), int(tc_hex[4:6], 16)
+                    for r_run in p.runs:
+                        r_run.font.color.rgb = RGBColor(r, g, b)
+            except Exception:
+                pass
+        return p
+
     def docx_summary(target=doc):
         if not summary.strip(): return
         title = sec_titles.get("summary") or ("Executive Summary" if t_norm == "executive" else "Professional Summary")
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "summary", target)
         docx_add_html_paragraph(target, summary)
 
     def docx_skills(target=doc):
@@ -1258,7 +1352,7 @@ def generate_resume_docx(
                     sname = s.get("name", "").strip()
                     if sname: cat_map.setdefault(cname, []).append(sname)
             if not cat_map: return
-            target.add_paragraph(title, style="Heading 2")
+            docx_add_sec_heading(title, "skills", target)
             for cname, items in cat_map.items():
                 p = target.add_paragraph()
                 r = p.add_run(f"{cname}: ")
@@ -1270,7 +1364,7 @@ def generate_resume_docx(
                 if isinstance(s, str) and s.strip(): skill_strs.append(s.strip())
                 elif isinstance(s, dict) and s.get("name"): skill_strs.append(s["name"].strip())
             if not skill_strs: return
-            target.add_paragraph(title, style="Heading 2")
+            docx_add_sec_heading(title, "skills", target)
             target.add_paragraph(", ".join(skill_strs))
 
     def docx_experiences(target=doc):
@@ -1278,7 +1372,7 @@ def generate_resume_docx(
         valid_exps = [e for e in exps if (e.get("company") or e.get("role_title") or e.get("title") or e.get("role"))]
         if not valid_exps: return
         title = sec_titles.get("experiences") or "Work Experience"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "experiences", target)
         for exp in valid_exps:
             comp = exp.get("company", "").strip()
             role = (exp.get("role_title") or exp.get("title") or exp.get("role") or "").strip()
@@ -1299,6 +1393,9 @@ def generate_resume_docx(
                 p_loc = target.add_paragraph(loc)
                 p_loc.style.font.italic = True
 
+            desc = (exp.get("description") or "").strip()
+            if desc: docx_add_html_paragraph(target, desc)
+
             bullets = exp.get("bullet_points") or exp.get("bullets") or []
             for b in bullets:
                 b_text = b if isinstance(b, str) else b.get("text", "")
@@ -1311,7 +1408,7 @@ def generate_resume_docx(
         valid_projs = [p for p in projs if (p.get("title") or p.get("name"))]
         if not valid_projs: return
         title = sec_titles.get("projects") or "Key Projects"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "projects", target)
         for proj in valid_projs:
             p_title = (proj.get("title") or proj.get("name") or "").strip()
             start = proj.get("start_date", "").strip()
@@ -1343,7 +1440,7 @@ def generate_resume_docx(
         valid_edus = [e for e in edus if (e.get("institution") or e.get("degree"))]
         if not valid_edus: return
         title = sec_titles.get("education") or "Education"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "education", target)
         for edu in valid_edus:
             inst = edu.get("institution", "").strip()
             deg = edu.get("degree", "").strip()
@@ -1363,13 +1460,28 @@ def generate_resume_docx(
                 p_gpa = target.add_paragraph(f"CGPA / GPA: {gpa}")
                 p_gpa.style.font.italic = True
 
+            desc = (edu.get("description") or "").strip()
+            if desc: docx_add_html_paragraph(target, desc)
+            cw = (edu.get("coursework") or edu.get("relevant_coursework") or "").strip()
+            if cw:
+                p_cw = target.add_paragraph()
+                r_cw = p_cw.add_run("Relevant Coursework: ")
+                r_cw.bold = True
+                p_cw.add_run(cw)
+            honors = (edu.get("honors") or "").strip()
+            if honors:
+                p_hn = target.add_paragraph()
+                r_hn = p_hn.add_run("Honors: ")
+                r_hn.bold = True
+                p_hn.add_run(honors)
+
     def docx_certifications(target=doc):
         certs = [c for c in (content.get("certifications") or []) if not (isinstance(c, dict) and c.get("is_hidden"))]
         if not certs: return
         valid_certs = [c for c in certs if (c.get("name", "") if isinstance(c, dict) else str(c)).strip()]
         if not valid_certs: return
         title = sec_titles.get("certifications") or "Certifications & Licenses"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "certifications", target)
         for cert in valid_certs:
             cname = cert.get("name", "") if isinstance(cert, dict) else str(cert)
             issuer = cert.get("issuer", "") if isinstance(cert, dict) else ""
@@ -1380,12 +1492,14 @@ def generate_resume_docx(
             r1.bold = True
             if issuer or date_str:
                 p.add_run(f" — {issuer} ({date_str})" if (issuer and date_str) else (f" — {issuer}" if issuer else f" ({date_str})"))
+            desc = (cert.get("description") or "").strip() if isinstance(cert, dict) else ""
+            if desc: docx_add_html_paragraph(target, desc)
 
     def docx_achievements(target=doc):
         achs = [a for a in (content.get("achievements") or []) if not (isinstance(a, dict) and a.get("is_hidden"))]
         if not achs: return
         title = sec_titles.get("achievements") or "Achievements"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "achievements", target)
         for a in achs:
             if isinstance(a, str) and a.strip():
                 prefix = "– " if bullet_style == "dash" else ("" if bullet_style == "none" else "")
@@ -1402,7 +1516,7 @@ def generate_resume_docx(
         awards = [aw for aw in (content.get("awards") or []) if not (isinstance(aw, dict) and aw.get("is_hidden"))]
         if not awards: return
         title = sec_titles.get("awards") or "Awards & Honors"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "awards", target)
         for aw in awards:
             aname = aw.get("title") or aw.get("name") or (aw if isinstance(aw, str) else "")
             issuer = aw.get("organization") or aw.get("issuer") or "" if isinstance(aw, dict) else ""
@@ -1418,7 +1532,7 @@ def generate_resume_docx(
         courses = [c for c in (content.get("courses") or []) if not (isinstance(c, dict) and c.get("is_hidden"))]
         if not courses: return
         title = sec_titles.get("courses") or "Courses & Training"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "courses", target)
         c_strs = []
         for c in courses:
             if isinstance(c, str) and c.strip(): c_strs.append(c.strip())
@@ -1432,7 +1546,7 @@ def generate_resume_docx(
         langs = [l for l in (content.get("languages") or []) if not (isinstance(l, dict) and l.get("is_hidden"))]
         if not langs: return
         title = sec_titles.get("languages") or "Languages"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "languages", target)
         l_strs = []
         for l in langs:
             if isinstance(l, str) and l.strip(): l_strs.append(l.strip())
@@ -1447,7 +1561,7 @@ def generate_resume_docx(
         valid_vols = [v for v in vols if (v.get("role") or v.get("organization") or v.get("title"))]
         if not valid_vols: return
         title = sec_titles.get("volunteer") or "Volunteer Experience"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "volunteer", target)
         for v in valid_vols:
             v_role = (v.get("role") or v.get("title") or "").strip()
             v_org = v.get("organization", "").strip()
@@ -1476,7 +1590,7 @@ def generate_resume_docx(
         valid_leads = [ld for ld in leads if (ld.get("role") or ld.get("organization") or ld.get("title"))]
         if not valid_leads: return
         title = sec_titles.get("leadership") or "Leadership & Activities"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "leadership", target)
         for ld in valid_leads:
             ld_role = (ld.get("role") or ld.get("title") or "").strip()
             ld_org = ld.get("organization", "").strip()
@@ -1501,7 +1615,7 @@ def generate_resume_docx(
         valid_pubs = [p for p in pubs if (p.get("title") or p.get("name"))]
         if not valid_pubs: return
         title = sec_titles.get("publications") or "Publications & Research"
-        target.add_paragraph(title, style="Heading 2")
+        docx_add_sec_heading(title, "publications", target)
         for p in valid_pubs:
             p_title = (p.get("title") or p.get("name") or "").strip()
             p_pub = (p.get("publisher") or p.get("journal") or "").strip()
@@ -1510,7 +1624,7 @@ def generate_resume_docx(
             r = p_par.add_run(p_title)
             r.bold = True
             if p_pub or p_date:
-                p_par.add_run(f" — {p_pub} ({p_date})" if (p_pub and p_date) else (f" — {p_pub}" if p_pub else f" ({p_date})"))
+                p_par.add_run(f" — {p_pub} ({p_date})" if (p_pub and p_date) else (f" — {p_pub}" if p_pub else f" ({date_str})"))
             desc = (p.get("description") or "").strip()
             if desc: docx_add_html_paragraph(target, desc)
 
@@ -1521,7 +1635,7 @@ def generate_resume_docx(
         c_title = csec.get("title") or "Additional Section"
         entries = [e for e in (csec.get("entries") or []) if not e.get("is_hidden") and (e.get("title") or e.get("subtitle") or e.get("description"))]
         if not entries: return
-        target.add_paragraph(c_title, style="Heading 2")
+        docx_add_sec_heading(c_title, custom_id, target)
         for e in entries:
             e_title = (e.get("title") or "").strip()
             e_sub = (e.get("subtitle") or e.get("organization") or "").strip()
@@ -1565,24 +1679,55 @@ def generate_resume_docx(
 
     order = section_order or TEMPLATE_SECTION_ORDERS.get(t_norm, TEMPLATE_SECTION_ORDERS["classic_ats"])
     is_two_col = (layout == "two_column") or (t_norm == "two_column_professional" and layout != "single")
-    PRIMARY_KEYS = {"summary", "experiences", "projects", "volunteer", "leadership"}
 
     if is_two_col:
+        col_cfg = column_layout or {}
+        user_main = [s for s in (col_cfg.get("main_sections") or []) if s]
+        user_side = [s for s in (col_cfg.get("side_sections") or []) if s]
+        c_width = (col_cfg.get("column_width") or "balanced").lower()
+
+        total_w = 7.5 if (page_size or "").lower() == "letter" else 7.27
+        if c_width == "main_wider":
+            ratio = 0.70
+        elif c_width == "side_wider":
+            ratio = 0.60
+        else:
+            ratio = 0.65
+
+        main_w = round(total_w * ratio, 2)
+        side_w = round(total_w - main_w, 2)
+
         tbl = doc.add_table(rows=1, cols=2)
         cell_main = tbl.cell(0, 0)
         cell_side = tbl.cell(0, 1)
-        cell_main.width = Inches(4.7)
-        cell_side.width = Inches(2.3)
+        cell_main.width = Inches(main_w)
+        cell_side.width = Inches(side_w)
 
-    for sec in order:
-        if is_two_col:
-            target = cell_main if (sec in PRIMARY_KEYS or sec.startswith("custom")) else cell_side
+        if user_main or user_side:
+            for sec in user_main:
+                if sec in section_renderers:
+                    section_renderers[sec](cell_main)
+                elif sec.startswith("custom"):
+                    docx_custom_section(sec, cell_main)
+            for sec in user_side:
+                if sec in section_renderers:
+                    section_renderers[sec](cell_side)
+                elif sec.startswith("custom"):
+                    docx_custom_section(sec, cell_side)
         else:
-            target = doc
-        if sec in section_renderers:
-            section_renderers[sec](target)
-        elif sec.startswith("custom"):
-            docx_custom_section(sec, target)
+            PRIMARY_KEYS = {"summary", "experiences", "projects", "education", "volunteer", "leadership"}
+            for sec in order:
+                target = cell_main if (sec in PRIMARY_KEYS or sec.startswith("custom")) else cell_side
+                if sec in section_renderers:
+                    section_renderers[sec](target)
+                elif sec.startswith("custom"):
+                    docx_custom_section(sec, target)
+    else:
+        for sec in order:
+            if sec in section_renderers:
+                section_renderers[sec](doc)
+            elif sec.startswith("custom"):
+                docx_custom_section(sec, doc)
 
     buffer = BytesIO()
     doc.save(buffer)
