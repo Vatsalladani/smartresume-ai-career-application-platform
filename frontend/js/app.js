@@ -2987,9 +2987,18 @@ function wireResumeBuilder() {
   // Photo controls
   const photoToggle = $("#builderPhotoToggle");
   const photoBar = $("#builderPhotoControlsBar");
+  const updatePhotoToggleUI = (enabled) => {
+    const statusEl = $("#builderPhotoToggleStatus");
+    if (statusEl) {
+      statusEl.textContent = enabled ? "ON" : "OFF";
+      statusEl.style.color = enabled ? "var(--primary, #0284c7)" : "var(--text-muted, #64748b)";
+    }
+  };
+
   if (photoToggle) {
     photoToggle.addEventListener("change", (e) => {
       resumeBuilderState.photoEnabled = e.target.checked;
+      updatePhotoToggleUI(e.target.checked);
       if (photoBar) {
         photoBar.classList.toggle("hidden", !e.target.checked);
       }
@@ -3032,6 +3041,7 @@ function wireResumeBuilder() {
           resumeBuilderState.photoUrl = dataUrl;
           resumeBuilderState.photoEnabled = true;
           if (photoToggle) photoToggle.checked = true;
+          updatePhotoToggleUI(true);
           if (photoBar) photoBar.classList.remove("hidden");
           triggerBuilderAutosave();
           renderResumePreviewCanvas();
@@ -3059,6 +3069,7 @@ function wireResumeBuilder() {
     resumeBuilderState.photoUrl = "";
     resumeBuilderState.photoEnabled = false;
     if (photoToggle) photoToggle.checked = false;
+    updatePhotoToggleUI(false);
     if (photoBar) photoBar.classList.add("hidden");
     const pInput = $("#builderPhotoInput");
     if (pInput) pInput.value = "";
@@ -3067,15 +3078,85 @@ function wireResumeBuilder() {
     toast("Photo removed.");
   };
 
-  window.toggleCustomizerDrawer = function(drawerType) {
-    const secDrawer = $("#builderSectionStylesDrawer");
-    const advDrawer = $("#builderAdvancedDrawer");
-    if (drawerType === "sectionStyles") {
-      if (secDrawer) secDrawer.classList.toggle("hidden");
-    } else if (drawerType === "advanced") {
-      if (advDrawer) advDrawer.classList.toggle("hidden");
+  // Compact Customize Popover / Drawer Toggle
+  window.toggleCustomizeDrawer = function(forceState) {
+    const drawer = $("#builderCustomizeDrawer");
+    const btn = $("#builderToggleCustomizeBtn");
+    const chevron = $("#builderCustomizeChevron");
+    if (!drawer) return;
+    const isHidden = drawer.classList.contains("hidden");
+    const shouldOpen = (typeof forceState === "boolean") ? forceState : isHidden;
+
+    if (shouldOpen) {
+      drawer.classList.remove("hidden");
+      if (btn) btn.classList.add("active");
+      if (chevron) chevron.style.transform = "rotate(180deg)";
+    } else {
+      drawer.classList.add("hidden");
+      if (btn) btn.classList.remove("active");
+      if (chevron) chevron.style.transform = "rotate(0deg)";
     }
   };
+
+  // Exclusive Accordion for Section Styling and Advanced Design inside Customize
+  window.toggleCustomizeAccordion = function(section) {
+    const secDrawer = $("#builderSectionStylesDrawer");
+    const advDrawer = $("#builderAdvancedDrawer");
+    const secChevron = $("#chevronSectionStyles");
+    const advChevron = $("#chevronAdvanced");
+
+    if (section === "sectionStyles") {
+      const isHidden = secDrawer ? secDrawer.classList.contains("hidden") : true;
+      if (isHidden) {
+        secDrawer?.classList.remove("hidden");
+        if (secChevron) secChevron.style.transform = "rotate(90deg)";
+        // Close advanced drawer so user isn't overwhelmed with multiple large panels
+        advDrawer?.classList.add("hidden");
+        if (advChevron) advChevron.style.transform = "rotate(0deg)";
+      } else {
+        secDrawer?.classList.add("hidden");
+        if (secChevron) secChevron.style.transform = "rotate(0deg)";
+      }
+    } else if (section === "advanced") {
+      const isHidden = advDrawer ? advDrawer.classList.contains("hidden") : true;
+      if (isHidden) {
+        advDrawer?.classList.remove("hidden");
+        if (advChevron) advChevron.style.transform = "rotate(90deg)";
+        // Close section styling drawer
+        secDrawer?.classList.add("hidden");
+        if (secChevron) secChevron.style.transform = "rotate(0deg)";
+      } else {
+        advDrawer?.classList.add("hidden");
+        if (advChevron) advChevron.style.transform = "rotate(0deg)";
+      }
+    }
+  };
+
+  // Backwards compatibility alias
+  window.toggleCustomizerDrawer = function(drawerType) {
+    window.toggleCustomizeAccordion(drawerType);
+  };
+
+  // Global listener for closing Customize drawer on Esc or outside click
+  if (!window._customizeDismissWired) {
+    window._customizeDismissWired = true;
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const drawer = $("#builderCustomizeDrawer");
+        if (drawer && !drawer.classList.contains("hidden")) {
+          window.toggleCustomizeDrawer(false);
+        }
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      const drawer = $("#builderCustomizeDrawer");
+      const btn = $("#builderToggleCustomizeBtn");
+      if (!drawer || drawer.classList.contains("hidden")) return;
+      if (drawer.contains(e.target) || (btn && btn.contains(e.target))) return;
+      window.toggleCustomizeDrawer(false);
+    });
+  }
 
   // Section Styling Controls (Simplified Title Styling, Divider, Spacing)
   window.onSectionStyleTargetChange = function() {
@@ -3114,18 +3195,43 @@ function wireResumeBuilder() {
     toast(`Reset styling for ${target === "all" ? "all sections" : target}.`);
   };
 
-  // Unified Header Alignment
+  // Unified Header Alignment with Segmented Button Control & Keyboard Navigation
   window.setBuilderHeaderAlign = function(align) {
     resumeBuilderState.headerAlignment = align;
     const group = $("#builderHeaderAlignGroup");
     if (group) {
       group.querySelectorAll("button").forEach(b => {
-        b.classList.toggle("active", b.dataset.align === align);
+        const isActive = (b.dataset.align === align);
+        b.classList.toggle("active", isActive);
+        b.setAttribute("aria-checked", isActive ? "true" : "false");
       });
     }
     triggerBuilderAutosave();
     renderResumePreviewCanvas();
   };
+
+  // Wire Arrow Key Navigation on Segmented Header Alignment
+  const alignGroup = $("#builderHeaderAlignGroup");
+  if (alignGroup && !alignGroup._wiredKeyboard) {
+    alignGroup._wiredKeyboard = true;
+    alignGroup.addEventListener("keydown", (e) => {
+      const aligns = ["left", "center", "right"];
+      const current = resumeBuilderState.headerAlignment || "left";
+      let idx = aligns.indexOf(current);
+      if (idx === -1) idx = 0;
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const next = aligns[(idx - 1 + aligns.length) % aligns.length];
+        window.setBuilderHeaderAlign(next);
+        alignGroup.querySelector(`button[data-align="${next}"]`)?.focus();
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = aligns[(idx + 1) % aligns.length];
+        window.setBuilderHeaderAlign(next);
+        alignGroup.querySelector(`button[data-align="${next}"]`)?.focus();
+      }
+    });
+  }
 
   // Two-Column Section Routing & Placement
   window.updateTwoColumnPlacementVisibility = function() {
