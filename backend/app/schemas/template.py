@@ -11,15 +11,20 @@ class TemplateMetadata(BaseModel):
     supported_domains: list[str] = Field(default_factory=list)
     supported_geographies: list[str] = Field(default_factory=list)
     ats_safe: bool = True
-    ats_rating: str = "Excellent"
+    ats_rating: str = "ATS-Friendly"
     photo_supported: bool = False
-    recommended_for: str
+    recommended_for: str = ""
     access_tier: str = "FREE"  # "FREE" or "PRO"
-    layout_type: str
+    layout_type: str = "Single Column"
     page_density: str = "Standard"
     best_experience_range: str = "All Levels"
     primary_accent_color: str = "#1e3a8a"
+    font_family_default: str = "inter"
+    header_alignment_default: str = "left"
     section_order: list[str] = Field(default_factory=list)
+    recommended_roles: list[str] = Field(default_factory=list)
+    recommended_markets: list[str] = Field(default_factory=list)
+    search_keywords: list[str] = Field(default_factory=list)
 
 
 class TemplateRecommendationResponse(BaseModel):

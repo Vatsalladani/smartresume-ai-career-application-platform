@@ -1470,6 +1470,36 @@ const RESUME_BUILDER_TEMPLATES = {
     skillDisplay: "inline",
     defaultSectionOrder: ["summary", "experiences", "education", "skills", "projects", "certifications", "achievements", "awards", "courses", "languages"]
   },
+  campus_fresher: {
+    id: "campus_fresher",
+    name: "Campus / Fresher",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "modern-accent-bar",
+    accentColor: "#0d9488",
+    secondaryColor: "#64748b",
+    layout: "single",
+    dateStyle: "pill",
+    skillDisplay: "tags",
+    defaultSectionOrder: ["summary", "education", "projects", "skills", "experiences", "certifications", "achievements", "awards", "courses", "languages"]
+  },
+  clean_professional: {
+    id: "clean_professional",
+    name: "Clean Professional",
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontId: "helvetica",
+    headerAlignment: "left",
+    contactSeparator: "·",
+    headingStyle: "minimal-hairline",
+    accentColor: "#334155",
+    secondaryColor: "#94a3b8",
+    layout: "single",
+    dateStyle: "subtle",
+    skillDisplay: "minimal",
+    defaultSectionOrder: ["summary", "experiences", "skills", "education", "projects", "certifications", "achievements", "awards"]
+  },
   modern_professional: {
     id: "modern_professional",
     name: "Modern Professional",
@@ -1485,24 +1515,9 @@ const RESUME_BUILDER_TEMPLATES = {
     skillDisplay: "tags",
     defaultSectionOrder: ["summary", "experiences", "projects", "skills", "education", "certifications", "achievements"]
   },
-  minimal_professional: {
-    id: "minimal_professional",
-    name: "Minimal Professional",
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    fontId: "helvetica",
-    headerAlignment: "left",
-    contactSeparator: "·",
-    headingStyle: "minimal-hairline",
-    accentColor: "#334155",
-    secondaryColor: "#94a3b8",
-    layout: "single",
-    dateStyle: "subtle",
-    skillDisplay: "minimal",
-    defaultSectionOrder: ["summary", "experiences", "skills", "education", "projects", "certifications"]
-  },
   technical_ats: {
     id: "technical_ats",
-    name: "Technical Professional ATS",
+    name: "Technical Professional",
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontId: "inter",
     headerAlignment: "left",
@@ -1514,6 +1529,51 @@ const RESUME_BUILDER_TEMPLATES = {
     dateStyle: "standard",
     skillDisplay: "compact-grouped",
     defaultSectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements"]
+  },
+  business_professional: {
+    id: "business_professional",
+    name: "Business Professional",
+    fontFamily: '"EB Garamond", Garamond, "Times New Roman", serif',
+    fontId: "garamond",
+    headerAlignment: "left",
+    contactSeparator: "|",
+    headingStyle: "classic-underline",
+    accentColor: "#1e40af",
+    secondaryColor: "#475569",
+    layout: "single",
+    dateStyle: "classic",
+    skillDisplay: "inline",
+    defaultSectionOrder: ["summary", "experiences", "projects", "education", "skills", "certifications"]
+  },
+  finance_professional: {
+    id: "finance_professional",
+    name: "Finance Professional",
+    fontFamily: '"Georgia", "Times New Roman", Times, serif',
+    fontId: "georgia",
+    headerAlignment: "left",
+    contactSeparator: "|",
+    headingStyle: "classic-underline",
+    accentColor: "#15803d",
+    secondaryColor: "#475569",
+    layout: "single",
+    dateStyle: "classic",
+    skillDisplay: "compact-grouped",
+    defaultSectionOrder: ["summary", "experiences", "skills", "education", "certifications", "projects"]
+  },
+  healthcare_pharmacy: {
+    id: "healthcare_pharmacy",
+    name: "Healthcare Professional",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "modern-accent-bar",
+    accentColor: "#059669",
+    secondaryColor: "#64748b",
+    layout: "single",
+    dateStyle: "pill",
+    skillDisplay: "tags",
+    defaultSectionOrder: ["summary", "certifications", "experiences", "education", "skills"]
   },
   executive_professional: {
     id: "executive_professional",
@@ -1529,6 +1589,36 @@ const RESUME_BUILDER_TEMPLATES = {
     dateStyle: "classic",
     skillDisplay: "inline",
     defaultSectionOrder: ["summary", "experiences", "achievements", "education", "skills", "certifications", "projects"]
+  },
+  consulting_management: {
+    id: "consulting_management",
+    name: "Consulting Professional",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "modern-accent-bar",
+    accentColor: "#4338ca",
+    secondaryColor: "#64748b",
+    layout: "single",
+    dateStyle: "pill",
+    skillDisplay: "compact-grouped",
+    defaultSectionOrder: ["summary", "experiences", "projects", "skills", "education", "certifications"]
+  },
+  academic_research: {
+    id: "academic_research",
+    name: "Academic / Research CV",
+    fontFamily: '"EB Garamond", Garamond, "Times New Roman", serif',
+    fontId: "garamond",
+    headerAlignment: "center",
+    contactSeparator: "|",
+    headingStyle: "classic-underline",
+    accentColor: "#7c2d12",
+    secondaryColor: "#57534e",
+    layout: "single",
+    dateStyle: "classic",
+    skillDisplay: "inline",
+    defaultSectionOrder: ["summary", "education", "publications", "experiences", "awards", "skills", "certifications"]
   },
   two_column_professional: {
     id: "two_column_professional",
@@ -1562,11 +1652,62 @@ const RESUME_BUILDER_TEMPLATES = {
     skillDisplay: "tags",
     photoEnabled: true,
     defaultSectionOrder: ["summary", "projects", "experiences", "skills", "education", "certifications", "achievements"]
+  },
+  international_professional: {
+    id: "international_professional",
+    name: "Global / International",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "modern-accent-bar",
+    accentColor: "#0284c7",
+    secondaryColor: "#64748b",
+    layout: "single",
+    dateStyle: "pill",
+    skillDisplay: "compact-grouped",
+    photoEnabled: true,
+    defaultSectionOrder: ["summary", "experiences", "skills", "education", "certifications", "languages"]
+  },
+  regional_photo_cv: {
+    id: "regional_photo_cv",
+    name: "Regional Photo CV",
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontId: "helvetica",
+    headerAlignment: "left",
+    contactSeparator: "·",
+    headingStyle: "minimal-hairline",
+    accentColor: "#2563eb",
+    secondaryColor: "#64748b",
+    layout: "single",
+    dateStyle: "pill",
+    skillDisplay: "tags",
+    photoEnabled: true,
+    defaultSectionOrder: ["summary", "experiences", "skills", "education", "certifications", "languages"]
+  },
+  premium_leadership: {
+    id: "premium_leadership",
+    name: "Premium Leadership",
+    fontFamily: '"Georgia", "Times New Roman", Times, serif',
+    fontId: "georgia",
+    headerAlignment: "center",
+    contactSeparator: "|",
+    headingStyle: "executive-double-line",
+    accentColor: "#0f172a",
+    secondaryColor: "#475569",
+    layout: "single",
+    dateStyle: "classic",
+    skillDisplay: "inline",
+    defaultSectionOrder: ["summary", "experiences", "achievements", "education", "certifications", "skills"]
   }
 };
+
 // Aliases for compatibility
 RESUME_BUILDER_TEMPLATES.executive = RESUME_BUILDER_TEMPLATES.executive_professional;
+RESUME_BUILDER_TEMPLATES.experienced_professional = RESUME_BUILDER_TEMPLATES.premium_leadership;
+RESUME_BUILDER_TEMPLATES.traditional_professional = RESUME_BUILDER_TEMPLATES.classic_ats;
 RESUME_BUILDER_TEMPLATES.two_column = RESUME_BUILDER_TEMPLATES.two_column_professional;
+RESUME_BUILDER_TEMPLATES.minimal_professional = RESUME_BUILDER_TEMPLATES.clean_professional;
 
 let resumeBuilderState = {
   template: "classic_ats",
@@ -2427,6 +2568,19 @@ async function submitCreateResume() {
         gpa: ed.gpa || ""
       }));
     }
+  }
+
+  if (state.pendingNewResumeTemplate) {
+    initialParsedContent.template = state.pendingNewResumeTemplate;
+    const tplCfg = RESUME_BUILDER_TEMPLATES[state.pendingNewResumeTemplate];
+    if (tplCfg) {
+      if (tplCfg.fontFamily) initialParsedContent.fontFamily = tplCfg.fontFamily;
+      if (tplCfg.accentColor) initialParsedContent.accentColor = tplCfg.accentColor;
+      if (tplCfg.layout) initialParsedContent.layout = tplCfg.layout;
+      if (tplCfg.headerAlignment) initialParsedContent.headerAlignment = tplCfg.headerAlignment;
+      if (tplCfg.defaultSectionOrder) initialParsedContent.sectionOrder = [...tplCfg.defaultSectionOrder];
+    }
+    state.pendingNewResumeTemplate = null;
   }
 
   try {
@@ -3993,20 +4147,22 @@ async function executeResumeBuilderExport(format = "pdf") {
   }
 }
 
-function openActiveResumePreview() {
+function openActiveResumePreview(customSheet = null) {
   const modal = $("#resumeFullscreenModal");
   const container = $("#fullscreenCanvasContainer");
-  let canvas = $("#builderPreviewCanvas");
-
-  if (!canvas) {
-    navigateToTab("resume-builder");
-    setTimeout(openActiveResumePreview, 120);
-    return;
+  let sheet = customSheet;
+  if (!sheet) {
+    const canvas = $("#builderPreviewCanvas");
+    if (!canvas) {
+      navigateToTab("resume-builder");
+      setTimeout(() => openActiveResumePreview(), 120);
+      return;
+    }
+    sheet = canvas.closest(".resume-preview-sheet") || canvas;
   }
-  if (!modal || !container) return;
+  if (!modal || !container || !sheet) return;
 
   container.innerHTML = "";
-  const sheet = canvas.closest(".resume-preview-sheet") || canvas;
   const clone = sheet.cloneNode(true);
   clone.id = "fullscreenSheetClone";
   clone.style.transform = "none";
@@ -5104,33 +5260,160 @@ function renderBuilderEditorFromState() {
   drawIcons();
 }
 
-function renderResumePreviewCanvas() {
-  const canvas = $("#builderPreviewCanvas");
-  if (!canvas) return;
+function applyCustomizerStylesToTarget(targetEl, stateToApply, tplConfig) {
+  if (!targetEl) return;
+  const s = stateToApply || resumeBuilderState;
+  const cfg = tplConfig || RESUME_BUILDER_TEMPLATES[s.template] || RESUME_BUILDER_TEMPLATES.classic_ats;
 
-  const tplId = resumeBuilderState.template || "classic_ats";
+  const font = s.fontSize || "medium";
+  const spacing = s.spacing || "standard";
+  const accent = s.accentColor || cfg.accentColor || "#1e3a8a";
+  const lineHeight = s.lineHeight || "standard";
+  const bulletStyle = s.bulletStyle || "disc";
+  const dateAlign = s.dateAlignment || cfg.dateAlignment || "right";
+
+  const fontSizes = { small: "11.5px", medium: "13px", large: "14.5px" };
+  const lineHeights = { compact: "1.25", standard: "1.4", comfortable: "1.6", relaxed: "1.55" };
+  const spacings = { compact: "8px", standard: "12px", relaxed: "18px" };
+
+  const fontFam = s.fontFamily || cfg.fontFamily;
+  if (fontFam) {
+    const fontMap = {
+      inter: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      arial: 'Arial, Helvetica, sans-serif',
+      calibri: 'Calibri, Candara, Segoe, "Segoe UI", Optima, Arial, sans-serif',
+      georgia: 'Georgia, "Times New Roman", Times, serif',
+      times: '"Times New Roman", Times, Georgia, serif',
+      roboto: '"Roboto", -apple-system, BlinkMacSystemFont, sans-serif',
+      helvetica: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+    };
+    targetEl.style.fontFamily = fontMap[fontFam.toLowerCase()] || fontFam;
+  } else {
+    targetEl.style.fontFamily = "";
+  }
+
+  targetEl.style.setProperty("--resume-font-size", fontSizes[font] || "13px");
+  targetEl.style.setProperty("--resume-line-height", lineHeights[lineHeight] || lineHeights[spacing] || "1.4");
+  targetEl.style.setProperty("--resume-spacing", spacings[spacing] || "12px");
+  targetEl.style.setProperty("--resume-accent", accent);
+
+  const colors = s.elementColors || {};
+  if (colors.name) targetEl.style.setProperty("--resume-name-color", colors.name);
+  else targetEl.style.removeProperty("--resume-name-color");
+
+  if (colors.headline) targetEl.style.setProperty("--resume-headline-color", colors.headline);
+  else targetEl.style.removeProperty("--resume-headline-color");
+
+  if (colors.body) targetEl.style.setProperty("--resume-body-color", colors.body);
+  else targetEl.style.removeProperty("--resume-body-color");
+
+  if (colors.links) targetEl.style.setProperty("--resume-links-color", colors.links);
+  else targetEl.style.removeProperty("--resume-links-color");
+
+  if (colors.dates) targetEl.style.setProperty("--resume-dates-color", colors.dates);
+  else targetEl.style.removeProperty("--resume-dates-color");
+
+  if (colors.dividers) targetEl.style.setProperty("--resume-dividers-color", colors.dividers);
+  else targetEl.style.removeProperty("--resume-dividers-color");
+
+  if (colors.bullets) targetEl.style.setProperty("--resume-bullets-color", colors.bullets);
+  else targetEl.style.removeProperty("--resume-bullets-color");
+
+  if (s.secondaryColor || cfg.secondaryColor) targetEl.style.setProperty("--resume-secondary", s.secondaryColor || cfg.secondaryColor);
+  else targetEl.style.removeProperty("--resume-secondary");
+
+  targetEl.style.setProperty("--resume-bullet-style", bulletStyle === "dash" ? "'- '" : bulletStyle === "none" ? "none" : "disc");
+  targetEl.style.setProperty("--resume-date-align", dateAlign);
+}
+
+function applyCustomizerStylesToCanvas() {
+  applyCustomizerStylesToTarget($("#builderPreviewCanvas"), resumeBuilderState, RESUME_BUILDER_TEMPLATES[resumeBuilderState.template]);
+  const divider = $("#prevCanvasDivider");
+  if (divider) {
+    const colors = resumeBuilderState.elementColors || {};
+    const accent = resumeBuilderState.accentColor || "#1e3a8a";
+    if (colors.dividers) {
+      divider.style.background = colors.dividers;
+    } else if (resumeBuilderState.template === "minimal_professional" || resumeBuilderState.template === "clean_professional") {
+      divider.style.background = "#e2e8f0";
+    } else {
+      divider.style.background = accent;
+    }
+  }
+}
+
+function renderResumeDocumentInto(containerEl, rState, options = {}) {
+  if (!containerEl) return;
+  const s = rState || resumeBuilderState;
+  const tplId = s.template || "classic_ats";
   const tplConfig = RESUME_BUILDER_TEMPLATES[tplId] || RESUME_BUILDER_TEMPLATES.classic_ats;
-  const layout = resumeBuilderState.layout || tplConfig.layout || "single";
-  const pageSize = resumeBuilderState.pageSize || "a4";
-  const margins = resumeBuilderState.margins || "standard";
-  const dateAlign = resumeBuilderState.dateAlignment || "right";
-  const headerAlign = resumeBuilderState.headerAlignment || "left";
-  const colWidth = resumeBuilderState.columnLayout?.column_width || "balanced";
+  const layout = s.layout || tplConfig.layout || "single";
+  const pageSize = s.pageSize || "a4";
+  const margins = s.margins || "standard";
+  const dateAlign = s.dateAlignment || tplConfig.dateAlignment || "right";
+  const headerAlign = s.headerAlignment || tplConfig.headerAlignment || "left";
+  const colWidth = s.columnLayout?.column_width || "balanced";
 
-  const sheet = $("#builderLivePreviewSheet");
+  let sheet;
+  let canvas;
+  let photoCont;
+  let nameEl;
+  let headEl;
+  let contactEl;
+  let divider;
+  let container;
+
+  if (containerEl.id === "builderPreviewCanvas") {
+    sheet = $("#builderLivePreviewSheet");
+    canvas = containerEl;
+    photoCont = $("#prevCanvasPhotoContainer");
+    nameEl = $("#prevCanvasName");
+    headEl = $("#prevCanvasHeadline");
+    contactEl = $("#prevCanvasContact");
+    divider = $("#prevCanvasDivider");
+    container = $("#prevSectionsContainer");
+  } else {
+    sheet = containerEl.querySelector(".resume-preview-sheet");
+    if (!sheet) {
+      containerEl.innerHTML = `
+        <div class="resume-preview-sheet">
+          <div class="resume-preview-canvas">
+            <div class="preview-canvas-header">
+              <div class="prev-photo-container hidden"></div>
+              <div class="prev-header-content">
+                <h2 class="prev-canvas-name"></h2>
+                <p class="prev-canvas-headline"></p>
+                <div class="prev-canvas-contact"></div>
+              </div>
+            </div>
+            <div class="preview-canvas-divider"></div>
+            <div class="prev-sections-container"></div>
+          </div>
+        </div>
+      `;
+      sheet = containerEl.querySelector(".resume-preview-sheet");
+    }
+    canvas = sheet.querySelector(".resume-preview-canvas");
+    photoCont = canvas.querySelector(".prev-photo-container");
+    nameEl = canvas.querySelector(".prev-canvas-name");
+    headEl = canvas.querySelector(".prev-canvas-headline");
+    contactEl = canvas.querySelector(".prev-canvas-contact");
+    divider = canvas.querySelector(".preview-canvas-divider");
+    container = canvas.querySelector(".prev-sections-container");
+  }
+
   if (sheet) {
     sheet.className = `resume-preview-sheet tpl-${tplId} tpl-${tplId.replace(/_/g, "-")} layout-${layout} size-${pageSize} margin-${margins} date-align-${dateAlign} header-align-${headerAlign} col-width-${colWidth}`;
     sheet.dataset.template = tplId;
     sheet.dataset.layout = layout;
   }
 
-  applyCustomizerStylesToCanvas();
+  applyCustomizerStylesToTarget(canvas, s, tplConfig);
 
-  // Candidate Photo Container
-  const photoCont = $("#prevCanvasPhotoContainer");
+  // Photo
   if (photoCont) {
-    if (resumeBuilderState.photoEnabled && resumeBuilderState.photoUrl) {
-      photoCont.innerHTML = `<img src="${resumeBuilderState.photoUrl}" class="prev-photo-img ${resumeBuilderState.photoShape || "circle"} ${resumeBuilderState.photoSize || "md"}" alt="Candidate Photo" />`;
+    if (s.photoEnabled && s.photoUrl) {
+      photoCont.innerHTML = `<img src="${s.photoUrl}" class="prev-photo-img ${s.photoShape || "circle"} ${s.photoSize || "md"}" alt="Candidate Photo" />`;
       photoCont.classList.remove("hidden");
     } else {
       photoCont.innerHTML = "";
@@ -5138,14 +5421,11 @@ function renderResumePreviewCanvas() {
     }
   }
 
-  const h = resumeBuilderState.header || {};
-  const nameEl = $("#prevCanvasName");
+  // Header content
+  const h = s.header || {};
   if (nameEl) nameEl.textContent = h.full_name || "Candidate Name";
-
-  const headEl = $("#prevCanvasHeadline");
   if (headEl) headEl.textContent = h.headline || "";
 
-  const contactEl = $("#prevCanvasContact");
   if (contactEl) {
     contactEl.innerHTML = "";
     const parts = [];
@@ -5167,7 +5447,7 @@ function renderResumePreviewCanvas() {
       parts.push({ text: clean, href: h.website.startsWith("http") ? h.website : `https://${h.website}` });
     }
 
-    const rawSep = resumeBuilderState.contactSeparator || tplConfig.contactSeparator || "|";
+    const rawSep = s.contactSeparator || tplConfig.contactSeparator || "|";
     const sepChar = rawSep === "none" ? " " : rawSep;
     parts.forEach((p, idx) => {
       if (idx > 0 && rawSep !== "none") {
@@ -5191,7 +5471,19 @@ function renderResumePreviewCanvas() {
     });
   }
 
-  const container = $("#prevSectionsContainer");
+  // Divider
+  if (divider) {
+    const colors = s.elementColors || {};
+    const accent = s.accentColor || tplConfig.accentColor || "#1e3a8a";
+    if (colors.dividers) {
+      divider.style.background = colors.dividers;
+    } else if (s.template === "minimal_professional" || s.template === "clean_professional") {
+      divider.style.background = "#e2e8f0";
+    } else {
+      divider.style.background = accent;
+    }
+  }
+
   if (!container) return;
   container.innerHTML = "";
 
@@ -5207,19 +5499,17 @@ function renderResumePreviewCanvas() {
     container.appendChild(sideCol);
   }
 
-  const SECONDARY_SECTIONS = ["skills", "education", "certifications", "achievements", "awards", "languages", "courses"];
-
   const renderedSecNodes = {};
 
   function applySectionStyling(secNode, key) {
-    const allStyles = (resumeBuilderState.sectionStyles || {}).all || {};
-    const specificStyles = (resumeBuilderState.sectionStyles || {})[key] || {};
-    const s = { ...allStyles, ...specificStyles };
+    const allStyles = (s.sectionStyles || {}).all || {};
+    const specificStyles = (s.sectionStyles || {})[key] || {};
+    const st = { ...allStyles, ...specificStyles };
 
     const titleEl = secNode.querySelector(".preview-section-title");
     if (titleEl) {
-      if (s.titleColor) titleEl.style.color = s.titleColor;
-      const ts = (s.titleStyle || "uppercase").toLowerCase();
+      if (st.titleColor) titleEl.style.color = st.titleColor;
+      const ts = (st.titleStyle || "uppercase").toLowerCase();
       if (ts === "uppercase") {
         titleEl.style.textTransform = "uppercase";
         titleEl.style.fontWeight = "700";
@@ -5234,28 +5524,29 @@ function renderResumePreviewCanvas() {
         titleEl.style.fontWeight = "600";
       }
 
-      if (s.dividerStyle === "none") {
+      const accentCol = s.accentColor || tplConfig.accentColor || "#1e3a8a";
+      if (st.dividerStyle === "none") {
         titleEl.style.borderBottom = "none";
         titleEl.style.borderLeft = "none";
-      } else if (s.dividerStyle === "thin" || s.dividerStyle === "hairline") {
-        titleEl.style.borderBottom = `1px solid ${s.dividerColor || "#e2e8f0"}`;
+      } else if (st.dividerStyle === "thin" || st.dividerStyle === "hairline") {
+        titleEl.style.borderBottom = `1px solid ${st.dividerColor || "#e2e8f0"}`;
         titleEl.style.borderLeft = "none";
-      } else if (s.dividerStyle === "accent_bar") {
+      } else if (st.dividerStyle === "accent_bar") {
         titleEl.style.borderBottom = "none";
-        titleEl.style.borderLeft = `4px solid ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
+        titleEl.style.borderLeft = `4px solid ${st.dividerColor || accentCol}`;
         titleEl.style.paddingLeft = "8px";
-      } else if (s.dividerStyle === "double") {
-        titleEl.style.borderBottom = `3px double ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
+      } else if (st.dividerStyle === "double") {
+        titleEl.style.borderBottom = `3px double ${st.dividerColor || accentCol}`;
         titleEl.style.borderLeft = "none";
       } else {
-        titleEl.style.borderBottom = `2px solid ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
+        titleEl.style.borderBottom = `2px solid ${st.dividerColor || accentCol}`;
         titleEl.style.borderLeft = "none";
       }
     }
 
-    if (s.spacing === "compact") {
+    if (st.spacing === "compact") {
       secNode.style.marginBottom = "calc(var(--resume-spacing) * 0.5)";
-    } else if (s.spacing === "comfortable" || s.spacing === "relaxed") {
+    } else if (st.spacing === "comfortable" || st.spacing === "relaxed") {
       secNode.style.marginBottom = "calc(var(--resume-spacing) * 1.5)";
     } else {
       secNode.style.marginBottom = "calc(var(--resume-spacing) * 1.0)";
@@ -5267,15 +5558,15 @@ function renderResumePreviewCanvas() {
     renderedSecNodes[key] = secNode;
   }
 
-  const sectionOrder = resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
-  const titles = resumeBuilderState.sectionTitles || {};
-  const fmt = resumeBuilderState.dateFormat || "MMM YYYY";
+  const sectionOrder = s.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
+  const titles = s.sectionTitles || {};
+  const fmt = s.dateFormat || "MMM YYYY";
 
   sectionOrder.forEach(secKey => {
     const secTitle = titles[secKey] || DEFAULT_SECTION_TITLES[secKey] || "Section";
 
     if (secKey === "summary") {
-      const sum = (resumeBuilderState.summary || "").trim();
+      const sum = (s.summary || "").trim();
       const textClean = sum.replace(/<[^>]+>/g, "").trim();
       if (textClean) {
         const sec = document.createElement("div");
@@ -5287,9 +5578,9 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "skills") {
-      const isGrouped = resumeBuilderState.skillsLayout === "grouped";
-      const categories = (resumeBuilderState.skillCategories || []).filter(c => c && c.name && c.skills && c.skills.length > 0);
-      const skills = (resumeBuilderState.skills || []).filter(s => s && s.trim());
+      const isGrouped = s.skillsLayout === "grouped";
+      const categories = (s.skillCategories || []).filter(c => c && c.name && c.skills && c.skills.length > 0);
+      const skills = (s.skills || []).filter(sk => sk && (typeof sk === "string" ? sk.trim() : sk.name));
 
       if (isGrouped && categories.length > 0) {
         const sec = document.createElement("div");
@@ -5312,14 +5603,14 @@ function renderResumePreviewCanvas() {
           <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-skills-container">
             <p class="prev-skills-text text-xs" style="line-height: var(--resume-line-height); margin: 0; color: #374151;">
-              ${skills.map(s => escapeHtml(s)).join(", ")}
+              ${skills.map(sk => escapeHtml(typeof sk === "string" ? sk : sk.name)).join(", ")}
             </p>
           </div>
         `;
         appendSection(sec, secKey);
       }
     } else if (secKey === "experiences") {
-      const exps = (resumeBuilderState.experiences || []).filter(e => !e.is_hidden && (e.company || e.title));
+      const exps = (s.experiences || []).filter(e => !e.is_hidden && (e.company || e.title || e.role));
       if (exps.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5327,17 +5618,19 @@ function renderResumePreviewCanvas() {
           <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
             ${exps.map(e => {
+              const roleTitle = e.title || e.role || "Role";
               const dateStr = formatClientDateRange(e.start_date, e.end_date, e.is_current, fmt);
+              const bList = (e.bullets || []).filter(b => b && (typeof b === "string" ? b.trim() : b.text));
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
-                    <span class="prev-item-title-col"><strong>${escapeHtml(e.title || "Role")}</strong>${e.company ? ` — ${escapeHtml(e.company)}` : ""}</span>
+                    <span class="prev-item-title-col"><strong>${escapeHtml(roleTitle)}</strong>${e.company ? ` — ${escapeHtml(e.company)}` : ""}</span>
                     ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
                   </div>
                   ${e.location ? `<div class="prev-item-sub">${escapeHtml(e.location)}</div>` : ""}
-                  ${(e.bullets || []).filter(b => b && b.trim()).length > 0 ? `
+                  ${bList.length > 0 ? `
                     <ul class="prev-item-bullets">
-                      ${e.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
+                      ${bList.map(b => `<li>${sanitizeHtmlForPreview(typeof b === "string" ? b : b.text)}</li>`).join("")}
                     </ul>
                   ` : ""}
                 </div>
@@ -5348,7 +5641,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "projects") {
-      const projs = (resumeBuilderState.projects || []).filter(p => !p.is_hidden && p.title);
+      const projs = (s.projects || []).filter(p => !p.is_hidden && (p.title || p.name));
       if (projs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5356,17 +5649,19 @@ function renderResumePreviewCanvas() {
           <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
             ${projs.map(p => {
+              const projTitle = p.title || p.name;
               const dateStr = formatClientDateRange(p.start_date, p.end_date, false, fmt);
+              const bList = (p.bullets || []).filter(b => b && (typeof b === "string" ? b.trim() : b.text));
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
-                    <span class="prev-item-title-col"><strong>${escapeHtml(p.title)}</strong>${p.technologies ? ` <span class="prev-proj-tech">${escapeHtml(p.technologies)}</span>` : ""}</span>
+                    <span class="prev-item-title-col"><strong>${escapeHtml(projTitle)}</strong>${p.technologies ? ` <span class="prev-proj-tech">${escapeHtml(p.technologies)}</span>` : ""}</span>
                     ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
                   </div>
                   ${p.description ? `<p class="text-xs" style="margin: 2px 0; color: #374151;">${sanitizeHtmlForPreview(p.description)}</p>` : ""}
-                  ${(p.bullets || []).filter(b => b && b.trim()).length > 0 ? `
+                  ${bList.length > 0 ? `
                     <ul class="prev-item-bullets">
-                      ${p.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
+                      ${bList.map(b => `<li>${sanitizeHtmlForPreview(typeof b === "string" ? b : b.text)}</li>`).join("")}
                     </ul>
                   ` : ""}
                 </div>
@@ -5377,7 +5672,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "education") {
-      const edus = (resumeBuilderState.education || []).filter(ed => !ed.is_hidden && (ed.institution || ed.degree));
+      const edus = (s.education || []).filter(ed => !ed.is_hidden && (ed.institution || ed.degree));
       if (edus.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5389,7 +5684,7 @@ function renderResumePreviewCanvas() {
               const deg = ed.degree ? `<strong>${escapeHtml(ed.degree)}</strong>` : "";
               const field = ed.field_of_study ? ` in ${escapeHtml(ed.field_of_study)}` : "";
               const titleStr = deg + field + (ed.institution ? ` — ${escapeHtml(ed.institution)}` : "");
-              const meta = [ed.location, ed.grade ? `Honors / GPA: ${ed.grade}` : ""].filter(Boolean).join(" | ");
+              const meta = [ed.location, ed.grade ? `Honors / GPA: ${ed.grade}` : (ed.gpa ? `GPA: ${ed.gpa}` : "")].filter(Boolean).join(" | ");
               const hasDesc = ed.description && ed.description.replace(/<[^>]+>/g, "").trim();
               return `
                 <div class="prev-item-entry">
@@ -5407,7 +5702,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "certifications") {
-      const certs = (resumeBuilderState.certifications || []).filter(c => !c.is_hidden && (c.name && c.name.trim()));
+      const certs = (s.certifications || []).filter(c => !c.is_hidden && (c.name && c.name.trim()));
       if (certs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5415,12 +5710,13 @@ function renderResumePreviewCanvas() {
           <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
             ${certs.map(c => {
-              const d = formatDateStrClient(c.date, fmt);
+              const d = formatDateStrClient(c.date || c.issue_date, fmt);
+              const issuer = c.issuer || c.issuing_organization;
               const hasDesc = c.description && c.description.replace(/<[^>]+>/g, "").trim();
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
-                    <span class="prev-item-title-col"><strong>${escapeHtml(c.name)}</strong>${c.issuer ? ` — ${escapeHtml(c.issuer)}` : ""}</span>
+                    <span class="prev-item-title-col"><strong>${escapeHtml(c.name)}</strong>${issuer ? ` — ${escapeHtml(issuer)}` : ""}</span>
                     ${d ? `<span class="prev-item-date">${escapeHtml(d)}</span>` : ""}
                   </div>
                   ${hasDesc ? `<div class="prev-item-sub" style="margin-top: 2px;">${sanitizeHtmlForPreview(c.description)}</div>` : ""}
@@ -5432,7 +5728,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "achievements") {
-      const achs = (resumeBuilderState.achievements || []).filter(a => {
+      const achs = (s.achievements || []).filter(a => {
         if (typeof a === "string") return a && a.trim();
         return !a.is_hidden && a.text && a.text.trim();
       });
@@ -5448,7 +5744,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "awards") {
-      const awds = (resumeBuilderState.awards || []).filter(a => {
+      const awds = (s.awards || []).filter(a => {
         if (typeof a === "string") return a && a.trim();
         return !a.is_hidden && a.text && a.text.trim();
       });
@@ -5464,7 +5760,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "languages") {
-      const langs = (resumeBuilderState.languages || []).filter(l => !l.is_hidden && (l.language && l.language.trim()));
+      const langs = (s.languages || []).filter(l => !l.is_hidden && (l.language && l.language.trim()));
       if (langs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5477,7 +5773,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "volunteer") {
-      const vols = (resumeBuilderState.volunteer || []).filter(v => !v.is_hidden && (v.organization || v.role));
+      const vols = (s.volunteer || []).filter(v => !v.is_hidden && (v.organization || v.role));
       if (vols.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5506,7 +5802,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "leadership") {
-      const leads = (resumeBuilderState.leadership || []).filter(l => !l.is_hidden && (l.organization || l.role));
+      const leads = (s.leadership || []).filter(l => !l.is_hidden && (l.organization || l.role));
       if (leads.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5534,7 +5830,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "publications") {
-      const pubs = (resumeBuilderState.publications || []).filter(pb => !pb.is_hidden && pb.title);
+      const pubs = (s.publications || []).filter(pb => !pb.is_hidden && pb.title);
       if (pubs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5560,7 +5856,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey === "courses") {
-      const crss = (resumeBuilderState.courses || []).filter(cs => !cs.is_hidden && cs.name);
+      const crss = (s.courses || []).filter(cs => !cs.is_hidden && cs.name);
       if (crss.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -5573,7 +5869,7 @@ function renderResumePreviewCanvas() {
         appendSection(sec, secKey);
       }
     } else if (secKey.startsWith("custom_")) {
-      const csObj = (resumeBuilderState.customSections || []).find(c => c.id === secKey);
+      const csObj = (s.customSections || []).find(c => c.id === secKey);
       const items = (csObj && csObj.items ? csObj.items : []).filter(it => !it.is_hidden && (it.title || it.description || (it.bullets && it.bullets.length > 0)));
       if (items.length > 0) {
         const sec = document.createElement("div");
@@ -5606,7 +5902,7 @@ function renderResumePreviewCanvas() {
 
   // Assemble sections into container or columns
   if (isTwoCol) {
-    const colCfg = resumeBuilderState.columnLayout || {
+    const colCfg = s.columnLayout || {
       main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
       side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
       column_width: "balanced"
@@ -5650,85 +5946,10 @@ function renderResumePreviewCanvas() {
   }
 }
 
-function applyCustomizerStylesToCanvas() {
+function renderResumePreviewCanvas() {
   const canvas = $("#builderPreviewCanvas");
   if (!canvas) return;
-
-  const font = resumeBuilderState.fontSize || "medium";
-  const spacing = resumeBuilderState.spacing || "standard";
-  const accent = resumeBuilderState.accentColor || "#1e3a8a";
-  const lineHeight = resumeBuilderState.lineHeight || "standard";
-  const bulletStyle = resumeBuilderState.bulletStyle || "disc";
-  const dateAlign = resumeBuilderState.dateAlignment || "right";
-
-  const fontSizes = { small: "11.5px", medium: "13px", large: "14.5px" };
-  const lineHeights = { compact: "1.25", standard: "1.4", comfortable: "1.6", relaxed: "1.55" };
-  const spacings = { compact: "8px", standard: "12px", relaxed: "18px" };
-
-  // Font family resolution
-  const fontFam = resumeBuilderState.fontFamily;
-  if (fontFam) {
-    const fontMap = {
-      inter: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      arial: 'Arial, Helvetica, sans-serif',
-      calibri: 'Calibri, Candara, Segoe, "Segoe UI", Optima, Arial, sans-serif',
-      georgia: 'Georgia, "Times New Roman", Times, serif',
-      times: '"Times New Roman", Times, Georgia, serif',
-      roboto: '"Roboto", -apple-system, BlinkMacSystemFont, sans-serif',
-      helvetica: '"Helvetica Neue", Helvetica, Arial, sans-serif'
-    };
-    canvas.style.fontFamily = fontMap[fontFam.toLowerCase()] || fontFam;
-  } else {
-    canvas.style.fontFamily = "";
-  }
-
-  canvas.style.setProperty("--resume-font-size", fontSizes[font] || "13px");
-  canvas.style.setProperty("--resume-line-height", lineHeights[lineHeight] || lineHeights[spacing] || "1.4");
-  canvas.style.setProperty("--resume-spacing", spacings[spacing] || "12px");
-  canvas.style.setProperty("--resume-accent", accent);
-
-  // Element colors
-  const colors = resumeBuilderState.elementColors || {};
-  if (colors.name) canvas.style.setProperty("--resume-name-color", colors.name);
-  else canvas.style.removeProperty("--resume-name-color");
-
-  if (colors.headline) canvas.style.setProperty("--resume-headline-color", colors.headline);
-  else canvas.style.removeProperty("--resume-headline-color");
-
-  if (colors.body) canvas.style.setProperty("--resume-body-color", colors.body);
-  else canvas.style.removeProperty("--resume-body-color");
-
-  if (colors.links) canvas.style.setProperty("--resume-links-color", colors.links);
-  else canvas.style.removeProperty("--resume-links-color");
-
-  if (colors.dates) canvas.style.setProperty("--resume-dates-color", colors.dates);
-  else canvas.style.removeProperty("--resume-dates-color");
-
-  if (colors.dividers) canvas.style.setProperty("--resume-dividers-color", colors.dividers);
-  else canvas.style.removeProperty("--resume-dividers-color");
-
-  if (colors.bullets) canvas.style.setProperty("--resume-bullets-color", colors.bullets);
-  else canvas.style.removeProperty("--resume-bullets-color");
-
-  if (resumeBuilderState.secondaryColor) canvas.style.setProperty("--resume-secondary", resumeBuilderState.secondaryColor);
-  else canvas.style.removeProperty("--resume-secondary");
-
-  // Apply bullet style
-  canvas.style.setProperty("--resume-bullet-style", bulletStyle === "dash" ? "'- '" : bulletStyle === "none" ? "none" : "disc");
-
-  // Apply date alignment
-  canvas.style.setProperty("--resume-date-align", dateAlign);
-
-  const divider = $("#prevCanvasDivider");
-  if (divider) {
-    if (colors.dividers) {
-      divider.style.background = colors.dividers;
-    } else if (resumeBuilderState.template === "minimal_professional") {
-      divider.style.background = "#e2e8f0";
-    } else {
-      divider.style.background = accent;
-    }
-  }
+  renderResumeDocumentInto(canvas, resumeBuilderState);
 }
 
 
@@ -10061,6 +10282,111 @@ function renderPackTabContent(viewName) {
 // ==========================================================================
 let activePreviewTemplateId = null;
 let pendingUpgradeTemplateId = null;
+window._currentDemoResumeState = null;
+window._originalDemoResumeState = null;
+
+function convertSampleToResumeState(sampleData, templateId) {
+  const tplConfig = RESUME_BUILDER_TEMPLATES[templateId] || RESUME_BUILDER_TEMPLATES.classic_ats;
+  const c = sampleData || {};
+  const tMeta = (state.templates || []).find((t) => t.template_id === templateId) || {};
+
+  const exps = (c.experiences || []).map((e) => ({
+    company: e.company || "",
+    title: e.role_title || e.title || e.role || "Role",
+    start_date: e.start_date || "",
+    end_date: e.end_date || "",
+    is_current: !!e.is_current,
+    location: e.location || "",
+    bullets: Array.isArray(e.bullet_points) ? e.bullet_points : Array.isArray(e.bullets) ? e.bullets : [],
+    is_hidden: false,
+  }));
+
+  const projs = (c.projects || []).map((p) => ({
+    title: p.title || p.name || "Project",
+    technologies: p.technologies || "",
+    description: p.description || "",
+    start_date: p.start_date || "",
+    end_date: p.end_date || "",
+    bullets: Array.isArray(p.highlights) ? p.highlights : Array.isArray(p.bullet_points) ? p.bullet_points : Array.isArray(p.bullets) ? p.bullets : [],
+    is_hidden: false,
+  }));
+
+  const edus = (c.education || []).map((ed) => ({
+    institution: ed.institution || "",
+    degree: ed.degree || "",
+    field_of_study: ed.field_of_study || "",
+    start_date: ed.start_date || "",
+    end_date: ed.end_date || "",
+    grade: ed.grade || ed.gpa || "",
+    location: ed.location || "",
+    description: ed.description || "",
+    is_hidden: false,
+  }));
+
+  const certs = (c.certifications || []).map((ct) => ({
+    name: ct.name || "",
+    issuer: ct.issuing_organization || ct.issuer || "",
+    date: ct.issue_date || ct.date || "",
+    description: ct.credential_id ? `Credential ID: ${ct.credential_id}` : ct.description || "",
+    is_hidden: false,
+  }));
+
+  const achs = (c.achievements || []).map((a) => (typeof a === "string" ? { text: a, is_hidden: false } : a));
+  const pubs = (c.publications || []).map((pb) => (typeof pb === "string" ? { title: pb, publisher: "", date: "", url: "", description: "", is_hidden: false } : pb));
+  const langs = (c.languages || []).map((l) => (typeof l === "string" ? { language: l, proficiency: "", is_hidden: false } : l));
+
+  return {
+    template: templateId,
+    fontFamily: tMeta.font_family_default || tplConfig.fontFamily || "inter",
+    fontSize: state.customizer?.fontSize || "medium",
+    spacing: state.customizer?.spacing || "standard",
+    accentColor: tMeta.primary_accent_color || tMeta.accent_color || tplConfig.accentColor || "#1e3a8a",
+    secondaryColor: tplConfig.secondaryColor || "#475569",
+    layout: tplConfig.layout || "single",
+    pageSize: "a4",
+    margins: "standard",
+    lineHeight: "standard",
+    contactSeparator: tplConfig.contactSeparator || "|",
+    bulletStyle: "disc",
+    dateAlignment: tMeta.date_alignment || tplConfig.dateAlignment || "right",
+    dateFormat: "MMM YYYY",
+    headerAlignment: tMeta.header_alignment_default || tplConfig.headerAlignment || "left",
+    photoEnabled: templateId === "regional_photo_cv" || !!tMeta.photo_supported,
+    photoUrl: templateId === "regional_photo_cv" ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&h=160&fit=crop&crop=faces" : "",
+    photoShape: "circle",
+    photoSize: "md",
+    elementColors: {},
+    sectionStyles: {},
+    skillsLayout: tplConfig.skillDisplay === "grouped" ? "grouped" : "inline",
+    sectionOrder: tMeta.section_order || tplConfig.defaultSectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications"],
+    sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
+    header: {
+      full_name: c.candidate_name || "Jordan Taylor",
+      headline: c.headline || "Senior Professional",
+      email: c.email || c.contact_info?.email || "jordan.taylor@example.com",
+      phone: c.phone || c.contact_info?.phone || "+1 (555) 349-8201",
+      location: c.location || c.contact_info?.location || "San Francisco, CA",
+      linkedin: c.linkedin_url || c.contact_info?.linkedin || "linkedin.com/in/candidate",
+      github: c.github_url || c.contact_info?.github || "",
+      website: c.website_url || c.contact_info?.website || "",
+    },
+    summary: c.summary || c.executive_summary || "",
+    skills: (c.skills || []).map((s) => (typeof s === "string" ? s : s.name)),
+    skillCategories: [],
+    experiences: exps,
+    projects: projs,
+    education: edus,
+    certifications: certs,
+    achievements: achs,
+    awards: [],
+    languages: langs,
+    volunteer: [],
+    leadership: [],
+    publications: pubs,
+    courses: [],
+    customSections: [],
+  };
+}
 
 function wireTemplates() {
   // Intent filter pills
@@ -10140,20 +10466,123 @@ function wireTemplates() {
     selectActiveTemplate(recId);
   });
 
-  // Customizer controls
+  // Customizer controls in Preview Modal
   $("#customizerFontSize")?.addEventListener("change", (e) => {
-    state.customizer.fontSize = e.target.value;
-    updateCustomizerStyles();
+    const val = e.target.value;
+    if (state.customizer) state.customizer.fontSize = val;
+    if (window._currentDemoResumeState) {
+      window._currentDemoResumeState.fontSize = val;
+      renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+    }
   });
   $("#customizerSpacing")?.addEventListener("change", (e) => {
-    state.customizer.spacing = e.target.value;
-    updateCustomizerStyles();
+    const val = e.target.value;
+    if (state.customizer) state.customizer.spacing = val;
+    if (window._currentDemoResumeState) {
+      window._currentDemoResumeState.spacing = val;
+      renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+    }
   });
 
-  // Preview modal actions
+  // Try Demo Toggle Drawer
+  $("#toggleTryDemoBtn")?.addEventListener("click", () => {
+    const drawer = $("#tryDemoDrawer");
+    if (!drawer) return;
+    drawer.classList.toggle("hidden");
+    const isOpen = !drawer.classList.contains("hidden");
+    const btn = $("#toggleTryDemoBtn");
+    if (btn) {
+      btn.innerHTML = isOpen
+        ? `<i data-lucide="x"></i><span>Close Sandbox</span>`
+        : `<i data-lucide="edit-3"></i><span>Try Demo</span>`;
+      btn.className = isOpen ? "primary-btn sm" : "secondary-btn sm";
+      drawIcons();
+    }
+  });
+
+  // Reset Demo Data
+  $("#resetDemoDataBtn")?.addEventListener("click", () => {
+    if (window._originalDemoResumeState) {
+      window._currentDemoResumeState = JSON.parse(JSON.stringify(window._originalDemoResumeState));
+      const r = window._currentDemoResumeState;
+      if ($("#demoInputName")) $("#demoInputName").value = r.header.full_name || "";
+      if ($("#demoInputHeadline")) $("#demoInputHeadline").value = r.header.headline || "";
+      if ($("#demoInputSummary")) $("#demoInputSummary").value = r.summary || "";
+      if ($("#demoInputSkills")) $("#demoInputSkills").value = (r.skills || []).join(", ");
+      if ($("#demoInputExpRole")) {
+        const e0 = (r.experiences || [])[0];
+        $("#demoInputExpRole").value = e0 ? `${e0.title}${e0.company ? " — " + e0.company : ""}` : "";
+      }
+      renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+      toast("Reset demo data to original template sample.");
+    }
+  });
+
+  // Try Demo live input event listeners (Safe sandbox: NEVER modifies real resume)
+  $("#demoInputName")?.addEventListener("input", (e) => {
+    if (!window._currentDemoResumeState) return;
+    window._currentDemoResumeState.header.full_name = e.target.value;
+    renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+  });
+
+  $("#demoInputHeadline")?.addEventListener("input", (e) => {
+    if (!window._currentDemoResumeState) return;
+    window._currentDemoResumeState.header.headline = e.target.value;
+    renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+  });
+
+  $("#demoInputSummary")?.addEventListener("input", (e) => {
+    if (!window._currentDemoResumeState) return;
+    window._currentDemoResumeState.summary = e.target.value;
+    renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+  });
+
+  $("#demoInputSkills")?.addEventListener("input", (e) => {
+    if (!window._currentDemoResumeState) return;
+    window._currentDemoResumeState.skills = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+    renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+  });
+
+  $("#demoInputExpRole")?.addEventListener("input", (e) => {
+    if (!window._currentDemoResumeState) return;
+    if (!window._currentDemoResumeState.experiences || window._currentDemoResumeState.experiences.length === 0) {
+      window._currentDemoResumeState.experiences = [{ company: "", title: "", is_hidden: false }];
+    }
+    const val = e.target.value;
+    const parts = val.split(/\s*[-—]\s*/);
+    window._currentDemoResumeState.experiences[0].title = parts[0] || val;
+    window._currentDemoResumeState.experiences[0].company = parts[1] || "";
+    renderResumeDocumentInto($("#templatePreviewCanvas"), window._currentDemoResumeState, { isDemo: true });
+  });
+
+  // Preview Modal Fullscreen Action
+  $("#previewModalFullscreenBtn")?.addEventListener("click", () => {
+    const sheet = $("#templatePreviewCanvas")?.querySelector(".resume-preview-sheet");
+    if (sheet) {
+      openActiveResumePreview(sheet);
+    } else {
+      toast("No preview sheet available.", "warning");
+    }
+  });
+
+  // Preview Modal Create New Resume with this Template
+  $("#previewModalCreateNewBtn")?.addEventListener("click", () => {
+    if (!activePreviewTemplateId) return;
+    const t = (state.templates || []).find((x) => x.template_id === activePreviewTemplateId);
+    const tName = t ? t.name : capitalize((activePreviewTemplateId || "").replace(/_/g, " "));
+    $("#templatePreviewModal")?.classList.add("hidden");
+    state.pendingNewResumeTemplate = activePreviewTemplateId;
+    openCreateResumeModal();
+    const titleInput = $("#newResumeTitleInput");
+    if (titleInput) titleInput.value = `${tName} Draft`;
+  });
+
+  // Preview Modal Use Template Button
   $("#previewModalUseBtn")?.addEventListener("click", () => {
     if (activePreviewTemplateId) selectActiveTemplate(activePreviewTemplateId);
   });
+
+  // Preview Modal Compare Button
   $("#previewModalCompareBtn")?.addEventListener("click", () => {
     if (activePreviewTemplateId) {
       state.selectedCompareIds.add(activePreviewTemplateId);
@@ -10164,29 +10593,43 @@ function wireTemplates() {
     }
   });
 
-  // Upgrade modal actions
+  // Upgrade Modal Actions
   $("#upgradeModalPreviewBtn")?.addEventListener("click", () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
     if (pendingUpgradeTemplateId) openTemplatePreview(pendingUpgradeTemplateId);
   });
+
+  $("#upgradeModalTrialUseBtn")?.addEventListener("click", () => {
+    $("#templateUpgradeModal")?.classList.add("hidden");
+    if (pendingUpgradeTemplateId) selectActiveTemplate(pendingUpgradeTemplateId);
+  });
+
+  $("#upgradeModalMonthlyBtn")?.addEventListener("click", () => {
+    $("#templateUpgradeModal")?.classList.add("hidden");
+    navigateToTab("billing");
+    toast("Select Pro Monthly (₹599/mo) to unlock all premium templates.");
+  });
+
+  $("#upgradeModalAnnualBtn")?.addEventListener("click", () => {
+    $("#templateUpgradeModal")?.classList.add("hidden");
+    navigateToTab("billing");
+    toast("Select Pro Annual (₹4,999/yr — Save 30%) to unlock all premium templates.");
+  });
+
   $("#upgradeModalActionBtn")?.addEventListener("click", async () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
-    if (!state.user || state.user.plan_name === "FREE") {
-      try {
-        toast("Activating 7-Day Pro Trial...");
-        const res = await API.request("/payments/start-trial", { method: "POST" });
-        toast(res.message || "7-Day Pro Trial activated!");
-        state.user = await API.request("/users/profile");
-        renderUserBar();
-        await loadBillingSummary();
-        if (pendingUpgradeTemplateId) {
-          selectActiveTemplate(pendingUpgradeTemplateId);
-        }
-      } catch (err) {
-        toast("Navigating to billing plans...", "info");
-        navigateToTab("billing");
+    try {
+      toast("Activating 7-Day Pro Trial...");
+      const res = await API.request("/payments/start-trial", { method: "POST" });
+      toast(res.message || "7-Day Pro Trial activated!");
+      state.user = await API.request("/users/profile");
+      renderUserBar();
+      await loadBillingSummary();
+      if (pendingUpgradeTemplateId) {
+        selectActiveTemplate(pendingUpgradeTemplateId);
       }
-    } else {
+    } catch (err) {
+      toast("Navigating to billing plans...", "info");
       navigateToTab("billing");
     }
   });
@@ -10260,13 +10703,36 @@ function renderRecommendationHero(rec) {
   card.classList.remove("hidden");
   const tpl = rec.recommended_template;
   $("#recHeroTitle").textContent = tpl.name;
-  $("#recHeroReason").textContent = rec.recommendation_reason || tpl.description;
-  
+  $("#recHeroReason").textContent = rec.match_reason || rec.recommendation_reason || tpl.description;
+
   const countryEl = $("#recHeroCountryText");
   if (countryEl && rec.country_guidance) {
-    const cg = rec.country_guidance;
-    countryEl.textContent = `${cg.name} (${cg.standard}): ${cg.photo_rule}. Recommended length: ${cg.recommended_pages}.`;
+    countryEl.textContent = rec.country_guidance;
   }
+
+  // Render up to 3 recommendations as clickable chips
+  const chipsList = $("#recHeroRecommendationsList");
+  if (chipsList) {
+    const primary = rec.recommended_template;
+    const alts = rec.alternative_templates || [];
+    const allRecs = [primary, ...alts].filter(Boolean).slice(0, 3);
+
+    chipsList.innerHTML = allRecs
+      .map((r, idx) => {
+        const isPrim = idx === 0;
+        const tier = r.access_tier || r.tier || "FREE";
+        return `
+          <button type="button" class="rec-hero-chip ${isPrim ? "active" : ""}" onclick="openTemplatePreview('${r.template_id}')">
+            ${isPrim ? `<i data-lucide="sparkles"></i>` : ""}
+            <strong>${escapeHtml(r.name)}</strong>
+            <span class="badge-sub text-xs">${tier}</span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
+  drawIcons();
 }
 
 function filterAndRenderTemplates() {
@@ -10279,19 +10745,22 @@ function filterAndRenderTemplates() {
   if (state.templateIntent && state.templateIntent !== "ALL") {
     items = items.filter((t) => {
       if (state.templateIntent === "FIRST_JOB") {
-        return t.template_id === "campus_fresher" || t.category === "Early Career" || (t.best_for_level || []).some(l => l.includes("STUDENT") || l.includes("EARLY"));
+        return t.template_id === "campus_fresher" || t.category === "Early Career" || (t.career_levels || []).some((l) => l.includes("STUDENT") || l.includes("EARLY"));
       }
       if (state.templateIntent === "SPECIFIC_JOB") {
         return ["technical_ats", "clean_professional", "finance_professional", "healthcare_pharmacy", "consulting_management"].includes(t.template_id);
       }
       if (state.templateIntent === "CURRENT_CAREER") {
-        return ["experienced_professional", "classic_ats", "business_professional"].includes(t.template_id);
+        return ["classic_ats", "modern_professional", "business_professional", "premium_leadership"].includes(t.template_id);
       }
       if (state.templateIntent === "ACADEMIC") {
         return t.template_id === "academic_research" || t.category === "Academic / Research";
       }
       if (state.templateIntent === "EXECUTIVE") {
-        return t.template_id === "executive" || t.category === "Executive";
+        return t.template_id === "executive_professional" || t.template_id === "premium_leadership" || t.category === "Executive";
+      }
+      if (state.templateIntent === "INTERNATIONAL") {
+        return t.template_id === "international_professional" || t.template_id === "regional_photo_cv" || t.category === "International";
       }
       return true;
     });
@@ -10299,12 +10768,22 @@ function filterAndRenderTemplates() {
 
   // 2. Category filter
   if (state.templateCategory && state.templateCategory !== "ALL") {
-    items = items.filter((t) => (t.category || "").toLowerCase() === state.templateCategory.toLowerCase());
+    const selCat = state.templateCategory.toLowerCase();
+    items = items.filter((t) => {
+      const cat = (t.category || "").toLowerCase();
+      if (selCat === "two column" || selCat === "two-column") {
+        return t.layout_type === "Two Column" || cat.includes("two-column") || t.template_id === "two_column_professional";
+      }
+      if (selCat === "photo" || selCat === "photo / regional") {
+        return t.photo_supported || cat.includes("photo") || t.template_id === "regional_photo_cv";
+      }
+      return cat.includes(selCat) || selCat.includes(cat);
+    });
   }
 
   // 3. Tier filter
   if (state.templateTier && state.templateTier !== "ALL") {
-    items = items.filter((t) => (t.tier || "").toUpperCase() === state.templateTier.toUpperCase());
+    items = items.filter((t) => (t.access_tier || t.tier || "").toUpperCase() === state.templateTier.toUpperCase());
   }
 
   // 4. Search query
@@ -10314,9 +10793,11 @@ function filterAndRenderTemplates() {
       const inName = (t.name || "").toLowerCase().includes(q);
       const inDesc = (t.description || "").toLowerCase().includes(q);
       const inCat = (t.category || "").toLowerCase().includes(q);
-      const inRoles = (t.best_for_roles || []).some((r) => r.toLowerCase().includes(q));
-      const inDomains = (t.best_for_domains || []).some((d) => d.toLowerCase().includes(q));
-      return inName || inDesc || inCat || inRoles || inDomains;
+      const inRoles = (t.recommended_roles || t.best_for_roles || []).some((r) => r.toLowerCase().includes(q));
+      const inMarkets = (t.recommended_markets || []).some((m) => m.toLowerCase().includes(q));
+      const inKeywords = (t.search_keywords || []).some((k) => k.toLowerCase().includes(q));
+      const inBestFor = (t.recommended_for || "").toLowerCase().includes(q);
+      return inName || inDesc || inCat || inRoles || inMarkets || inKeywords || inBestFor;
     });
   }
 
@@ -10334,38 +10815,99 @@ function filterAndRenderTemplates() {
   }
 
   grid.innerHTML = "";
-  const recommendedId = state.templateRecommendation?.recommended_template_id;
+  const currentTplId = (typeof resumeBuilderState !== "undefined" && resumeBuilderState.template) || state.activeTemplateId || "classic_ats";
+  const recommendedId = state.templateRecommendation?.recommended_template?.template_id || state.templateRecommendation?.recommended_template_id;
 
   items.forEach((t) => {
     const isRecommended = t.template_id === recommendedId;
-    const isActive = t.template_id === state.activeTemplateId;
+    const isCurrent = t.template_id === currentTplId;
     const isChecked = state.selectedCompareIds.has(t.template_id);
-    const isPro = t.tier === "PRO";
+    const tier = t.access_tier || t.tier || "FREE";
+    const isPro = tier.toUpperCase() === "PRO";
+    const accent = t.primary_accent_color || t.accent_color || "#1e3a8a";
 
-    const card = document.createElement("div");
-    card.className = `template-card ${isActive ? "active" : ""}`;
-    card.dataset.templateId = t.template_id;
+    const isSerif = (t.font_family_default || "").toLowerCase().includes("georgia") || (t.font_family_default || "").toLowerCase().includes("times");
+    const isCenter = t.header_alignment_default === "center";
+    const isTwoCol = t.layout_type === "Two Column" || t.template_id === "two_column_professional";
+    const hasPhoto = t.photo_supported || t.template_id === "regional_photo_cv";
 
-    // Mini paper preview representation
-    const accent = t.accent_color || "#1e3a8a";
-    card.innerHTML = `
-      <div class="template-card-thumb">
-        <div class="mini-paper">
-          <div class="mini-header" style="border-bottom: 2px solid ${accent};">
-            <div class="mini-name-bar" style="background: ${accent};"></div>
-            <div class="mini-line" style="width: 70%; margin: 2px auto;"></div>
+    let miniPaperHtml = "";
+    if (isTwoCol) {
+      miniPaperHtml = `
+        <div class="mini-paper ${isSerif ? "font-serif" : "font-sans"}">
+          <div class="mini-header ${isCenter ? "align-center" : "align-left"}" style="border-bottom: 1.5px solid ${accent};">
+            <div class="mini-name-bar" style="background: ${accent}; width: 65%;"></div>
+            <div class="mini-line" style="width: 45%;"></div>
           </div>
-          <div class="mini-body">
-            <div class="mini-section-bar" style="background: ${accent};"></div>
-            <div class="mini-line" style="width: 90%;"></div>
-            <div class="mini-line" style="width: 80%;"></div>
-            <div class="mini-line" style="width: 85%;"></div>
-            <div class="mini-section-bar mt-1" style="background: ${accent};"></div>
-            <div class="mini-line" style="width: 75%;"></div>
-            <div class="mini-line" style="width: 92%;"></div>
+          <div class="mini-paper-two-col mt-1">
+            <div class="mini-col-main">
+              <div class="mini-sec-title" style="border-bottom: 1px solid ${accent}; width: 80%;"></div>
+              <div class="mini-text-line dark" style="width: 95%;"></div>
+              <div class="mini-text-line" style="width: 85%;"></div>
+              <div class="mini-sec-title mt-1" style="border-bottom: 1px solid ${accent}; width: 70%;"></div>
+              <div class="mini-text-line dark" style="width: 90%;"></div>
+              <div class="mini-text-line" style="width: 80%;"></div>
+            </div>
+            <div class="mini-col-side" style="border-left: 1px dashed #e2e8f0; padding-left: 3px;">
+              <div class="mini-sec-title" style="border-bottom: 1px solid ${accent}; width: 90%;"></div>
+              <div class="mini-text-line" style="width: 100%;"></div>
+              <div class="mini-text-line" style="width: 80%;"></div>
+              <div class="mini-text-line" style="width: 90%;"></div>
+            </div>
           </div>
         </div>
-        ${isRecommended ? `<span class="rec-card-badge"><i data-lucide="sparkles"></i> Recommended</span>` : ""}
+      `;
+    } else if (hasPhoto) {
+      miniPaperHtml = `
+        <div class="mini-paper ${isSerif ? "font-serif" : "font-sans"}">
+          <div class="mini-header align-left" style="border-bottom: 1.5px solid ${accent};">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <div class="mini-photo-circle" style="border-color: ${accent};"></div>
+              <div style="flex: 1;">
+                <div class="mini-name-bar" style="background: ${accent}; width: 75%;"></div>
+                <div class="mini-line" style="width: 60%; margin-top: 2px;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="mini-body mt-1">
+            <div class="mini-sec-title" style="border-bottom: 1px solid ${accent}; width: 50%;"></div>
+            <div class="mini-text-line dark" style="width: 95%;"></div>
+            <div class="mini-text-line" style="width: 88%;"></div>
+            <div class="mini-sec-title mt-1" style="border-bottom: 1px solid ${accent}; width: 60%;"></div>
+            <div class="mini-text-line dark" style="width: 90%;"></div>
+            <div class="mini-text-line" style="width: 75%;"></div>
+          </div>
+        </div>
+      `;
+    } else {
+      miniPaperHtml = `
+        <div class="mini-paper ${isSerif ? "font-serif" : "font-sans"}">
+          <div class="mini-header ${isCenter ? "align-center" : "align-left"}" style="border-bottom: 1.5px solid ${accent};">
+            <div class="mini-name-bar" style="background: ${accent}; width: ${isCenter ? "60%" : "70%"}; margin: ${isCenter ? "0 auto" : "0"};"></div>
+            <div class="mini-line" style="width: 50%; margin: ${isCenter ? "2px auto 0" : "2px 0 0"};"></div>
+          </div>
+          <div class="mini-body mt-1">
+            <div class="mini-sec-title" style="border-bottom: 1px solid ${accent}; width: 45%;"></div>
+            <div class="mini-text-line dark" style="width: 95%;"></div>
+            <div class="mini-text-line" style="width: 85%;"></div>
+            <div class="mini-text-line" style="width: 90%;"></div>
+            <div class="mini-sec-title mt-1" style="border-bottom: 1px solid ${accent}; width: 55%;"></div>
+            <div class="mini-text-line dark" style="width: 92%;"></div>
+            <div class="mini-text-line" style="width: 80%;"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    const card = document.createElement("div");
+    card.className = `template-card ${isCurrent ? "is-current" : ""}`;
+    card.dataset.templateId = t.template_id;
+
+    card.innerHTML = `
+      <div class="template-card-thumb">
+        ${miniPaperHtml}
+        ${isCurrent ? `<span class="current-template-badge"><i data-lucide="check-circle-2"></i> Current</span>` : ""}
+        ${isRecommended && !isCurrent ? `<span class="rec-card-badge"><i data-lucide="sparkles"></i> Recommended</span>` : ""}
       </div>
       <div class="template-card-body">
         <div class="template-card-head">
@@ -10379,10 +10921,10 @@ function filterAndRenderTemplates() {
         </div>
         <p class="template-desc">${escapeHtml(t.description)}</p>
         <div class="template-meta-row">
-          <span class="meta-pill ats" title="ATS Parseability"><i data-lucide="shield-check"></i> ATS: ${t.ats_score || 99}%</span>
-          <span class="meta-pill roles" title="Recommended Roles"><i data-lucide="briefcase"></i> ${(t.best_for_roles || []).slice(0, 2).join(", ")}</span>
+          <span class="meta-pill ats" title="ATS Compatibility"><i data-lucide="shield-check"></i> ${escapeHtml(t.ats_rating || "ATS-Friendly")}</span>
+          <span class="meta-pill roles" title="Recommended Roles"><i data-lucide="briefcase"></i> ${(t.recommended_roles || t.best_for_roles || []).slice(0, 2).join(", ")}</span>
         </div>
-        ${isPro ? `<p class="text-xs text-muted mt-1 trial-hint"><i data-lucide="sparkles"></i> Included in your 7-day Pro trial</p>` : ""}
+        ${isPro ? `<p class="text-xs text-muted mt-1 trial-hint"><i data-lucide="sparkles"></i> Included in your Pro subscription or 7-day trial</p>` : ""}
       </div>
       <div class="template-card-footer">
         <label class="compare-checkbox-label" title="Select to compare up to 4 templates">
@@ -10393,9 +10935,9 @@ function filterAndRenderTemplates() {
           <button class="secondary-btn sm preview-tpl-btn" type="button" data-preview-id="${t.template_id}">
             <i data-lucide="eye"></i><span>Preview</span>
           </button>
-          <button class="${isActive ? "success-btn" : "primary-btn"} sm use-tpl-btn" type="button" data-use-id="${t.template_id}">
-            <i data-lucide="${isActive ? "check-circle-2" : "check"}"></i>
-            <span>${isActive ? "Active" : "Use Template"}</span>
+          <button class="${isCurrent ? "success-btn" : "primary-btn"} sm use-tpl-btn" type="button" data-use-id="${t.template_id}">
+            <i data-lucide="${isCurrent ? "check-circle-2" : "check"}"></i>
+            <span>${isCurrent ? "Active" : "Use Template"}</span>
           </button>
         </div>
       </div>
@@ -10440,8 +10982,9 @@ async function openTemplatePreview(templateId) {
     name: capitalize(templateId.replace(/_/g, " ")),
     tier: "FREE",
     category: "Professional",
-    accent_color: "#1e3a8a",
-    ats_score: 99,
+    primary_accent_color: "#1e3a8a",
+    ats_rating: "ATS-Friendly",
+    layout_type: "Single Column",
   };
 
   const modal = $("#templatePreviewModal");
@@ -10450,16 +10993,20 @@ async function openTemplatePreview(templateId) {
   $("#previewModalTitle").innerHTML = `<i data-lucide="layout-template"></i> ${escapeHtml(t.name)}`;
   const badgesContainer = $("#previewModalBadges");
   if (badgesContainer) {
+    const tier = (t.access_tier || t.tier || "FREE").toUpperCase();
     badgesContainer.innerHTML = `
-      <span class="tier-badge ${t.tier === "PRO" ? "pro" : "free"}">${t.tier}</span>
-      <span class="meta-pill ats"><i data-lucide="shield-check"></i> ATS: ${t.ats_score || 99}% Parsable</span>
+      <span class="tier-badge ${tier === "PRO" ? "pro" : "free"}">${tier}</span>
+      <span class="meta-pill ats"><i data-lucide="shield-check"></i> ${escapeHtml(t.ats_rating || "ATS-Friendly")}</span>
+      <span class="meta-pill layout"><i data-lucide="columns"></i> ${escapeHtml(t.layout_type || "Single Column")}</span>
       <span class="badge-sub">${escapeHtml(t.category || "Professional")}</span>
     `;
   }
 
   const footerInfo = $("#previewModalFooterInfo");
   if (footerInfo) {
-    footerInfo.textContent = `Best for: ${(t.best_for_roles || []).join(", ") || t.category}. Single-column ATS structure.`;
+    const roles = (t.recommended_roles || t.best_for_roles || []).join(", ") || t.category;
+    const markets = (t.recommended_markets || []).join(", ") || "Global";
+    footerInfo.textContent = `Best for: ${roles} · Recommended Markets: ${markets}`;
   }
 
   const canvas = $("#templatePreviewCanvas");
@@ -10468,164 +11015,42 @@ async function openTemplatePreview(templateId) {
   drawIcons();
 
   try {
-    const sample = await API.request(`/templates/${templateId}/sample`);
-    renderPreviewCanvas(sample, t);
+    const sampleRes = await API.request(`/templates/${templateId}/sample`);
+    const sampleData = sampleRes.sample_data || sampleRes;
+
+    // Convert sample data into a full demo resume state
+    window._currentDemoResumeState = convertSampleToResumeState(sampleData, templateId);
+    window._originalDemoResumeState = JSON.parse(JSON.stringify(window._currentDemoResumeState));
+
+    // Populate Try Demo fields
+    const r = window._currentDemoResumeState;
+    if ($("#demoInputName")) $("#demoInputName").value = r.header.full_name || "";
+    if ($("#demoInputHeadline")) $("#demoInputHeadline").value = r.header.headline || "";
+    if ($("#demoInputSummary")) $("#demoInputSummary").value = r.summary || "";
+    if ($("#demoInputSkills")) $("#demoInputSkills").value = (r.skills || []).join(", ");
+    if ($("#demoInputExpRole")) {
+      const e0 = (r.experiences || [])[0];
+      $("#demoInputExpRole").value = e0 ? `${e0.title}${e0.company ? " — " + e0.company : ""}` : "";
+    }
+
+    // Set customizer values
+    if ($("#customizerFontSize")) $("#customizerFontSize").value = r.fontSize || "medium";
+    if ($("#customizerSpacing")) $("#customizerSpacing").value = r.spacing || "standard";
+
+    // Reset drawer state to collapsed by default
+    $("#tryDemoDrawer")?.classList.add("hidden");
+    const toggleBtn = $("#toggleTryDemoBtn");
+    if (toggleBtn) {
+      toggleBtn.innerHTML = `<i data-lucide="edit-3"></i><span>Try Demo</span>`;
+      toggleBtn.className = "secondary-btn sm";
+    }
+
+    // Render using unified resume sheet renderer
+    renderResumeDocumentInto(canvas, window._currentDemoResumeState, { isDemo: true });
+    drawIcons();
   } catch (err) {
     canvas.innerHTML = `<div class="p-4 alert-info"><p>Failed to load sample preview: ${escapeHtml(err.message)}</p></div>`;
   }
-}
-
-function renderPreviewCanvas(sample, templateMeta) {
-  const canvas = $("#templatePreviewCanvas");
-  if (!canvas || !sample) return;
-
-  updateCustomizerStyles();
-
-  const c = sample.content_json || {};
-  const accent = templateMeta.accent_color || "#1e3a8a";
-  const sectionOrder = templateMeta.section_order || ["EXPERIENCE", "SKILLS", "EDUCATION", "PROJECTS", "CERTIFICATIONS"];
-
-  let html = `
-    <div class="resume-paper" style="border-top: 4px solid ${accent};">
-      <header class="resume-paper-header">
-        <h1 style="color: ${accent};">${escapeHtml(c.candidate_name || "Jordan Taylor")}</h1>
-        <p class="resume-headline">${escapeHtml(c.headline || "Senior Backend & Distributed Systems Engineer")}</p>
-        <p class="resume-contact">
-          ${escapeHtml(c.contact_info?.email || "jordan.taylor@example.com")} • 
-          ${escapeHtml(c.contact_info?.phone || "+1 (555) 349-8201")} • 
-          ${escapeHtml(c.contact_info?.location || "San Francisco, CA")} • 
-          ${escapeHtml(c.contact_info?.linkedin || "linkedin.com/in/jordantaylor")}
-        </p>
-      </header>
-  `;
-
-  // Render sections in template's custom section order
-  sectionOrder.forEach((sec) => {
-    const secKey = sec.toUpperCase();
-    if (secKey === "EXECUTIVE_SUMMARY" || secKey === "SUMMARY") {
-      if (c.executive_summary) {
-        html += `
-          <section class="resume-section">
-            <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">${secKey.replace(/_/g, " ")}</h3>
-            <p class="text-sm mt-1">${escapeHtml(c.executive_summary)}</p>
-          </section>
-        `;
-      }
-    } else if (secKey === "EXPERIENCE" || secKey === "WORK_EXPERIENCE") {
-      html += `
-        <section class="resume-section">
-          <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">PROFESSIONAL EXPERIENCE</h3>
-          ${(c.experiences || []).map((exp) => `
-            <div class="resume-entry">
-              <div class="resume-entry-head">
-                <strong>${escapeHtml(exp.role_title)}</strong>
-                <span>${escapeHtml(exp.start_date)} – ${exp.is_current ? "Present" : escapeHtml(exp.end_date || "")}</span>
-              </div>
-              <div class="resume-entry-sub">
-                <em>${escapeHtml(exp.company)}</em> • <span>${escapeHtml(exp.location || "")}</span>
-              </div>
-              <ul class="resume-bullets">
-                ${(exp.bullet_points || []).map((b) => `<li>${escapeHtml(b)}</li>`).join("")}
-              </ul>
-            </div>
-          `).join("")}
-        </section>
-      `;
-    } else if (secKey === "SKILLS" || secKey === "TECHNICAL_SKILLS" || secKey === "CORE_COMPETENCIES") {
-      html += `
-        <section class="resume-section">
-          <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">${secKey.replace(/_/g, " ")}</h3>
-          <div class="resume-skills-block">
-            ${(c.skills || []).map((s) => {
-              const name = typeof s === "string" ? s : s.name;
-              return `<span class="resume-skill-tag">${escapeHtml(name)}</span>`;
-            }).join(" ")}
-          </div>
-        </section>
-      `;
-    } else if (secKey === "EDUCATION") {
-      html += `
-        <section class="resume-section">
-          <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">EDUCATION</h3>
-          ${(c.education || []).map((edu) => `
-            <div class="resume-entry">
-              <div class="resume-entry-head">
-                <strong>${escapeHtml(edu.degree)} in ${escapeHtml(edu.field_of_study)}</strong>
-                <span>${escapeHtml(edu.start_date || "")} – ${escapeHtml(edu.end_date || "")}</span>
-              </div>
-              <div class="resume-entry-sub">
-                <em>${escapeHtml(edu.institution)}</em> ${edu.grade ? `• GPA: ${escapeHtml(edu.grade)}` : ""}
-              </div>
-            </div>
-          `).join("")}
-        </section>
-      `;
-    } else if (secKey === "PROJECTS" || secKey === "KEY_PROJECTS") {
-      html += `
-        <section class="resume-section">
-          <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">KEY PROJECTS</h3>
-          ${(c.projects || []).map((proj) => `
-            <div class="resume-entry">
-              <div class="resume-entry-head">
-                <strong>${escapeHtml(proj.name)}</strong>
-                <span class="text-xs">${escapeHtml(proj.technologies || "")}</span>
-              </div>
-              <p class="text-xs text-muted">${escapeHtml(proj.description || "")}</p>
-              <ul class="resume-bullets">
-                ${(proj.highlights || []).map((h) => `<li>${escapeHtml(h)}</li>`).join("")}
-              </ul>
-            </div>
-          `).join("")}
-        </section>
-      `;
-    } else if (secKey === "CERTIFICATIONS") {
-      html += `
-        <section class="resume-section">
-          <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">CERTIFICATIONS</h3>
-          <div class="resume-cert-grid">
-            ${(c.certifications || []).map((cert) => `
-              <div class="resume-cert-item">
-                <strong>${escapeHtml(cert.name)}</strong> — <span>${escapeHtml(cert.issuing_organization)}</span> (${escapeHtml(cert.issue_date || "")})
-              </div>
-            `).join("")}
-          </div>
-        </section>
-      `;
-    } else if (secKey === "PUBLICATIONS") {
-      if (c.publications && c.publications.length > 0) {
-        html += `
-          <section class="resume-section">
-            <h3 style="border-bottom: 1.5px solid ${accent}; color: ${accent};">PUBLICATIONS & PATENTS</h3>
-            <ul class="resume-bullets">
-              ${c.publications.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}
-            </ul>
-          </section>
-        `;
-      }
-    }
-  });
-
-  html += `</div>`;
-  canvas.innerHTML = html;
-  drawIcons();
-}
-
-function updateCustomizerStyles() {
-  const canvas = $("#templatePreviewCanvas");
-  if (!canvas) return;
-  const fs = state.customizer.fontSize || "medium";
-  const sp = state.customizer.spacing || "standard";
-
-  canvas.classList.remove("font-compact", "font-standard", "font-spacious");
-  canvas.classList.remove("spacing-tight", "spacing-standard", "spacing-relaxed");
-
-  if (fs === "small") canvas.classList.add("font-compact");
-  else if (fs === "large") canvas.classList.add("font-spacious");
-  else canvas.classList.add("font-standard");
-
-  if (sp === "compact") canvas.classList.add("spacing-tight");
-  else if (sp === "relaxed") canvas.classList.add("spacing-relaxed");
-  else canvas.classList.add("spacing-standard");
 }
 
 function openTemplateCompareModal() {
@@ -10639,7 +11064,7 @@ function openTemplateCompareModal() {
       <div class="empty-state-card mini">
         <i data-lucide="columns"></i>
         <h4>No templates selected for comparison</h4>
-        <p>Tick the <strong>Compare</strong> checkbox on 2 to 4 template cards in the grid to view side-by-side ATS scores, layout orders, and career levels.</p>
+        <p>Tick the <strong>Compare</strong> checkbox on 2 to 4 template cards in the grid to view side-by-side ATS ratings, layout orders, and career levels.</p>
       </div>
     `;
     modal.classList.remove("hidden");
@@ -10656,14 +11081,19 @@ function openTemplateCompareModal() {
       <thead>
         <tr>
           <th style="min-width: 160px;">Attribute</th>
-          ${selectedTemplates.map((t) => `
-            <th style="text-align: center; border-top: 3px solid ${t.accent_color || "#1e3a8a"};">
-              <div class="compare-col-header">
-                <strong>${escapeHtml(t.name)}</strong>
-                <span class="tier-badge ${t.tier === "PRO" ? "pro" : "free"} mt-1">${t.tier}</span>
-              </div>
-            </th>
-          `).join("")}
+          ${selectedTemplates.map((t) => {
+            const tier = t.access_tier || t.tier || "FREE";
+            const isPro = tier.toUpperCase() === "PRO";
+            const accent = t.primary_accent_color || t.accent_color || "#1e3a8a";
+            return `
+              <th style="text-align: center; border-top: 3px solid ${accent};">
+                <div class="compare-col-header">
+                  <strong>${escapeHtml(t.name)}</strong>
+                  <span class="tier-badge ${isPro ? "pro" : "free"} mt-1">${tier}</span>
+                </div>
+              </th>
+            `;
+          }).join("")}
         </tr>
       </thead>
       <tbody>
@@ -10672,31 +11102,39 @@ function openTemplateCompareModal() {
           ${selectedTemplates.map((t) => `<td style="text-align: center;"><span class="badge-sub">${escapeHtml(t.category)}</span></td>`).join("")}
         </tr>
         <tr>
-          <td><strong>ATS Score</strong></td>
-          ${selectedTemplates.map((t) => `<td style="text-align: center;"><strong class="text-success">${t.ats_score || 99}% Parsable</strong></td>`).join("")}
+          <td><strong>ATS Compatibility</strong></td>
+          ${selectedTemplates.map((t) => `<td style="text-align: center;"><strong class="text-success"><i data-lucide="shield-check"></i> ${escapeHtml(t.ats_rating || "ATS-Friendly")}</strong></td>`).join("")}
+        </tr>
+        <tr>
+          <td><strong>Layout Type</strong></td>
+          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${escapeHtml(t.layout_type || "Single Column")}</td>`).join("")}
+        </tr>
+        <tr>
+          <td><strong>Photo Support</strong></td>
+          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${t.photo_supported ? '<span class="text-primary font-semibold">Yes</span>' : '<span class="text-muted">No</span>'}</td>`).join("")}
         </tr>
         <tr>
           <td><strong>Target Level</strong></td>
-          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${(t.best_for_level || []).join(", ") || "All Levels"}</td>`).join("")}
+          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${(t.career_levels || t.best_for_level || []).map(l => capitalize(l.replace(/_/g, " "))).join(", ") || "All Career Stages"}</td>`).join("")}
         </tr>
         <tr>
           <td><strong>Recommended Roles</strong></td>
-          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${(t.best_for_roles || []).join(", ") || "--"}</td>`).join("")}
+          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${(t.recommended_roles || t.best_for_roles || []).join(", ") || "--"}</td>`).join("")}
         </tr>
         <tr>
-          <td><strong>Recommended Pages</strong></td>
-          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${t.recommended_length_pages ? t.recommended_length_pages + " page(s)" : "1–2 pages"}</td>`).join("")}
+          <td><strong>Recommended Markets</strong></td>
+          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs">${(t.recommended_markets || []).join(", ") || "Global"}</td>`).join("")}
         </tr>
         <tr>
           <td><strong>Section Order</strong></td>
-          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs text-muted">${(t.section_order || []).map(s => capitalize(s.replace(/_/g, " "))).join(" &rarr; ")}</td>`).join("")}
+          ${selectedTemplates.map((t) => `<td style="text-align: center;" class="text-xs text-muted">${(t.section_order || []).map((s) => capitalize(s.replace(/_/g, " "))).join(" &rarr; ")}</td>`).join("")}
         </tr>
         <tr>
           <td><strong>Action</strong></td>
           ${selectedTemplates.map((t) => `
             <td style="text-align: center;">
               <button class="primary-btn sm w-full" type="button" onclick="selectActiveTemplate('${t.template_id}')">
-                <i data-lucide="check"></i><span>Use This</span>
+                <i data-lucide="check"></i><span>Use Template</span>
               </button>
             </td>
           `).join("")}
@@ -10714,18 +11152,26 @@ function selectActiveTemplate(templateId) {
   const t = (state.templates || []).find((x) => x.template_id === templateId) || {
     name: capitalize(templateId.replace(/_/g, " ")),
     tier: "FREE",
+    category: "Professional",
     description: "",
   };
 
-  const isPro = t.tier === "PRO";
+  const tier = t.access_tier || t.tier || "FREE";
+  const isPro = tier.toUpperCase() === "PRO";
   const userPlan = state.user?.plan_name || "FREE";
   const hasProAccess = userPlan === "PRO_MONTHLY" || userPlan === "PRO_ANNUAL" || userPlan === "PRO_TRIAL";
 
   if (isPro && !hasProAccess) {
     pendingUpgradeTemplateId = templateId;
-    $("#upgradeModalTitle").innerHTML = `<i data-lucide="sparkles"></i> Unlock ${escapeHtml(t.name)}`;
+    $("#upgradeModalTitle").innerHTML = `<i data-lucide="sparkles" style="color: #d97706;"></i> Pro Template: ${escapeHtml(t.name)}`;
     $("#upgradeModalSubtitle").textContent = `This specialized ${escapeHtml(t.category)} template is included with SmartResume Pro.`;
-    $("#upgradeModalDesc").textContent = t.description || "Engineered for maximum recruiter readability and ATS score.";
+    $("#upgradeModalDesc").textContent = t.description || "Engineered for maximum recruiter readability, leadership scope, and ATS compliance.";
+
+    // Show trial box if user has trial or can start trial
+    const isTrialActive = userPlan === "PRO_TRIAL";
+    $("#upgradeModalTrialActiveBox")?.classList.toggle("hidden", !isTrialActive);
+    $("#upgradeModalTrialAvailableBox")?.classList.toggle("hidden", isTrialActive);
+
     $("#templateUpgradeModal")?.classList.remove("hidden");
     drawIcons();
     return;
@@ -10733,6 +11179,38 @@ function selectActiveTemplate(templateId) {
 
   state.activeTemplateId = templateId;
   localStorage.setItem("activeTemplateId", templateId);
+
+  // Apply template to Resume Builder
+  if (typeof resumeBuilderState !== "undefined" && resumeBuilderState) {
+    resumeBuilderState.template = templateId;
+    const tplConfig = RESUME_BUILDER_TEMPLATES[templateId];
+    if (tplConfig) {
+      if (t.font_family_default || tplConfig.fontFamily) {
+        resumeBuilderState.fontFamily = t.font_family_default || tplConfig.fontFamily;
+      }
+      if (t.primary_accent_color || t.accent_color || tplConfig.accentColor) {
+        resumeBuilderState.accentColor = t.primary_accent_color || t.accent_color || tplConfig.accentColor;
+      }
+      if (t.header_alignment_default || tplConfig.headerAlignment) {
+        resumeBuilderState.headerAlignment = t.header_alignment_default || tplConfig.headerAlignment;
+      }
+      if (tplConfig.layout) {
+        resumeBuilderState.layout = tplConfig.layout;
+      }
+      if (t.section_order || tplConfig.defaultSectionOrder) {
+        resumeBuilderState.sectionOrder = [...(t.section_order || tplConfig.defaultSectionOrder)];
+      }
+      if (typeof t.photo_supported === "boolean") {
+        resumeBuilderState.photoEnabled = t.photo_supported;
+      }
+    }
+    if (typeof renderBuilderEditorFromState === "function") {
+      renderBuilderEditorFromState();
+    }
+    if (typeof renderResumePreviewCanvas === "function") {
+      renderResumePreviewCanvas();
+    }
+  }
 
   syncActiveTemplateDisplay();
   filterAndRenderTemplates();
@@ -10742,12 +11220,13 @@ function selectActiveTemplate(templateId) {
   $("#templateCompareModal")?.classList.add("hidden");
   $("#templateUpgradeModal")?.classList.add("hidden");
 
-  toast(`Activated "${t.name}" as your active resume template!`);
+  toast(`Applied "${t.name}" to your resume! Opening Resume Builder...`);
+  navigateToTab("resume-builder");
 }
 
 function syncActiveTemplateDisplay() {
   const t = (state.templates || []).find((x) => x.template_id === state.activeTemplateId);
-  const name = t ? t.name : capitalize(state.activeTemplateId.replace(/_/g, " "));
+  const name = t ? t.name : capitalize((state.activeTemplateId || "classic_ats").replace(/_/g, " "));
 
   // 1. Dashboard active template button
   const dashBtn = $("#dashActiveTemplateName");
@@ -10763,12 +11242,6 @@ function syncActiveTemplateDisplay() {
   const bSelect = $("#builderTemplateSelect");
   if (bSelect && bSelect.value !== state.activeTemplateId) {
     bSelect.value = state.activeTemplateId;
-  }
-  if (typeof resumeBuilderState !== "undefined" && resumeBuilderState && resumeBuilderState.template !== state.activeTemplateId) {
-    resumeBuilderState.template = state.activeTemplateId;
-    if (typeof renderResumePreviewCanvas === "function") {
-      renderResumePreviewCanvas();
-    }
   }
 }
 

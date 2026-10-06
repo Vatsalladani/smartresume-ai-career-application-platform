@@ -2950,49 +2950,187 @@ svg {
   border-color: rgba(37, 99, 235, 0.4);
 }
 
-.template-card.active-selected {
+.template-card.active-selected,
+.template-card.is-current {
   border: 2px solid var(--primary);
   box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 
+.current-template-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #10b981;
+  color: white;
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .template-thumbnail-box {
-  height: 160px;
+  height: 165px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
+  padding: 12px;
   cursor: pointer;
+  overflow: hidden;
 }
 
-/* Simulated mini resume paper in thumbnail */
+/* Authentic realistic mini resume sheet in thumbnail */
 .mini-paper {
-  width: 130px;
-  height: 135px;
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
-  padding: 10px;
+  width: 140px;
+  height: 145px;
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  user-select: none;
+  font-family: inherit;
+  transition: transform 0.2s ease;
 }
 
-.mini-line {
-  height: 3px;
-  background: #cbd5e1;
-  border-radius: 2px;
+.template-card:hover .mini-paper {
+  transform: scale(1.02);
 }
-.mini-line.accent { background: var(--primary); width: 60%; height: 5px; }
-.mini-line.sub { width: 40%; height: 3px; background: #94a3b8; }
-.mini-line.w-80 { width: 80%; }
-.mini-line.w-90 { width: 90%; }
-.mini-line.w-60 { width: 60%; }
-.mini-line.w-40 { width: 40%; }
-.mini-line.divider { height: 1px; background: #e2e8f0; margin: 2px 0; }
+
+.mini-paper.font-serif {
+  font-family: "Georgia", "Times New Roman", serif;
+}
+
+.mini-paper.font-sans {
+  font-family: "Inter", -apple-system, sans-serif;
+}
+
+.mini-header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.mini-header.align-center {
+  text-align: center;
+  align-items: center;
+}
+
+.mini-header.align-left {
+  text-align: left;
+  align-items: flex-start;
+}
+
+.mini-candidate-name {
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.mini-candidate-headline {
+  font-size: 5px;
+  color: #64748b;
+  line-height: 1.1;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.mini-candidate-contact {
+  font-size: 4px;
+  color: #94a3b8;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.mini-sec-title {
+  font-size: 5.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 3px;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.mini-sec-title.style-underline {
+  border-bottom: 1px solid currentColor;
+}
+
+.mini-sec-title.style-accent-bar {
+  border-left: 2px solid currentColor;
+  padding-left: 2px;
+}
+
+.mini-sec-title.style-double-line {
+  border-bottom: 1.5px double currentColor;
+}
+
+.mini-sec-title.style-hairline {
+  border-bottom: 0.5px solid #cbd5e1;
+}
+
+.mini-text-line {
+  height: 2.5px;
+  background: #e2e8f0;
+  border-radius: 1px;
+  margin-bottom: 2px;
+}
+
+.mini-text-line.dark {
+  background: #cbd5e1;
+}
+
+.mini-paper-two-col {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 5px;
+  flex: 1;
+}
+
+.mini-photo-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.rec-hero-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.rec-hero-chip:hover {
+  border-color: var(--primary);
+  background: var(--surface-2);
+}
 
 .template-card-body {
   padding: 18px;

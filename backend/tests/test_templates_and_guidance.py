@@ -78,12 +78,12 @@ SAMPLE_CANDIDATE = {
 }
 
 
-def test_template_catalog_has_all_12_templates():
+def test_template_catalog_has_all_16_templates():
     res = client.get("/api/v1/templates")
     assert res.status_code == 200
     data = res.json()
     assert data["success"] is True
-    assert data["count"] >= 12
+    assert data["count"] == 16
     templates = data["data"]
     ids = [t["template_id"] for t in templates]
 
@@ -91,15 +91,19 @@ def test_template_catalog_has_all_12_templates():
         "classic_ats",
         "campus_fresher",
         "clean_professional",
+        "modern_professional",
         "technical_ats",
         "business_professional",
         "finance_professional",
         "healthcare_pharmacy",
+        "executive_professional",
         "consulting_management",
-        "experienced_professional",
         "academic_research",
+        "two_column_professional",
         "creative_professional",
-        "executive",
+        "international_professional",
+        "regional_photo_cv",
+        "premium_leadership",
     ]
     for eid in expected_ids:
         assert eid in ids, f"Missing template: {eid}"
@@ -109,14 +113,14 @@ def test_free_vs_pro_tier_filtering():
     res_free = client.get("/api/v1/templates?access_tier=FREE")
     assert res_free.status_code == 200
     free_templates = res_free.json()["data"]
-    assert len(free_templates) >= 3
+    assert len(free_templates) == 8
     for t in free_templates:
         assert t["access_tier"] == "FREE"
 
     res_pro = client.get("/api/v1/templates?access_tier=PRO")
     assert res_pro.status_code == 200
     pro_templates = res_pro.json()["data"]
-    assert len(pro_templates) >= 9
+    assert len(pro_templates) == 8
     for t in pro_templates:
         assert t["access_tier"] == "PRO"
 
@@ -167,7 +171,7 @@ def test_template_recommendation_logic():
         career_level="EXPERIENCED_PROFESSIONAL",
         years_experience=16.0,
     )
-    assert rec_exec.recommended_template.template_id == "executive"
+    assert rec_exec.recommended_template.template_id in ("executive_professional", "executive")
 
 
 def test_recommendation_endpoint():
@@ -197,8 +201,8 @@ def test_sample_candidate_preview_endpoint():
     assert len(body["sample_data"]["skills"]) > 0
 
 
-def test_all_12_templates_generate_valid_pdf_exports():
-    """Verify that all 12 templates generate clean, non-empty, ATS-parseable PDF binaries."""
+def test_all_16_templates_generate_valid_pdf_exports():
+    """Verify that all 16 templates generate clean, non-empty, ATS-parseable PDF binaries."""
     for tpl in TEMPLATES_CATALOG:
         tid = tpl.template_id
         pdf_bytes = generate_resume_pdf(SAMPLE_CANDIDATE, template_name=tid)
@@ -212,8 +216,8 @@ def test_all_12_templates_generate_valid_pdf_exports():
         assert "Cornell University" in full_text, f"Education missing in {tid} PDF"
 
 
-def test_all_12_templates_generate_valid_docx_exports():
-    """Verify that all 12 templates generate clean, valid DOCX files."""
+def test_all_16_templates_generate_valid_docx_exports():
+    """Verify that all 16 templates generate clean, valid DOCX files."""
     for tpl in TEMPLATES_CATALOG:
         tid = tpl.template_id
         docx_bytes = generate_resume_docx(SAMPLE_CANDIDATE, template_name=tid)

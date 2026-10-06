@@ -31,7 +31,15 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture(autouse=True)
+def setup_test_db():
+    app.dependency_overrides[get_db] = override_get_db
+    Base.metadata.create_all(bind=test_engine)
+    yield
+    Base.metadata.drop_all(bind=test_engine)
+    app.dependency_overrides.pop(get_db, None)
+
+
 client = TestClient(app)
 
 SAMPLE_RESUME_DATA = {
@@ -344,5 +352,3 @@ def test_export_profile_endpoint_with_custom_design_controls():
         == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
     assert len(res_docx.content) > 1000
-
-    Base.metadata.drop_all(bind=test_engine)

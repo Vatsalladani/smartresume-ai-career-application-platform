@@ -933,14 +933,27 @@
             <div class="flex-row align-center gap-3 flex-wrap">
               <div class="flex-row align-center gap-2">
                 <label class="text-xs text-muted font-semibold" for="builderTemplateSelect">Template:</label>
-                <select id="builderTemplateSelect" class="form-select sm builder-clean-select" style="width: 175px; font-weight: 600;">
-                  <option value="classic_ats" selected>Classic ATS</option>
-                  <option value="modern_professional">Modern Professional</option>
-                  <option value="minimal_professional">Minimal Professional</option>
-                  <option value="technical_ats">Technical Professional ATS</option>
-                  <option value="executive_professional">Executive Professional</option>
-                  <option value="two_column_professional">Two-Column Professional</option>
-                  <option value="creative_professional">Creative Professional</option>
+                <select id="builderTemplateSelect" class="form-select sm builder-clean-select" style="width: 190px; font-weight: 600;">
+                  <optgroup label="Free Templates (8)">
+                    <option value="classic_ats" selected>Classic ATS</option>
+                    <option value="campus_fresher">Campus / Fresher</option>
+                    <option value="clean_professional">Clean Professional</option>
+                    <option value="modern_professional">Modern Professional</option>
+                    <option value="technical_ats">Technical Professional</option>
+                    <option value="business_professional">Business Professional</option>
+                    <option value="finance_professional">Finance Professional</option>
+                    <option value="healthcare_pharmacy">Healthcare Professional</option>
+                  </optgroup>
+                  <optgroup label="Pro Templates (8)">
+                    <option value="executive_professional">Executive Professional</option>
+                    <option value="consulting_management">Consulting Professional</option>
+                    <option value="academic_research">Academic / Research CV</option>
+                    <option value="two_column_professional">Two-Column Professional</option>
+                    <option value="creative_professional">Creative Professional</option>
+                    <option value="international_professional">Global / International</option>
+                    <option value="regional_photo_cv">Regional Photo CV</option>
+                    <option value="premium_leadership">Premium Leadership</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -1764,21 +1777,25 @@
             <div class="form-row align-center gap-3">
               <label>ATS Template:
                 <select id="templateSelector">
-                  <optgroup label="Free Templates">
+                  <optgroup label="Free Templates (8)">
                     <option value="classic_ats" selected>Classic ATS (Single-Column Standard)</option>
                     <option value="campus_fresher">Campus / Fresher (Education & Projects Focus)</option>
                     <option value="clean_professional">Clean Professional (Minimalist Modern)</option>
-                  </optgroup>
-                  <optgroup label="Pro Templates">
-                    <option value="technical_ats">Technical ATS (Skills & Systems Projects)</option>
+                    <option value="modern_professional">Modern Professional (Contemporary Product & Tech)</option>
+                    <option value="technical_ats">Technical Professional (Skills & Systems Projects)</option>
                     <option value="business_professional">Business Professional (MBA & Strategic Impact)</option>
                     <option value="finance_professional">Finance Professional (P&L & Accounting)</option>
-                    <option value="healthcare_pharmacy">Healthcare / Pharmacy (Clinical & Licensure)</option>
-                    <option value="consulting_management">Consulting / Management (Advisory & Case)</option>
-                    <option value="experienced_professional">Experienced Professional (Senior Chronological)</option>
-                    <option value="academic_research">Academic / Research (Publications & Grants)</option>
+                    <option value="healthcare_pharmacy">Healthcare Professional (Clinical & Licensure)</option>
+                  </optgroup>
+                  <optgroup label="Pro Templates (8)">
+                    <option value="executive_professional">Executive Professional (Board Scale & Governance)</option>
+                    <option value="consulting_management">Consulting Professional (Advisory & Case)</option>
+                    <option value="academic_research">Academic / Research CV (Publications & Grants)</option>
+                    <option value="two_column_professional">Two-Column Professional (Modern Dual-Column)</option>
                     <option value="creative_professional">Creative Professional (Portfolio & Design)</option>
-                    <option value="executive">Executive (Board Scale & Governance)</option>
+                    <option value="international_professional">Global / International (Cross-Border Standard)</option>
+                    <option value="regional_photo_cv">Regional Photo CV (European Lebenslauf)</option>
+                    <option value="premium_leadership">Premium Leadership (Enterprise Executive)</option>
                   </optgroup>
                 </select>
                 <button class="text-btn text-xs mt-1" type="button" onclick="navigateToTab('templates')">Browse Template Library &rarr;</button>
@@ -2410,7 +2427,7 @@
 
         <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
           <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
-          <p class="text-xs text-muted mb-0" style="margin: 0;">All 12 templates are pre-tested for recruiter software readability. Switching templates preserves 100% of your content.</p>
+          <p class="text-xs text-muted mb-0" style="margin: 0;">All 16 templates are pre-tested for recruiter software readability. Switching templates preserves 100% of your content, rich text, and sections.</p>
         </div>
 
         <!-- Intent Question Bar -->
@@ -2426,6 +2443,7 @@
             <button type="button" class="intent-pill" data-intent="CURRENT_CAREER"><i data-lucide="briefcase"></i> For My Current Career</button>
             <button type="button" class="intent-pill" data-intent="ACADEMIC"><i data-lucide="book-open"></i> Academic / Research</button>
             <button type="button" class="intent-pill" data-intent="EXECUTIVE"><i data-lucide="crown"></i> Executive Leadership</button>
+            <button type="button" class="intent-pill" data-intent="INTERNATIONAL"><i data-lucide="globe"></i> Global / Relocation</button>
           </div>
         </div>
 
@@ -2433,9 +2451,10 @@
         <div id="recHeroCard" class="rec-hero-card">
           <div class="rec-hero-content">
             <div class="rec-hero-badge"><i data-lucide="sparkles"></i> Recommended for You</div>
-            <h3 id="recHeroTitle">Technical ATS</h3>
-            <p id="recHeroReason">Analyzing your career profile to recommend the optimal ATS structure...</p>
+            <h3 id="recHeroTitle">Technical Professional</h3>
+            <p id="recHeroReason">Calibrated against your career profile and target market standards.</p>
             <p id="recHeroCountry" class="text-xs text-muted mt-1"><i data-lucide="globe"></i> <span id="recHeroCountryText">Checking international recruitment norms...</span></p>
+            <div id="recHeroRecommendationsList" class="flex-row gap-2 mt-2 flex-wrap"></div>
           </div>
           <div class="rec-hero-actions">
             <button id="recHeroUseBtn" class="primary-btn sm" type="button"><i data-lucide="check"></i><span>Use This Template</span></button>
@@ -2454,10 +2473,13 @@
               <button class="filter-chip" data-cat="Professional">Professional</button>
               <button class="filter-chip" data-cat="Business / MBA">Business / MBA</button>
               <button class="filter-chip" data-cat="Finance">Finance</button>
-              <button class="filter-chip" data-cat="Healthcare / Pharmacy">Healthcare</button>
-              <button class="filter-chip" data-cat="Consulting / Management">Consulting</button>
-              <button class="filter-chip" data-cat="Academic / Research">Academic</button>
-              <button class="filter-chip" data-cat="Creative / Design">Creative</button>
+              <button class="filter-chip" data-cat="Healthcare">Healthcare</button>
+              <button class="filter-chip" data-cat="Consulting">Consulting</button>
+              <button class="filter-chip" data-cat="Academic">Academic</button>
+              <button class="filter-chip" data-cat="Two-Column">Two-Column</button>
+              <button class="filter-chip" data-cat="Creative">Creative</button>
+              <button class="filter-chip" data-cat="International">International</button>
+              <button class="filter-chip" data-cat="Photo">Photo</button>
               <button class="filter-chip" data-cat="Executive">Executive</button>
             </div>
             <div class="flex-row align-center gap-2">
@@ -3143,54 +3165,103 @@
     </nav>
   </main>
 
-  <!-- MODAL: TEMPLATE PREVIEW & CUSTOMIZER -->
+  <!-- MODAL: TEMPLATE PREVIEW & TRY DEMO -->
   <div id="templatePreviewModal" class="modal-overlay hidden">
-    <div class="modal-dialog" style="max-width: 960px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-dialog" style="max-width: 1040px; max-height: 94vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <div>
-          <h3 id="previewModalTitle"><i data-lucide="layout-template"></i> Technical ATS</h3>
-          <div id="previewModalBadges" class="flex-row gap-2 align-center mt-1">
+          <h3 id="previewModalTitle"><i data-lucide="layout-template"></i> Technical Professional</h3>
+          <div id="previewModalBadges" class="flex-row gap-2 align-center mt-1 flex-wrap">
             <span class="tier-badge free">FREE</span>
-            <span class="meta-pill ats"><i data-lucide="shield-check"></i> ATS: Excellent</span>
+            <span class="meta-pill ats"><i data-lucide="shield-check"></i> ATS-Friendly</span>
+            <span class="meta-pill layout"><i data-lucide="columns"></i> Single Column</span>
+            <span class="badge-sub">Technology</span>
           </div>
         </div>
-        <button id="closeTemplatePreviewBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+        <div class="flex-row align-center gap-2">
+          <button id="previewModalFullscreenBtn" class="icon-btn" type="button" title="View Fullscreen"><i data-lucide="maximize-2"></i></button>
+          <button id="closeTemplatePreviewBtn" class="icon-btn" type="button" title="Close"><i data-lucide="x"></i></button>
+        </div>
       </div>
-      <div class="modal-body" style="overflow-y: auto; flex: 1;">
-        <!-- Customizer Bar -->
-        <div class="customizer-bar">
-          <div class="customizer-field">
-            <label for="customizerFontSize"><i data-lucide="type"></i> Font Size:</label>
-            <select id="customizerFontSize">
-              <option value="small">Compact (9pt)</option>
-              <option value="medium" selected>Standard (10pt)</option>
-              <option value="large">Spacious (11pt)</option>
-            </select>
+
+      <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 14px 20px;">
+        <!-- Top Customizer & Mode Bar -->
+        <div class="customizer-bar flex-row justify-between align-center flex-wrap gap-2 mb-3">
+          <div class="flex-row align-center gap-2">
+            <button id="toggleTryDemoBtn" class="secondary-btn sm" type="button">
+              <i data-lucide="edit-3"></i><span>Try Demo</span>
+            </button>
+            <span class="text-xs text-muted">Test sample data live without touching your resume</span>
           </div>
-          <div class="customizer-field">
-            <label for="customizerSpacing"><i data-lucide="align-justify"></i> Spacing:</label>
-            <select id="customizerSpacing">
-              <option value="compact">Tight</option>
-              <option value="standard" selected>Standard</option>
-              <option value="relaxed">Relaxed</option>
-            </select>
-          </div>
-          <div class="customizer-field">
-            <span class="meta-pill ats"><i data-lucide="lock"></i> ATS Structure Protected</span>
+          <div class="flex-row align-center gap-3">
+            <div class="customizer-field">
+              <label for="customizerFontSize" class="text-xs"><i data-lucide="type"></i> Size:</label>
+              <select id="customizerFontSize" class="form-select sm" style="width: 110px;">
+                <option value="small">Compact</option>
+                <option value="medium" selected>Standard</option>
+                <option value="large">Spacious</option>
+              </select>
+            </div>
+            <div class="customizer-field">
+              <label for="customizerSpacing" class="text-xs"><i data-lucide="align-justify"></i> Spacing:</label>
+              <select id="customizerSpacing" class="form-select sm" style="width: 110px;">
+                <option value="compact">Tight</option>
+                <option value="standard" selected>Standard</option>
+                <option value="relaxed">Relaxed</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Live Resume Paper Canvas -->
-        <div id="templatePreviewCanvas" class="resume-preview-canvas">
-          <!-- Populated dynamically with realistic candidate data -->
+        <!-- Interactive Try Demo Drawer (Collapsible) -->
+        <div id="tryDemoDrawer" class="panel p-3 mb-3 bg-surface-2 hidden" style="border: 1px dashed var(--primary); border-radius: var(--radius-md);">
+          <div class="flex-row justify-between align-center mb-2">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="flask-conical" style="color: var(--primary);"></i>
+              <strong class="text-sm">Interactive Sandbox</strong>
+              <span class="text-xs text-muted">— Type below to see how this template formats real data. Safe: changes will NOT save to your real resume.</span>
+            </div>
+            <button type="button" id="resetDemoDataBtn" class="text-btn text-xs font-semibold"><i data-lucide="rotate-ccw"></i> Reset Sample</button>
+          </div>
+          <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+              <label class="text-xs font-semibold text-muted">Candidate Name</label>
+              <input type="text" id="demoInputName" class="form-input sm w-full" placeholder="Full Name">
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-muted">Professional Headline</label>
+              <input type="text" id="demoInputHeadline" class="form-input sm w-full" placeholder="Professional Headline">
+            </div>
+          </div>
+          <div class="mt-2">
+            <label class="text-xs font-semibold text-muted">Professional Summary</label>
+            <textarea id="demoInputSummary" class="form-input sm w-full" rows="2" placeholder="Summary statement..."></textarea>
+          </div>
+          <div class="grid gap-2 mt-2" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+              <label class="text-xs font-semibold text-muted">Skills (comma-separated)</label>
+              <input type="text" id="demoInputSkills" class="form-input sm w-full" placeholder="e.g. Python, SQL, Cloud Architecture">
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-muted">Sample Experience Role & Company</label>
+              <input type="text" id="demoInputExpRole" class="form-input sm w-full" placeholder="e.g. Senior Systems Engineer — Cloud Corp">
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Resume Canvas Container -->
+        <div id="templatePreviewCanvas" class="resume-preview-canvas" style="display: flex; justify-content: center; background: #94a3b833; padding: 20px; border-radius: var(--radius-md); min-height: 480px;">
+          <!-- Real resume-preview-sheet rendered here dynamically -->
         </div>
       </div>
-      <div class="modal-footer flex-row justify-between align-center p-3 border-t">
+
+      <div class="modal-footer flex-row justify-between align-center p-3 border-t flex-wrap gap-2">
         <div class="text-xs text-muted" id="previewModalFooterInfo">
-          Best for: Software & Cloud Engineering
+          Best for: Software, Cloud & Systems Engineering · Global, US, UK, Canada
         </div>
         <div class="button-row">
           <button id="previewModalCompareBtn" class="secondary-btn sm" type="button"><i data-lucide="columns"></i><span>Compare</span></button>
+          <button id="previewModalCreateNewBtn" class="secondary-btn sm" type="button"><i data-lucide="plus"></i><span>New Resume with this Template</span></button>
           <button id="previewModalUseBtn" class="primary-btn sm" type="button"><i data-lucide="check"></i><span>Use Template</span></button>
         </div>
       </div>
@@ -3199,15 +3270,15 @@
 
   <!-- MODAL: TEMPLATE COMPARISON -->
   <div id="templateCompareModal" class="modal-overlay hidden">
-    <div class="modal-dialog" style="max-width: 900px;">
+    <div class="modal-dialog" style="max-width: 960px; max-height: 90vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <div>
           <h3><i data-lucide="columns"></i> Compare Resume Templates</h3>
-          <p class="text-sm text-muted">Compare ATS strengths, page density, and target suitability.</p>
+          <p class="text-sm text-muted">Compare ATS strengths, page density, and target suitability side by side.</p>
         </div>
         <button id="closeTemplateCompareBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="overflow-y: auto; flex: 1;">
         <div class="compare-table-wrapper" id="compareTableContainer">
           <p class="text-muted text-center py-4">Select templates to compare by clicking the Compare checkbox on template cards.</p>
         </div>
@@ -3221,30 +3292,65 @@
 
   <!-- MODAL: CONTEXTUAL TEMPLATE UPGRADE -->
   <div id="templateUpgradeModal" class="modal-overlay hidden">
-    <div class="modal-dialog" style="max-width: 520px;">
+    <div class="modal-dialog" style="max-width: 580px;">
       <div class="modal-header">
         <div>
-          <h3 id="upgradeModalTitle"><i data-lucide="sparkles"></i> Pro Template</h3>
-          <p class="text-sm text-muted" id="upgradeModalSubtitle">This template is included in SmartResume Pro.</p>
+          <h3 id="upgradeModalTitle"><i data-lucide="sparkles" style="color: #d97706;"></i> Pro Template</h3>
+          <p class="text-sm text-muted" id="upgradeModalSubtitle">This premium layout is included with SmartResume Pro.</p>
         </div>
         <button id="closeTemplateUpgradeBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
-        <p id="upgradeModalDesc" class="text-sm mb-3">Engineered for specialized career depth with verified skills and systems project emphasis.</p>
-        <div class="panel p-3 bg-surface-2 mb-3">
-          <div class="flex-row align-center gap-2 mb-2">
-            <span class="tier-badge trial">PRO TRIAL</span>
-            <strong>7-Day Free Trial Available</strong>
+        <p id="upgradeModalDesc" class="text-sm mb-3">Engineered for specialized career depth, executive leadership, and international recruitment standards.</p>
+
+        <!-- Active Trial Banner (shown if user has active trial) -->
+        <div id="upgradeModalTrialActiveBox" class="panel p-3 bg-surface-2 mb-3 hidden" style="border-left: 4px solid #10b981;">
+          <div class="flex-row align-center gap-2 mb-1">
+            <span class="tier-badge trial">ACTIVE TRIAL</span>
+            <strong>Included in your Pro Trial</strong>
           </div>
-          <p class="text-xs text-muted">Unlock all 9 Pro templates, unlimited ATS tailoring, and full export credits. No automatic surprise charges.</p>
+          <p class="text-xs text-muted mb-2">You can use this template right now without any additional payment.</p>
+          <button id="upgradeModalTrialUseBtn" class="primary-btn sm" type="button"><i data-lucide="check"></i><span>Use Template with Pro Trial</span></button>
         </div>
+
+        <!-- Pricing Option Cards -->
+        <div class="grid gap-3 mb-3" style="grid-template-columns: 1fr 1fr;">
+          <div class="panel p-3 text-center flex-col justify-between" style="border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);">
+            <div>
+              <span class="text-xs font-semibold text-muted text-uppercase">Monthly Plan</span>
+              <div class="my-2">
+                <span class="text-2xl font-bold">₹599</span>
+                <span class="text-xs text-muted">/ month</span>
+              </div>
+              <p class="text-xs text-muted mb-3">Billed monthly · Cancel anytime with 1 click</p>
+            </div>
+            <button id="upgradeModalMonthlyBtn" class="primary-btn sm w-full" type="button">Start Pro Monthly</button>
+          </div>
+
+          <div class="panel p-3 text-center flex-col justify-between" style="border: 2px solid var(--primary); border-radius: var(--radius-md); background: var(--surface-2); position: relative;">
+            <span class="tier-badge pro" style="position: absolute; top: -10px; right: 12px;">SAVE 30%</span>
+            <div>
+              <span class="text-xs font-semibold text-primary text-uppercase">Annual Plan</span>
+              <div class="my-2">
+                <span class="text-2xl font-bold">₹4,999</span>
+                <span class="text-xs text-muted">/ year</span>
+              </div>
+              <p class="text-xs text-muted mb-3">Effective ₹416/mo · Billed annually</p>
+            </div>
+            <button id="upgradeModalAnnualBtn" class="primary-btn sm w-full" type="button">Choose Pro Annual</button>
+          </div>
+        </div>
+
+        <div id="upgradeModalTrialAvailableBox" class="panel p-2 bg-surface-2 text-center mb-2">
+          <p class="text-xs text-muted mb-1"><i data-lucide="gift"></i> New to Pro? Start with a risk-free 7-day trial.</p>
+          <button id="upgradeModalActionBtn" class="secondary-btn sm" type="button"><i data-lucide="zap"></i><span>Start 7-Day Free Trial</span></button>
+        </div>
+
+        <p class="text-xs text-muted text-center mt-2">Transparent pricing. No automatic hidden renewals. All 8 Pro templates unlocked.</p>
       </div>
       <div class="modal-footer flex-row justify-between align-center p-3 border-t">
-        <button class="secondary-btn sm" type="button" onclick="$('#templateUpgradeModal').classList.add('hidden')">Keep Browsing</button>
-        <div class="button-row">
-          <button id="upgradeModalPreviewBtn" class="secondary-btn sm" type="button"><i data-lucide="eye"></i><span>Preview Template</span></button>
-          <button id="upgradeModalActionBtn" class="primary-btn sm" type="button"><i data-lucide="zap"></i><span>Start 7-Day Trial</span></button>
-        </div>
+        <button class="secondary-btn sm" type="button" onclick="$('#templateUpgradeModal').classList.add('hidden')">Continue with Free Templates</button>
+        <button id="upgradeModalPreviewBtn" class="ghost-btn sm" type="button"><i data-lucide="eye"></i><span>Preview Template</span></button>
       </div>
     </div>
   </div>

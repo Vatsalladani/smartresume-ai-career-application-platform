@@ -28,6 +28,9 @@ TEMPLATE_COLORS: dict[str, str] = {
     "consulting_management": "#4338ca",
     "experienced_professional": "#374151",
     "academic_research": "#7c2d12",
+    "international_professional": "#0284c7",
+    "regional_photo_cv": "#2563eb",
+    "premium_leadership": "#0f172a",
     "executive": "#1e293b",
     "professional": "#1e3a8a",
 }
@@ -48,6 +51,9 @@ TEMPLATE_SECTION_ORDERS: dict[str, list[str]] = {
     "consulting_management": ["summary", "experiences", "projects", "skills", "education", "certifications"],
     "experienced_professional": ["summary", "experiences", "skills", "projects", "education", "certifications"],
     "academic_research": ["summary", "education", "projects", "experiences", "skills", "certifications"],
+    "international_professional": ["summary", "experiences", "skills", "education", "certifications"],
+    "regional_photo_cv": ["summary", "experiences", "skills", "education", "certifications", "languages"],
+    "premium_leadership": ["summary", "experiences", "achievements", "education", "certifications", "skills"],
     "executive": ["summary", "experiences", "projects", "education", "certifications", "skills"],
     "professional": ["summary", "experiences", "skills", "education", "projects", "certifications"],
 }
@@ -309,15 +315,25 @@ def build_pdf_styles(
         sec_font = bold_font
         sec_color = accent
         item_date_font = bold_font
-    elif t_norm in ("executive_professional", "executive"):
+    elif t_norm in ("executive_professional", "executive", "premium_leadership", "experienced_professional"):
         name_font = bold_font
         name_size = max(15, round(19 * font_size_scale))
-        name_color = colors.HexColor("#1e293b")
+        name_color = colors.HexColor("#0f172a") if "premium" in t_norm else colors.HexColor("#1e293b")
         headline_font = oblique_font
         headline_color = colors.HexColor("#475569")
         contact_font = body_font
         sec_font = bold_font
-        sec_color = colors.HexColor("#1e293b")
+        sec_color = colors.HexColor("#0f172a") if "premium" in t_norm else colors.HexColor("#1e293b")
+        item_date_font = bold_font
+    elif t_norm in ("regional_photo_cv", "international_professional"):
+        name_font = bold_font
+        name_size = max(14, round(18 * font_size_scale))
+        name_color = colors.HexColor("#0f172a")
+        headline_font = bold_font
+        headline_color = accent
+        contact_font = body_font
+        sec_font = bold_font
+        sec_color = accent
         item_date_font = bold_font
     elif t_norm == "two_column_professional":
         name_font = bold_font
