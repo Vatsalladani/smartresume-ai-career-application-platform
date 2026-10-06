@@ -172,7 +172,12 @@ def docx_add_html_paragraph(doc: Document, html_text: str, style: str | None = N
     return p
 
 
-def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, spacing_scale: float = 1.0):
+def build_pdf_styles(
+    accent_hex: str = "#1e3a8a",
+    font_size_scale: float = 1.0,
+    spacing_scale: float = 1.0,
+    template_name: str = "classic_ats",
+):
     try:
         accent = colors.HexColor(accent_hex)
     except Exception:
@@ -181,46 +186,119 @@ def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, 
     muted_color = colors.HexColor("#4b5563")
 
     styles = getSampleStyleSheet()
+    t_norm = (template_name or "classic_ats").lower().replace("-", "_")
+
+    if t_norm == "classic_ats":
+        body_font = "Times-Roman"
+        bold_font = "Times-Bold"
+        oblique_font = "Times-Italic"
+        hdr_align = 1  # Centered
+        name_font = "Times-Bold"
+        name_size = max(14, round(18 * font_size_scale))
+        name_color = accent
+        headline_font = "Times-Italic"
+        headline_color = muted_color
+        contact_font = "Times-Roman"
+        sec_font = "Times-Bold"
+        sec_color = accent
+        item_date_font = "Times-Italic"
+    elif t_norm == "modern_professional":
+        body_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+        oblique_font = "Helvetica-Oblique"
+        hdr_align = 0  # Left-aligned
+        name_font = "Helvetica-Bold"
+        name_size = max(15, round(20 * font_size_scale))
+        name_color = colors.HexColor("#0f172a")
+        headline_font = "Helvetica-Bold"
+        headline_color = accent
+        contact_font = "Helvetica"
+        sec_font = "Helvetica-Bold"
+        sec_color = colors.HexColor("#0f172a")
+        item_date_font = "Helvetica-Bold"
+    elif t_norm == "minimal_professional":
+        body_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+        oblique_font = "Helvetica-Oblique"
+        hdr_align = 0  # Left-aligned
+        name_font = "Helvetica-Bold"
+        name_size = max(13, round(16 * font_size_scale))
+        name_color = colors.HexColor("#111827")
+        headline_font = "Helvetica"
+        headline_color = colors.HexColor("#64748b")
+        contact_font = "Helvetica"
+        sec_font = "Helvetica-Bold"
+        sec_color = colors.HexColor("#475569")
+        item_date_font = "Helvetica"
+    elif t_norm == "technical_ats":
+        body_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+        oblique_font = "Helvetica-Oblique"
+        hdr_align = 0  # Left-aligned
+        name_font = "Helvetica-Bold"
+        name_size = max(14, round(17 * font_size_scale))
+        name_color = colors.HexColor("#0f172a")
+        headline_font = "Courier-Bold"
+        headline_color = accent
+        contact_font = "Courier"
+        sec_font = "Courier-Bold"
+        sec_color = accent
+        item_date_font = "Courier"
+    else:
+        body_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+        oblique_font = "Helvetica-Oblique"
+        hdr_align = 1
+        name_font = "Helvetica-Bold"
+        name_size = max(14, round(18 * font_size_scale))
+        name_color = accent
+        headline_font = "Helvetica"
+        headline_color = muted_color
+        contact_font = "Helvetica"
+        sec_font = "Helvetica-Bold"
+        sec_color = accent
+        item_date_font = "Helvetica"
+
     styles.add(ParagraphStyle(
         name="CandidateName",
-        fontName="Helvetica-Bold",
-        fontSize=max(14, round(18 * font_size_scale)),
-        leading=max(17, round(22 * font_size_scale)),
-        textColor=accent,
-        alignment=1,  # Centered
+        fontName=name_font,
+        fontSize=name_size,
+        leading=max(17, round((name_size + 4) * font_size_scale)),
+        textColor=name_color,
+        alignment=hdr_align,
         spaceAfter=max(1, round(2 * spacing_scale)),
     ))
     styles.add(ParagraphStyle(
         name="CandidateHeadline",
-        fontName="Helvetica",
-        fontSize=max(9, round(10.5 * font_size_scale)),
-        leading=max(11, round(13.5 * font_size_scale)),
-        textColor=muted_color,
-        alignment=1,  # Centered
+        fontName=headline_font,
+        fontSize=max(8.5, round(10 * font_size_scale)),
+        leading=max(11, round(13 * font_size_scale)),
+        textColor=headline_color,
+        alignment=hdr_align,
         spaceAfter=max(2, round(3 * spacing_scale)),
     ))
     styles.add(ParagraphStyle(
         name="ContactBar",
-        fontName="Helvetica",
+        fontName=contact_font,
         fontSize=max(7.5, round(8.5 * font_size_scale)),
         leading=max(10, round(11.5 * font_size_scale)),
         textColor=muted_color,
-        alignment=1,  # Centered
+        alignment=hdr_align,
         spaceAfter=max(2, round(4 * spacing_scale)),
     ))
     styles.add(ParagraphStyle(
         name="SectionHeader",
-        fontName="Helvetica-Bold",
-        fontSize=max(9.5, round(11 * font_size_scale)),
-        leading=max(12, round(14 * font_size_scale)),
-        textColor=accent,
+        fontName=sec_font,
+        fontSize=max(9, round(10.5 * font_size_scale)),
+        leading=max(12, round(13.5 * font_size_scale)),
+        textColor=sec_color,
         spaceBefore=max(5, round(8 * spacing_scale)),
         spaceAfter=max(2, round(3 * spacing_scale)),
         keepWithNext=True,
     ))
     styles.add(ParagraphStyle(
         name="ItemTitle",
-        fontName="Helvetica-Bold",
+        fontName=bold_font,
         fontSize=max(8.5, round(9.5 * font_size_scale)),
         leading=max(11, round(12.5 * font_size_scale)),
         textColor=text_color,
@@ -228,7 +306,7 @@ def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, 
     ))
     styles.add(ParagraphStyle(
         name="ItemDateRight",
-        fontName="Helvetica",
+        fontName=item_date_font,
         fontSize=max(7.5, round(8.5 * font_size_scale)),
         leading=max(11, round(12.5 * font_size_scale)),
         textColor=muted_color,
@@ -236,7 +314,7 @@ def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, 
     ))
     styles.add(ParagraphStyle(
         name="ItemSub",
-        fontName="Helvetica-Oblique",
+        fontName=oblique_font,
         fontSize=max(7.5, round(8.5 * font_size_scale)),
         leading=max(10, round(11.5 * font_size_scale)),
         textColor=muted_color,
@@ -244,9 +322,9 @@ def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, 
     ))
     styles.add(ParagraphStyle(
         name="ResumeBullet",
-        fontName="Helvetica",
+        fontName=body_font,
         fontSize=max(8, round(9 * font_size_scale)),
-        leading=max(10.5, round(12 * font_size_scale)),
+        leading=max(10.5, round((12 if t_norm != "minimal_professional" else 13.5) * font_size_scale)),
         textColor=text_color,
         leftIndent=12,
         firstLineIndent=-8,
@@ -254,9 +332,9 @@ def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, 
     ))
     styles.add(ParagraphStyle(
         name="ResumeBody",
-        fontName="Helvetica",
+        fontName=body_font,
         fontSize=max(8, round(9 * font_size_scale)),
-        leading=max(10.5, round(12.5 * font_size_scale)),
+        leading=max(10.5, round((12.5 if t_norm != "minimal_professional" else 14) * font_size_scale)),
         textColor=text_color,
         spaceAfter=max(2, round(3 * spacing_scale)),
     ))
@@ -291,7 +369,7 @@ def generate_resume_pdf(
     spacing_scales = {"compact": 0.70, "standard": 1.0, "relaxed": 1.30}
     spacing_scale = spacing_scales.get(spacing, 1.0)
 
-    styles = build_pdf_styles(accent_hex, font_size_scale, spacing_scale)
+    styles = build_pdf_styles(accent_hex, font_size_scale, spacing_scale, template_name)
     story = []
 
     # Custom Section Titles
@@ -329,7 +407,25 @@ def generate_resume_pdf(
         clean_wb = re.sub(r"^https?://(www\.)?", "", website).rstrip("/")
         contact_parts.append(clean_wb)
 
-    contact_str = " | ".join(contact_parts)
+    t_norm = (template_name or "classic_ats").lower().replace("-", "_")
+    if t_norm == "modern_professional":
+        sep = "  •  "
+        div_thick = 2.0
+        div_color = colors.HexColor("#e2e8f0")
+    elif t_norm == "minimal_professional":
+        sep = "  ·  "
+        div_thick = 0.5
+        div_color = colors.HexColor("#e2e8f0")
+    elif t_norm == "technical_ats":
+        sep = "  //  "
+        div_thick = 2.0
+        div_color = colors.HexColor(accent_hex)
+    else:  # classic_ats
+        sep = " | "
+        div_thick = 1.5
+        div_color = colors.HexColor(accent_hex)
+
+    contact_str = sep.join(contact_parts)
 
     story.append(Paragraph(name, styles["CandidateName"]))
     if headline:
@@ -340,8 +436,8 @@ def generate_resume_pdf(
     # Accent Divider
     story.append(HRFlowable(
         width="100%",
-        thickness=1.5 if template_name != "minimal_professional" else 0.75,
-        color=colors.HexColor(accent_hex),
+        thickness=div_thick,
+        color=div_color,
         spaceBefore=max(2, round(3 * spacing_scale)),
         spaceAfter=max(4, round(6 * spacing_scale)),
     ))
@@ -799,14 +895,57 @@ def generate_resume_docx(
     github = (content.get("github_url") or content.get("github") or contact_info.get("github") or "").strip()
     website = (content.get("website_url") or content.get("website") or content.get("portfolio") or contact_info.get("portfolio") or "").strip()
 
-    # Header - Centered
+    t_norm = (template_name or "classic_ats").lower().replace("-", "_")
+    if t_norm == "classic_ats":
+        doc_font_name = "Georgia"
+        hdr_alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sep = " | "
+        is_italic_head = True
+        is_bold_head = False
+    elif t_norm == "modern_professional":
+        doc_font_name = "Calibri"
+        hdr_alignment = WD_ALIGN_PARAGRAPH.LEFT
+        sep = "  •  "
+        is_italic_head = False
+        is_bold_head = True
+    elif t_norm == "minimal_professional":
+        doc_font_name = "Segoe UI"
+        hdr_alignment = WD_ALIGN_PARAGRAPH.LEFT
+        sep = "  ·  "
+        is_italic_head = False
+        is_bold_head = False
+    elif t_norm == "technical_ats":
+        doc_font_name = "Consolas"
+        hdr_alignment = WD_ALIGN_PARAGRAPH.LEFT
+        sep = "  //  "
+        is_italic_head = False
+        is_bold_head = True
+    else:
+        doc_font_name = "Calibri"
+        hdr_alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sep = " | "
+        is_italic_head = True
+        is_bold_head = False
+
+    # Apply font name to default styles where available
+    for s_name in ["Normal", "Heading 1", "Heading 2", "List Bullet"]:
+        if s_name in doc.styles:
+            try:
+                doc.styles[s_name].font.name = doc_font_name
+            except Exception:
+                pass
+
+    # Header
     h1 = doc.add_heading(name, level=1)
-    h1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    h1.alignment = hdr_alignment
 
     if headline:
         p_head = doc.add_paragraph(headline)
-        p_head.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_head.style.font.italic = True
+        p_head.alignment = hdr_alignment
+        if is_italic_head:
+            p_head.style.font.italic = True
+        if is_bold_head:
+            p_head.style.font.bold = True
 
     contact_parts = []
     if location:
@@ -823,8 +962,8 @@ def generate_resume_docx(
         contact_parts.append(re.sub(r"^https?://(www\.)?", "", website).rstrip("/"))
 
     if contact_parts:
-        p_contact = doc.add_paragraph(" | ".join(contact_parts))
-        p_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_contact = doc.add_paragraph(sep.join(contact_parts))
+        p_contact.alignment = hdr_alignment
 
     # SECTION RENDERERS FOR DOCX
     def docx_summary():

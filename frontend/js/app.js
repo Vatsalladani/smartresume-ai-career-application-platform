@@ -1353,6 +1353,60 @@ const DEFAULT_SECTION_TITLES = {
   courses: "Relevant Coursework"
 };
 
+const DEFAULT_SECTION_ORDER = ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
+
+const RESUME_BUILDER_TEMPLATES = {
+  classic_ats: {
+    id: "classic_ats",
+    name: "Classic ATS",
+    fontFamily: 'Georgia, "Times New Roman", Times, serif',
+    headerAlignment: "center",
+    contactSeparator: "|",
+    headingStyle: "classic-underline",
+    accentColor: "#1e3a8a",
+    dateStyle: "classic",
+    skillDisplay: "inline",
+    defaultSectionOrder: ["summary", "experiences", "education", "skills", "projects", "certifications", "achievements", "awards", "courses", "languages"]
+  },
+  modern_professional: {
+    id: "modern_professional",
+    name: "Modern Professional",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "modern-accent-bar",
+    accentColor: "#0284c7",
+    dateStyle: "pill",
+    skillDisplay: "tags",
+    defaultSectionOrder: ["summary", "experiences", "projects", "skills", "education", "certifications", "achievements"]
+  },
+  minimal_professional: {
+    id: "minimal_professional",
+    name: "Minimal Professional",
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    headerAlignment: "left",
+    contactSeparator: "·",
+    headingStyle: "minimal-hairline",
+    accentColor: "#334155",
+    dateStyle: "subtle",
+    skillDisplay: "minimal",
+    defaultSectionOrder: ["summary", "experiences", "skills", "education", "projects", "certifications"]
+  },
+  technical_ats: {
+    id: "technical_ats",
+    name: "Technical ATS",
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    monoFontFamily: 'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace',
+    headerAlignment: "left",
+    contactSeparator: "//",
+    headingStyle: "tech-terminal",
+    accentColor: "#0369a1",
+    dateStyle: "mono",
+    skillDisplay: "tech-mono",
+    defaultSectionOrder: ["skills", "projects", "experiences", "education", "certifications", "achievements", "summary"]
+  }
+};
+
 let resumeBuilderState = {
   template: "classic_ats",
   fontSize: "medium",
@@ -1656,6 +1710,11 @@ function loadResumeBuilderState() {
         if (!resumeBuilderState.skillsLayout) resumeBuilderState.skillsLayout = "inline";
         if (!Array.isArray(resumeBuilderState.skillCategories)) resumeBuilderState.skillCategories = [];
         if (!Array.isArray(resumeBuilderState.customSections)) resumeBuilderState.customSections = [];
+        if (!resumeBuilderState.template) {
+          resumeBuilderState.template = state.activeTemplateId || localStorage.getItem("activeTemplateId") || "classic_ats";
+        }
+        state.activeTemplateId = resumeBuilderState.template;
+        localStorage.setItem("activeTemplateId", resumeBuilderState.template);
         return;
       }
     }
@@ -1663,6 +1722,9 @@ function loadResumeBuilderState() {
     console.warn("Failed to load builder state from storage", e);
   }
   resumeBuilderState = getCleanResumeBuilderState();
+  if (state.activeTemplateId) {
+    resumeBuilderState.template = state.activeTemplateId;
+  }
 }
 
 function triggerBuilderAutosave() {
@@ -1702,10 +1764,25 @@ function wireResumeBuilder() {
 
   // Template select
   $("#builderTemplateSelect")?.addEventListener("change", (e) => {
-    resumeBuilderState.template = e.target.value;
-    state.activeTemplateId = e.target.value;
+    const val = e.target.value;
+    const prevTpl = resumeBuilderState.template || "classic_ats";
+    const prevDefOrder = (RESUME_BUILDER_TEMPLATES[prevTpl] || {}).defaultSectionOrder;
+    const isDefaultOrder = !resumeBuilderState.sectionOrder ||
+      JSON.stringify(resumeBuilderState.sectionOrder) === JSON.stringify(DEFAULT_SECTION_ORDER) ||
+      (prevDefOrder && JSON.stringify(resumeBuilderState.sectionOrder) === JSON.stringify(prevDefOrder));
+
+    resumeBuilderState.template = val;
+    state.activeTemplateId = val;
+    localStorage.setItem("activeTemplateId", val);
+
+    if (isDefaultOrder && RESUME_BUILDER_TEMPLATES[val]?.defaultSectionOrder) {
+      resumeBuilderState.sectionOrder = [...RESUME_BUILDER_TEMPLATES[val].defaultSectionOrder];
+      renderBuilderEditorFromState();
+    }
+
     triggerBuilderAutosave();
     renderResumePreviewCanvas();
+    syncActiveTemplateDisplay();
   });
 
   // Font size
@@ -3240,9 +3317,13 @@ function renderResumePreviewCanvas() {
   const canvas = $("#builderPreviewCanvas");
   if (!canvas) return;
 
+  const tplId = resumeBuilderState.template || "classic_ats";
+  const tplConfig = RESUME_BUILDER_TEMPLATES[tplId] || RESUME_BUILDER_TEMPLATES.classic_ats;
+
   const sheet = $("#builderLivePreviewSheet");
   if (sheet) {
-    sheet.className = `resume-preview-sheet tpl-${resumeBuilderState.template || "classic_ats"}`;
+    sheet.className = `resume-preview-sheet tpl-${tplId} tpl-${tplId.replace(/_/g, "-")}`;
+    sheet.dataset.template = tplId;
   }
 
   applyCustomizerStylesToCanvas();
@@ -3276,11 +3357,12 @@ function renderResumePreviewCanvas() {
       parts.push({ text: clean, href: h.website.startsWith("http") ? h.website : `https://${h.website}` });
     }
 
+    const sepChar = tplConfig.contactSeparator || "|";
     parts.forEach((p, idx) => {
       if (idx > 0) {
         const sep = document.createElement("span");
         sep.className = "prev-contact-sep";
-        sep.textContent = "|";
+        sep.textContent = sepChar;
         contactEl.appendChild(sep);
       }
       if (p.href) {
@@ -3395,7 +3477,7 @@ function renderResumePreviewCanvas() {
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
-                    <span class="prev-item-title-col"><strong>${escapeHtml(p.title)}</strong>${p.technologies ? ` <span class="text-muted" style="font-weight: 400; font-size: 0.9em;">| ${escapeHtml(p.technologies)}</span>` : ""}</span>
+                    <span class="prev-item-title-col"><strong>${escapeHtml(p.title)}</strong>${p.technologies ? ` <span class="prev-proj-tech">${escapeHtml(p.technologies)}</span>` : ""}</span>
                     ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
                   </div>
                   ${p.description ? `<p class="text-xs" style="margin: 2px 0; color: #374151;">${sanitizeHtmlForPreview(p.description)}</p>` : ""}
@@ -3652,7 +3734,13 @@ function applyCustomizerStylesToCanvas() {
   canvas.style.setProperty("--resume-accent", accent);
 
   const divider = $("#prevCanvasDivider");
-  if (divider) divider.style.background = accent;
+  if (divider) {
+    if (resumeBuilderState.template === "minimal_professional") {
+      divider.style.background = "#e2e8f0";
+    } else {
+      divider.style.background = accent;
+    }
+  }
 }
 
 
@@ -7984,6 +8072,18 @@ function syncActiveTemplateDisplay() {
   const selector = $("#templateSelector");
   if (selector && selector.value !== state.activeTemplateId) {
     selector.value = state.activeTemplateId;
+  }
+
+  // 3. Resume Builder template dropdown & state
+  const bSelect = $("#builderTemplateSelect");
+  if (bSelect && bSelect.value !== state.activeTemplateId) {
+    bSelect.value = state.activeTemplateId;
+  }
+  if (typeof resumeBuilderState !== "undefined" && resumeBuilderState && resumeBuilderState.template !== state.activeTemplateId) {
+    resumeBuilderState.template = state.activeTemplateId;
+    if (typeof renderResumePreviewCanvas === "function") {
+      renderResumePreviewCanvas();
+    }
   }
 }
 

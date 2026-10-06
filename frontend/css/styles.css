@@ -3605,31 +3605,560 @@ svg {
   text-decoration: underline;
 }
 
-/* Template Specific Variants */
+/* Default Project Tech tag styling */
+.prev-proj-tech {
+  font-weight: 400;
+  font-size: 0.9em;
+  color: #4b5563;
+}
+.prev-proj-tech::before {
+  content: "| ";
+  color: #9ca3af;
+}
+
+/* ==========================================================================
+   TEMPLATE 1: CLASSIC ATS
+   Conservative, ATS-first, traditional hierarchy, centered header, serif typography
+   ========================================================================== */
+.resume-preview-sheet.tpl-classic_ats .resume-preview-canvas,
 .resume-preview-sheet.tpl-classic-ats .resume-preview-canvas {
   font-family: Georgia, "Times New Roman", Times, serif;
+  color: #1f2937;
+  padding: 40px 48px;
 }
-.resume-preview-sheet.tpl-classic-ats .prev-canvas-name,
+
+.resume-preview-sheet.tpl-classic_ats .preview-canvas-header,
+.resume-preview-sheet.tpl-classic-ats .preview-canvas-header {
+  text-align: center;
+  margin-bottom: calc(var(--resume-spacing) * 0.7);
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-canvas-name,
+.resume-preview-sheet.tpl-classic-ats .prev-canvas-name {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: calc(var(--resume-font-size) * 1.85);
+  font-weight: 700;
+  color: var(--resume-accent, #1e3a8a);
+  letter-spacing: 0.5px;
+  text-align: center;
+  margin-bottom: 3px;
+  text-transform: none;
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-canvas-headline,
+.resume-preview-sheet.tpl-classic-ats .prev-canvas-headline {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-style: italic;
+  font-size: calc(var(--resume-font-size) * 1.05);
+  color: #4b5563;
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-canvas-contact,
+.resume-preview-sheet.tpl-classic-ats .prev-canvas-contact {
+  justify-content: center;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: calc(var(--resume-font-size) * 0.88);
+  color: #4b5563;
+  gap: 6px;
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-contact-sep,
+.resume-preview-sheet.tpl-classic-ats .prev-contact-sep {
+  color: #9ca3af;
+  font-weight: 400;
+  margin: 0 2px;
+}
+
+.resume-preview-sheet.tpl-classic_ats .preview-canvas-divider,
+.resume-preview-sheet.tpl-classic-ats .preview-canvas-divider {
+  display: block;
+  height: 1.5px;
+  background: var(--resume-accent, #1e3a8a);
+  margin: 10px 0 var(--resume-spacing) 0;
+  border: none;
+}
+
+.resume-preview-sheet.tpl-classic_ats .preview-section-title,
 .resume-preview-sheet.tpl-classic-ats .preview-section-title {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: calc(var(--resume-font-size) * 1.08);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--resume-accent, #1e3a8a);
+  border-bottom: 1.5px solid var(--resume-accent, #1e3a8a);
+  padding-bottom: 3px;
+  margin-top: calc(var(--resume-spacing) * 0.95);
+  margin-bottom: calc(var(--resume-spacing) * 0.5);
+  text-align: left;
 }
 
-.resume-preview-sheet.tpl-modern-professional .resume-preview-canvas {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
-}
-
-.resume-preview-sheet.tpl-minimal-professional .preview-canvas-divider {
-  height: 1px;
-  background: #374151;
-}
-.resume-preview-sheet.tpl-minimal-professional .preview-section-title {
-  border-bottom: 1px solid #374151;
+.resume-preview-sheet.tpl-classic_ats .prev-item-title-col,
+.resume-preview-sheet.tpl-classic-ats .prev-item-title-col {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-weight: 700;
   color: #111827;
 }
 
-.resume-preview-sheet.tpl-technical-ats .prev-item-title-col code,
-.resume-preview-sheet.tpl-technical-ats .prev-skill-pill {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+.resume-preview-sheet.tpl-classic_ats .prev-item-date,
+.resume-preview-sheet.tpl-classic-ats .prev-item-date {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-style: italic;
+  font-size: calc(var(--resume-font-size) * 0.9);
+  color: #4b5563;
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-item-sub,
+.resume-preview-sheet.tpl-classic-ats .prev-item-sub {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-style: italic;
+  color: #4b5563;
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-item-bullets,
+.resume-preview-sheet.tpl-classic-ats .prev-item-bullets {
+  list-style-type: disc;
+  margin: 4px 0 0 20px;
+}
+
+.resume-preview-sheet.tpl-classic_ats .prev-item-bullets li,
+.resume-preview-sheet.tpl-classic-ats .prev-item-bullets li {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  line-height: var(--resume-line-height);
+  margin-bottom: 2.5px;
+}
+
+/* ==========================================================================
+   TEMPLATE 2: MODERN PROFESSIONAL
+   Contemporary bold typography, asymmetric left header, modern accent-bar headings, badge metadata
+   ========================================================================== */
+.resume-preview-sheet.tpl-modern_professional .resume-preview-canvas,
+.resume-preview-sheet.tpl-modern-professional .resume-preview-canvas {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+  padding: 38px 44px;
+}
+
+.resume-preview-sheet.tpl-modern_professional .preview-canvas-header,
+.resume-preview-sheet.tpl-modern-professional .preview-canvas-header {
+  text-align: left;
+  margin-bottom: calc(var(--resume-spacing) * 0.85);
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-canvas-name,
+.resume-preview-sheet.tpl-modern-professional .prev-canvas-name {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: calc(var(--resume-font-size) * 2.1);
+  font-weight: 800;
+  letter-spacing: -0.7px;
+  color: #0f172a;
+  text-align: left;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-canvas-headline,
+.resume-preview-sheet.tpl-modern-professional .prev-canvas-headline {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: calc(var(--resume-font-size) * 1.08);
+  font-weight: 600;
+  color: var(--resume-accent, #0284c7);
+  text-align: left;
+  letter-spacing: -0.2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-canvas-contact,
+.resume-preview-sheet.tpl-modern-professional .prev-canvas-contact {
+  justify-content: flex-start;
+  align-items: center;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: calc(var(--resume-font-size) * 0.86);
+  color: #475569;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-canvas-contact a,
+.resume-preview-sheet.tpl-modern-professional .prev-canvas-contact a {
+  background: #f8fafc;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-canvas-contact a:hover,
+.resume-preview-sheet.tpl-modern-professional .prev-canvas-contact a:hover {
+  background: #f1f5f9;
+  border-color: var(--resume-accent, #0284c7);
+  color: var(--resume-accent, #0284c7);
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-canvas-contact span:not(.prev-contact-sep),
+.resume-preview-sheet.tpl-modern-professional .prev-canvas-contact span:not(.prev-contact-sep) {
+  background: #f8fafc;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  font-weight: 500;
+  color: #334155;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-contact-sep,
+.resume-preview-sheet.tpl-modern-professional .prev-contact-sep {
+  display: none;
+}
+
+.resume-preview-sheet.tpl-modern_professional .preview-canvas-divider,
+.resume-preview-sheet.tpl-modern-professional .preview-canvas-divider {
+  display: none !important;
+}
+
+.resume-preview-sheet.tpl-modern_professional .preview-section-title,
+.resume-preview-sheet.tpl-modern-professional .preview-section-title {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: calc(var(--resume-font-size) * 1.02);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #0f172a;
+  border-bottom: none;
+  border-left: 4px solid var(--resume-accent, #0284c7);
+  padding: 3px 0 3px 10px;
+  background: linear-gradient(90deg, rgba(2, 132, 199, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 0 4px 4px 0;
+  margin-top: calc(var(--resume-spacing) * 1.1);
+  margin-bottom: calc(var(--resume-spacing) * 0.55);
+  text-align: left;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-item-title-col,
+.resume-preview-sheet.tpl-modern-professional .prev-item-title-col {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: calc(var(--resume-font-size) * 0.98);
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-item-date,
+.resume-preview-sheet.tpl-modern-professional .prev-item-date {
+  background: #f1f5f9;
+  color: #334155;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: calc(var(--resume-font-size) * 0.82);
+  letter-spacing: -0.1px;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-item-sub,
+.resume-preview-sheet.tpl-modern-professional .prev-item-sub {
+  font-weight: 500;
+  color: #64748b;
+  font-style: normal;
+  font-size: calc(var(--resume-font-size) * 0.86);
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-item-bullets,
+.resume-preview-sheet.tpl-modern-professional .prev-item-bullets {
+  list-style-type: square;
+  margin: 4px 0 0 16px;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-item-bullets li,
+.resume-preview-sheet.tpl-modern-professional .prev-item-bullets li {
+  line-height: var(--resume-line-height);
+  color: #334155;
+  margin-bottom: 2px;
+}
+
+.resume-preview-sheet.tpl-modern_professional .prev-proj-tech,
+.resume-preview-sheet.tpl-modern-professional .prev-proj-tech {
+  font-weight: 500;
+  font-size: 0.82em;
+  color: var(--resume-accent, #0284c7);
+  background: #f1f5f9;
+  padding: 1px 7px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+.resume-preview-sheet.tpl-modern_professional .prev-proj-tech::before,
+.resume-preview-sheet.tpl-modern-professional .prev-proj-tech::before {
+  content: none;
+}
+
+/* ==========================================================================
+   TEMPLATE 3: MINIMAL PROFESSIONAL
+   Understated, light visual treatment, hairline borders, generous whitespace, quiet elegance
+   ========================================================================== */
+.resume-preview-sheet.tpl-minimal_professional .resume-preview-canvas,
+.resume-preview-sheet.tpl-minimal-professional .resume-preview-canvas {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #334155;
+  padding: 44px 50px;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .preview-canvas-header,
+.resume-preview-sheet.tpl-minimal-professional .preview-canvas-header {
+  text-align: left;
+  margin-bottom: calc(var(--resume-spacing) * 1.0);
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-canvas-name,
+.resume-preview-sheet.tpl-minimal-professional .prev-canvas-name {
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 1.8);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #0f172a;
+  text-align: left;
+  margin-bottom: 3px;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-canvas-headline,
+.resume-preview-sheet.tpl-minimal-professional .prev-canvas-headline {
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 0.94);
+  font-weight: 500;
+  color: #64748b;
+  text-align: left;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-canvas-contact,
+.resume-preview-sheet.tpl-minimal-professional .prev-canvas-contact {
+  justify-content: flex-start;
+  font-size: calc(var(--resume-font-size) * 0.84);
+  color: #64748b;
+  gap: 10px;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-canvas-contact a,
+.resume-preview-sheet.tpl-minimal-professional .prev-canvas-contact a {
+  border-bottom: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-contact-sep,
+.resume-preview-sheet.tpl-minimal-professional .prev-contact-sep {
+  color: #cbd5e1;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .preview-canvas-divider,
+.resume-preview-sheet.tpl-minimal-professional .preview-canvas-divider {
+  display: block;
+  height: 1px;
+  background: #e2e8f0 !important;
+  margin: 12px 0 var(--resume-spacing) 0;
+  border: none;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .preview-section-title,
+.resume-preview-sheet.tpl-minimal-professional .preview-section-title {
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 0.9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 4px;
+  margin-top: calc(var(--resume-spacing) * 1.2);
+  margin-bottom: calc(var(--resume-spacing) * 0.6);
+  text-align: left;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-item-title-col,
+.resume-preview-sheet.tpl-minimal-professional .prev-item-title-col {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-item-date,
+.resume-preview-sheet.tpl-minimal-professional .prev-item-date {
+  font-size: calc(var(--resume-font-size) * 0.82);
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-item-sub,
+.resume-preview-sheet.tpl-minimal-professional .prev-item-sub {
+  color: #64748b;
+  font-style: normal;
+  font-size: calc(var(--resume-font-size) * 0.86);
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-item-bullets,
+.resume-preview-sheet.tpl-minimal-professional .prev-item-bullets {
+  list-style-type: circle;
+  margin: 4px 0 0 16px;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-item-bullets li,
+.resume-preview-sheet.tpl-minimal-professional .prev-item-bullets li {
+  line-height: calc(var(--resume-line-height) * 1.08);
+  color: #475569;
+  margin-bottom: 3.5px;
+}
+
+.resume-preview-sheet.tpl-minimal_professional .prev-proj-tech,
+.resume-preview-sheet.tpl-minimal-professional .prev-proj-tech {
+  font-weight: 400;
+  font-size: 0.85em;
+  color: #64748b;
+}
+.resume-preview-sheet.tpl-minimal_professional .prev-proj-tech::before,
+.resume-preview-sheet.tpl-minimal-professional .prev-proj-tech::before {
+  content: "— ";
+  color: #cbd5e1;
+}
+
+/* ==========================================================================
+   TEMPLATE 4: TECHNICAL ATS
+   High density, monospace tags, terminal header accent, code badges, tech-first
+   ========================================================================== */
+.resume-preview-sheet.tpl-technical_ats .resume-preview-canvas,
+.resume-preview-sheet.tpl-technical-ats .resume-preview-canvas {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #0f172a;
+  padding: 34px 40px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .preview-canvas-header,
+.resume-preview-sheet.tpl-technical-ats .preview-canvas-header {
+  text-align: left;
+  margin-bottom: calc(var(--resume-spacing) * 0.7);
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-canvas-name,
+.resume-preview-sheet.tpl-technical-ats .prev-canvas-name {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: calc(var(--resume-font-size) * 1.75);
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: #0f172a;
+  text-align: left;
+  margin-bottom: 2px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-canvas-headline,
+.resume-preview-sheet.tpl-technical-ats .prev-canvas-headline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: calc(var(--resume-font-size) * 0.94);
+  font-weight: 600;
+  color: var(--resume-accent, #0284c7);
+  text-align: left;
+  letter-spacing: 0.2px;
+  margin-bottom: 6px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-canvas-contact,
+.resume-preview-sheet.tpl-technical-ats .prev-canvas-contact {
+  justify-content: flex-start;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: calc(var(--resume-font-size) * 0.82);
+  color: #475569;
+  gap: 7px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-contact-sep,
+.resume-preview-sheet.tpl-technical-ats .prev-contact-sep {
+  color: var(--resume-accent, #0284c7);
+  font-weight: 700;
+}
+
+.resume-preview-sheet.tpl-technical_ats .preview-canvas-divider,
+.resume-preview-sheet.tpl-technical-ats .preview-canvas-divider {
+  display: block;
+  height: 2px;
+  background: var(--resume-accent, #0284c7);
+  margin: 8px 0 var(--resume-spacing) 0;
+  border: none;
+}
+
+.resume-preview-sheet.tpl-technical_ats .preview-section-title,
+.resume-preview-sheet.tpl-technical-ats .preview-section-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: calc(var(--resume-font-size) * 0.94);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--resume-accent, #0284c7);
+  border-bottom: 2px solid var(--resume-accent, #0284c7);
+  padding-bottom: 2px;
+  margin-top: calc(var(--resume-spacing) * 0.9);
+  margin-bottom: calc(var(--resume-spacing) * 0.45);
+  text-align: left;
+  display: flex;
+  align-items: center;
+}
+
+.resume-preview-sheet.tpl-technical_ats .preview-section-title::before,
+.resume-preview-sheet.tpl-technical-ats .preview-section-title::before {
+  content: "// ";
+  opacity: 0.7;
+  margin-right: 4px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-item-title-col,
+.resume-preview-sheet.tpl-technical-ats .prev-item-title-col {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-item-date,
+.resume-preview-sheet.tpl-technical-ats .prev-item-date {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: calc(var(--resume-font-size) * 0.82);
+  color: #64748b;
+  font-weight: 500;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-item-bullets,
+.resume-preview-sheet.tpl-technical-ats .prev-item-bullets {
+  list-style-type: disc;
+  margin: 3px 0 0 16px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-item-bullets li,
+.resume-preview-sheet.tpl-technical-ats .prev-item-bullets li {
+  line-height: var(--resume-line-height);
+  margin-bottom: 2px;
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-skills-grouped .prev-skills-text strong,
+.resume-preview-sheet.tpl-technical-ats .prev-skills-grouped .prev-skills-text strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.94em;
+  color: var(--resume-accent, #0284c7);
+}
+
+.resume-preview-sheet.tpl-technical_ats .prev-proj-tech,
+.resume-preview-sheet.tpl-technical-ats .prev-proj-tech {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+  font-size: 0.82em !important;
+  font-weight: 600 !important;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 1.5px 6px;
+  border-radius: 3px;
+  color: #0f172a !important;
+  margin-left: 6px;
+}
+.resume-preview-sheet.tpl-technical_ats .prev-proj-tech::before,
+.resume-preview-sheet.tpl-technical-ats .prev-proj-tech::before {
+  content: "tech: ";
+  opacity: 0.6;
 }
 
 /* Autosave indicator */
