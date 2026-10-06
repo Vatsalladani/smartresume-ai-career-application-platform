@@ -1343,12 +1343,31 @@ window.openTemplatePreviewModal = openActiveResumePreview;
 // RESUME BUILDER CONTROLLER (Two-column interactive editor + live canvas)
 // ==========================================================================
 
+const DEFAULT_SECTION_TITLES = {
+  summary: "Professional Summary",
+  skills: "Skills",
+  experiences: "Work Experience",
+  projects: "Key Projects",
+  education: "Education",
+  certifications: "Certifications",
+  achievements: "Achievements & Awards",
+  awards: "Awards & Honors",
+  languages: "Languages",
+  volunteer: "Volunteer Experience",
+  leadership: "Leadership & Activities",
+  publications: "Publications",
+  courses: "Relevant Coursework"
+};
+
 let resumeBuilderState = {
   template: "classic_ats",
   fontSize: "medium",
   spacing: "standard",
   accentColor: "#1e3a8a",
+  dateFormat: "MMM YYYY",
+  skillsLayout: "inline", // "inline" or "grouped"
   sectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
+  sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
   header: {
     full_name: "",
     headline: "",
@@ -1361,15 +1380,154 @@ let resumeBuilderState = {
   },
   summary: "",
   skills: [],
+  skillCategories: [],
   experiences: [],
   projects: [],
   education: [],
   certifications: [],
   achievements: [],
-  languages: []
+  awards: [],
+  languages: [],
+  volunteer: [],
+  leadership: [],
+  publications: [],
+  courses: [],
+  customSections: []
 };
 
 let builderAutosaveTimeout = null;
+
+function sanitizeHtmlForPreview(rawHtml) {
+  if (!rawHtml || typeof rawHtml !== "string") return "";
+  const allowed = new Set(["B", "STRONG", "I", "EM", "U", "A", "UL", "OL", "LI", "P", "SPAN", "BR"]);
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(rawHtml, "text/html");
+    function cleanNode(node) {
+      const children = Array.from(node.childNodes);
+      for (const child of children) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          if (!allowed.has(child.tagName)) {
+            const text = document.createTextNode(child.textContent || "");
+            node.replaceChild(text, child);
+          } else {
+            const attrs = Array.from(child.attributes);
+            for (const attr of attrs) {
+              if (child.tagName === "A" && (attr.name === "href" || attr.name === "target" || attr.name === "rel")) {
+                if (attr.name === "href" && !/^(https?:\/\/|mailto:|tel:)/i.test(attr.value)) {
+                  child.removeAttribute(attr.name);
+                }
+              } else {
+                child.removeAttribute(attr.name);
+              }
+            }
+            if (child.tagName === "A") {
+              child.setAttribute("target", "_blank");
+              child.setAttribute("rel", "noopener noreferrer");
+            }
+            cleanNode(child);
+          }
+        }
+      }
+    }
+    cleanNode(doc.body);
+    return doc.body.innerHTML;
+  } catch (e) {
+    return escapeHtml(rawHtml);
+  }
+}
+
+function formatDateStrClient(dateStr, fmt = "MMM YYYY") {
+  if (!dateStr || typeof dateStr !== "string") return "";
+  const s = dateStr.trim();
+  if (!s) return "";
+  if (/^(present|current|now)$/i.test(s)) return "Present";
+  if (/^\d{4}$/.test(s)) return s;
+
+  const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthNamesFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  let year = null;
+  let month = null;
+
+  let m = s.match(/^(\d{4})[-\/.](\d{1,2})$/);
+  if (m) {
+    year = parseInt(m[1], 10);
+    month = parseInt(m[2], 10);
+  }
+  if (!year) {
+    m = s.match(/^(\d{1,2})[-\/.](\d{4})$/);
+    if (m) {
+      month = parseInt(m[1], 10);
+      year = parseInt(m[2], 10);
+    }
+  }
+  if (!year) {
+    m = s.match(/^([a-zA-Z]+)[,\s]+(\d{4})$/);
+    if (m) {
+      year = parseInt(m[2], 10);
+      const mStr = m[1].toLowerCase();
+      const idx = monthNamesShort.findIndex(n => n.toLowerCase() === mStr.slice(0, 3));
+      if (idx !== -1) month = idx + 1;
+    }
+  }
+
+  if (year && month && month >= 1 && month <= 12) {
+    const mm = String(month).padStart(2, "0");
+    const mShort = monthNamesShort[month - 1];
+    const mFull = monthNamesFull[month - 1];
+
+    if (fmt === "MM/YYYY") return `${mm}/${year}`;
+    if (fmt === "MMMM YYYY") return `${mFull} ${year}`;
+    if (fmt === "YYYY") return String(year);
+    return `${mShort} ${year}`;
+  }
+
+  return s;
+}
+
+function formatClientDateRange(startDate, endDate, isCurrent, fmt = "MMM YYYY") {
+  const s = formatDateStrClient(startDate, fmt);
+  const e = isCurrent ? "Present" : formatDateStrClient(endDate, fmt);
+  if (s && e) return `${s} – ${e}`;
+  if (s) return s;
+  if (e) return e;
+  return "";
+}
+
+function cleanBulletHtml(html) {
+  if (!html) return [];
+  const str = html
+    .replace(/<br\s*[\/]?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[!\/]?[a-z0-9]+[^>]*>/gi, (match) => {
+      const tag = match.toLowerCase();
+      if (/^<\/?(b|i|u|strong|em|a)(\s|>)/.test(tag)) {
+        return match;
+      }
+      return "";
+    });
+
+  return str.split("\n")
+    .map(line => line.replace(/^[\s•\-\*]+/, "").trim())
+    .filter(Boolean);
+}
+
+function renderRichToolbar(editorId) {
+  return `
+    <div class="rich-text-toolbar" data-for="${editorId}">
+      <button type="button" class="rich-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button type="button" class="rich-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button type="button" class="rich-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+      <span class="rich-toolbar-sep"></span>
+      <button type="button" class="rich-toolbar-btn" data-command="insertUnorderedList" title="Bullet List">• list</button>
+      <button type="button" class="rich-toolbar-btn" data-command="createLink" title="Insert Link">🔗</button>
+      <button type="button" class="rich-toolbar-btn" data-command="removeFormat" title="Clear Formatting">Tx</button>
+    </div>
+  `;
+}
 
 function getCleanResumeBuilderState() {
   const p = state.profile || {};
@@ -1380,7 +1538,10 @@ function getCleanResumeBuilderState() {
     fontSize: state.customizer?.fontSize || "medium",
     spacing: state.customizer?.spacing || "standard",
     accentColor: state.customizer?.accentColor || "#1e3a8a",
+    dateFormat: "MMM YYYY",
+    skillsLayout: "inline",
     sectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
+    sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
     header: {
       full_name: p.full_name || u.full_name || "",
       headline: p.headline || "",
@@ -1393,6 +1554,7 @@ function getCleanResumeBuilderState() {
     },
     summary: p.summary || "",
     skills: (p.skills || []).map(s => typeof s === "string" ? s : s.name).filter(Boolean),
+    skillCategories: [],
     experiences: (p.experiences || []).map(e => ({
       title: e.title || e.role_title || "",
       company: e.company || "",
@@ -1400,7 +1562,8 @@ function getCleanResumeBuilderState() {
       start_date: e.start_date || "",
       end_date: e.end_date || "",
       is_current: !!e.is_current,
-      bullets: (e.bullets || e.bullet_points || []).map(b => typeof b === "string" ? b : (b.text || ""))
+      bullets: (e.bullets || e.bullet_points || []).map(b => typeof b === "string" ? b : (b.text || "")),
+      is_hidden: false
     })),
     projects: (p.projects || []).map(pr => ({
       title: pr.title || pr.name || "",
@@ -1409,7 +1572,8 @@ function getCleanResumeBuilderState() {
       start_date: pr.start_date || "",
       end_date: pr.end_date || "",
       description: pr.description || "",
-      bullets: (pr.bullets || pr.bullet_points || []).map(b => typeof b === "string" ? b : (b.text || ""))
+      bullets: (pr.bullets || pr.bullet_points || []).map(b => typeof b === "string" ? b : (b.text || "")),
+      is_hidden: false
     })),
     education: (p.education || []).map(ed => ({
       institution: ed.institution || "",
@@ -1418,15 +1582,27 @@ function getCleanResumeBuilderState() {
       start_date: ed.start_date || "",
       end_date: ed.end_date || ed.graduation_year || "",
       grade: ed.grade || ed.gpa || "",
-      location: ed.location || ""
+      location: ed.location || "",
+      is_hidden: false
     })),
     certifications: (p.certifications || []).map(c => ({
       name: typeof c === "string" ? c : (c.name || ""),
       issuer: typeof c === "object" ? (c.issuer || "") : "",
-      date: typeof c === "object" ? (c.issue_date || c.date || "") : ""
+      date: typeof c === "object" ? (c.issue_date || c.date || "") : "",
+      is_hidden: false
     })),
     achievements: [],
-    languages: []
+    awards: [],
+    languages: (p.languages || []).map(l => ({
+      language: typeof l === "string" ? l : (l.language || l.name || ""),
+      proficiency: typeof l === "object" ? (l.proficiency || "Proficient") : "Proficient",
+      is_hidden: false
+    })),
+    volunteer: [],
+    leadership: [],
+    publications: [],
+    courses: [],
+    customSections: []
   };
 }
 
@@ -1436,7 +1612,19 @@ function loadResumeBuilderState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object" && parsed.header) {
-        resumeBuilderState = Object.assign(getCleanResumeBuilderState(), parsed);
+        const clean = getCleanResumeBuilderState();
+        resumeBuilderState = Object.assign(clean, parsed);
+        resumeBuilderState.sectionTitles = Object.assign({}, DEFAULT_SECTION_TITLES, parsed.sectionTitles || {});
+        if (resumeBuilderState.sectionTitles.skills === "Skills & Technologies") {
+          resumeBuilderState.sectionTitles.skills = "Skills";
+        }
+        if (!Array.isArray(resumeBuilderState.sectionOrder)) {
+          resumeBuilderState.sectionOrder = clean.sectionOrder;
+        }
+        if (!resumeBuilderState.dateFormat) resumeBuilderState.dateFormat = "MMM YYYY";
+        if (!resumeBuilderState.skillsLayout) resumeBuilderState.skillsLayout = "inline";
+        if (!Array.isArray(resumeBuilderState.skillCategories)) resumeBuilderState.skillCategories = [];
+        if (!Array.isArray(resumeBuilderState.customSections)) resumeBuilderState.customSections = [];
         return;
       }
     }
@@ -1471,80 +1659,90 @@ function triggerBuilderAutosave() {
 
 function wireResumeBuilder() {
   // Sync profile button
-  const syncBtn = $("#builderSyncProfileBtn");
-  if (syncBtn) {
-    syncBtn.addEventListener("click", () => {
-      if (confirm("Sync will refresh your resume fields with the latest data from your Career Profile. Continue?")) {
-        resumeBuilderState = getCleanResumeBuilderState();
-        triggerBuilderAutosave();
-        renderBuilderEditorFromState();
-        renderResumePreviewCanvas();
-        toast("Synchronized with your Career Profile.");
-      }
-    });
-  }
+  $("#builderSyncProfileBtn")?.addEventListener("click", () => {
+    if (confirm("Sync will refresh your resume fields with the latest data from your Career Profile. Continue?")) {
+      resumeBuilderState = getCleanResumeBuilderState();
+      triggerBuilderAutosave();
+      renderBuilderEditorFromState();
+      renderResumePreviewCanvas();
+      toast("Synchronized with your Career Profile.");
+    }
+  });
 
   // Template select
-  const tplSelect = $("#builderTemplateSelect");
-  if (tplSelect) {
-    tplSelect.addEventListener("change", (e) => {
-      resumeBuilderState.template = e.target.value;
-      state.activeTemplateId = e.target.value;
-      triggerBuilderAutosave();
-      renderResumePreviewCanvas();
-    });
-  }
+  $("#builderTemplateSelect")?.addEventListener("change", (e) => {
+    resumeBuilderState.template = e.target.value;
+    state.activeTemplateId = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
 
   // Font size
-  const fontSizeSelect = $("#builderFontSize");
-  if (fontSizeSelect) {
-    fontSizeSelect.addEventListener("change", (e) => {
-      resumeBuilderState.fontSize = e.target.value;
-      triggerBuilderAutosave();
-      renderResumePreviewCanvas();
-    });
-  }
+  $("#builderFontSize")?.addEventListener("change", (e) => {
+    resumeBuilderState.fontSize = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
 
   // Spacing
-  const spacingSelect = $("#builderSpacing");
-  if (spacingSelect) {
-    spacingSelect.addEventListener("change", (e) => {
-      resumeBuilderState.spacing = e.target.value;
-      triggerBuilderAutosave();
-      renderResumePreviewCanvas();
-    });
-  }
+  $("#builderSpacing")?.addEventListener("change", (e) => {
+    resumeBuilderState.spacing = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
 
   // Accent Color
-  const accentPicker = $("#builderAccentColor");
-  if (accentPicker) {
-    accentPicker.addEventListener("input", (e) => {
-      resumeBuilderState.accentColor = e.target.value;
-      triggerBuilderAutosave();
-      renderResumePreviewCanvas();
-    });
-  }
+  $("#builderAccentColor")?.addEventListener("input", (e) => {
+    resumeBuilderState.accentColor = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+
+  // Date Format Select
+  $("#builderDateFormat")?.addEventListener("change", (e) => {
+    resumeBuilderState.dateFormat = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
 
   // Add Section Select
   const addSecSelect = $("#builderAddSectionSelect");
   if (addSecSelect) {
     addSecSelect.addEventListener("change", (e) => {
       const val = e.target.value;
-      if (val) {
+      if (!val) return;
+      if (val === "custom_new") {
+        const title = prompt("Enter title for Custom Section (e.g. Patents, Exhibitions, Client Engagements):", "Custom Section");
+        if (title && title.trim()) {
+          const customId = "custom_" + Date.now();
+          if (!resumeBuilderState.customSections) resumeBuilderState.customSections = [];
+          resumeBuilderState.customSections.push({
+            id: customId,
+            title: title.trim(),
+            items: []
+          });
+          if (!resumeBuilderState.sectionTitles) resumeBuilderState.sectionTitles = {};
+          resumeBuilderState.sectionTitles[customId] = title.trim();
+          resumeBuilderState.sectionOrder.push(customId);
+          triggerBuilderAutosave();
+          renderBuilderEditorFromState();
+          renderResumePreviewCanvas();
+          toast(`Added custom section "${title.trim()}".`);
+        }
+      } else {
         if (!resumeBuilderState.sectionOrder.includes(val)) {
           resumeBuilderState.sectionOrder.push(val);
         }
-        const panelId = "secEditor" + val.charAt(0).toUpperCase() + val.slice(1);
-        const pEl = $(`#${panelId}`);
-        if (pEl) {
-          pEl.classList.remove("hidden");
-          pEl.querySelector(".panel-body")?.classList.remove("hidden");
+        if (!resumeBuilderState[val] && ["volunteer", "leadership", "publications", "courses", "experiences", "projects", "education", "certifications", "achievements", "awards", "languages"].includes(val)) {
+          resumeBuilderState[val] = [];
         }
-        e.target.value = "";
         triggerBuilderAutosave();
+        renderBuilderEditorFromState();
         renderResumePreviewCanvas();
-        toast(`Added ${val} section to resume.`);
+        const displayTitle = (resumeBuilderState.sectionTitles && resumeBuilderState.sectionTitles[val]) || DEFAULT_SECTION_TITLES[val] || val;
+        toast(`Added ${displayTitle} section to resume.`);
       }
+      e.target.value = "";
     });
   }
 
@@ -1570,140 +1768,70 @@ function wireResumeBuilder() {
     }
   });
 
-  // Summary input binding
-  const sumEl = $("#builderSummary");
-  if (sumEl) {
-    sumEl.addEventListener("input", (e) => {
-      resumeBuilderState.summary = e.target.value;
-      const countEl = $("#builderSummaryCharCount");
-      if (countEl) countEl.textContent = `${e.target.value.length} characters`;
-      triggerBuilderAutosave();
-      renderResumePreviewCanvas();
-    });
-  }
-
-  // Skills input binding
-  const skillsInput = $("#builderSkillsInput");
-  if (skillsInput) {
-    skillsInput.addEventListener("input", (e) => {
-      const raw = e.target.value;
-      resumeBuilderState.skills = raw.split(",").map(s => s.trim()).filter(Boolean);
-      renderBuilderSkillsBadges();
-      triggerBuilderAutosave();
-      renderResumePreviewCanvas();
-    });
-  }
-
-  // Add Item Buttons
-  $("#builderAddExperienceBtn")?.addEventListener("click", () => {
-    resumeBuilderState.experiences.push({
-      title: "",
-      company: "",
-      location: "",
-      start_date: "",
-      end_date: "",
-      is_current: false,
-      bullets: [""]
-    });
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  });
-
-  $("#builderAddProjectBtn")?.addEventListener("click", () => {
-    resumeBuilderState.projects.push({
-      title: "",
-      technologies: "",
-      url: "",
-      start_date: "",
-      end_date: "",
-      description: "",
-      bullets: [""]
-    });
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  });
-
-  $("#builderAddEducationBtn")?.addEventListener("click", () => {
-    resumeBuilderState.education.push({
-      institution: "",
-      degree: "",
-      field_of_study: "",
-      start_date: "",
-      end_date: "",
-      grade: "",
-      location: ""
-    });
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  });
-
-  $("#builderAddCertificationBtn")?.addEventListener("click", () => {
-    resumeBuilderState.certifications.push({
-      name: "",
-      issuer: "",
-      date: ""
-    });
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  });
-
-  $("#builderAddAchievementBtn")?.addEventListener("click", () => {
-    resumeBuilderState.achievements.push("");
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  });
-
-  $("#builderAddLanguageBtn")?.addEventListener("click", () => {
-    resumeBuilderState.languages.push({
-      language: "",
-      proficiency: "Proficient"
-    });
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  });
-
   // Fullscreen preview
-  const fullscreenBtn = $("#builderFullscreenPreviewBtn");
-  if (fullscreenBtn) {
-    fullscreenBtn.addEventListener("click", () => {
-      openActiveResumePreview();
-    });
-  }
+  $("#builderFullscreenPreviewBtn")?.addEventListener("click", () => {
+    openActiveResumePreview();
+  });
 
   // Export buttons in Resume Builder
-  const pdfBtn = $("#builderDownloadPdfBtn");
-  if (pdfBtn) {
-    pdfBtn.addEventListener("click", () => {
-      executeResumeBuilderExport("pdf");
-    });
-  }
+  $("#builderDownloadPdfBtn")?.addEventListener("click", () => {
+    executeResumeBuilderExport("pdf");
+  });
 
-  const docxBtn = $("#builderDownloadDocxBtn");
-  if (docxBtn) {
-    docxBtn.addEventListener("click", () => {
-      executeResumeBuilderExport("docx");
-    });
-  }
+  $("#builderDownloadDocxBtn")?.addEventListener("click", () => {
+    executeResumeBuilderExport("docx");
+  });
 
   // Score Modal Button in Builder
-  const scoreBtn = $("#builderCheckScoreBtn");
-  if (scoreBtn) {
-    scoreBtn.addEventListener("click", () => {
-      openResumeScoreModal();
-    });
-  }
+  $("#builderCheckScoreBtn")?.addEventListener("click", () => {
+    openResumeScoreModal();
+  });
 
   // Recalculate Button in Score Modal
-  const recalcBtn = $("#scoreRecalculateBtn");
-  if (recalcBtn) {
-    recalcBtn.addEventListener("click", () => {
-      runResumeScoreCalculation();
+  $("#scoreRecalculateBtn")?.addEventListener("click", () => {
+    runResumeScoreCalculation();
+  });
+
+  // Global Rich Text keyboard shortcuts (Ctrl+B, Ctrl+I, Ctrl+U)
+  if (!window._richTextShortcutsWired) {
+    window._richTextShortcutsWired = true;
+    document.addEventListener("keydown", (e) => {
+      const editable = e.target.closest('.rich-text-content[contenteditable="true"]');
+      if (!editable) return;
+      if (e.ctrlKey || e.metaKey) {
+        const k = e.key.toLowerCase();
+        if (k === "b") {
+          e.preventDefault();
+          document.execCommand("bold", false, null);
+          editable.dispatchEvent(new Event("input", { bubbles: true }));
+        } else if (k === "i") {
+          e.preventDefault();
+          document.execCommand("italic", false, null);
+          editable.dispatchEvent(new Event("input", { bubbles: true }));
+        } else if (k === "u") {
+          e.preventDefault();
+          document.execCommand("underline", false, null);
+          editable.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    });
+
+    document.addEventListener("mousedown", (e) => {
+      const btn = e.target.closest(".rich-toolbar-btn");
+      if (!btn) return;
+      e.preventDefault();
+      const wrapper = btn.closest(".rich-text-wrapper");
+      const content = wrapper ? wrapper.querySelector('.rich-text-content[contenteditable="true"]') : null;
+      if (!content) return;
+      content.focus();
+      const cmd = btn.dataset.command;
+      if (cmd === "createLink") {
+        const url = prompt("Enter link URL (e.g. https://...):");
+        if (url) document.execCommand("createLink", false, url);
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+      content.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
 }
@@ -1936,7 +2064,9 @@ async function executeResumeBuilderExport(format = "pdf") {
       accent_color: resumeBuilderState.accentColor || "#1e3a8a",
       font_size: resumeBuilderState.fontSize || "medium",
       spacing: resumeBuilderState.spacing || "standard",
-      section_order: resumeBuilderState.sectionOrder,
+      date_format: resumeBuilderState.dateFormat || "MMM YYYY",
+      section_order: resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
+      section_titles: resumeBuilderState.sectionTitles || {},
       content: {
         candidate_name: h.full_name || state.user?.full_name || "Resume",
         headline: h.headline || "",
@@ -1947,41 +2077,89 @@ async function executeResumeBuilderExport(format = "pdf") {
         linkedin_url: h.linkedin || "",
         github_url: h.github || "",
         website_url: h.website || "",
+        skills_layout: resumeBuilderState.skillsLayout || "inline",
+        skill_categories: resumeBuilderState.skillCategories || [],
         skills: resumeBuilderState.skills || [],
         experiences: (resumeBuilderState.experiences || []).map(e => ({
-          role_title: e.title,
-          company: e.company,
-          location: e.location,
-          start_date: e.start_date,
-          end_date: e.end_date,
-          is_current: e.is_current,
-          bullet_points: e.bullets || []
+          role_title: e.title || "",
+          company: e.company || "",
+          location: e.location || "",
+          start_date: e.start_date || "",
+          end_date: e.end_date || "",
+          is_current: !!e.is_current,
+          bullet_points: e.bullets || [],
+          is_hidden: !!e.is_hidden
         })),
         projects: (resumeBuilderState.projects || []).map(p => ({
-          title: p.title,
+          title: p.title || "",
           technologies: typeof p.technologies === "string" ? p.technologies.split(",").map(t => t.trim()).filter(Boolean) : (p.technologies || []),
-          url: p.url,
-          start_date: p.start_date,
-          end_date: p.end_date,
-          description: p.description,
-          bullet_points: p.bullets || []
+          url: p.url || "",
+          start_date: p.start_date || "",
+          end_date: p.end_date || "",
+          description: p.description || "",
+          bullet_points: p.bullets || [],
+          is_hidden: !!p.is_hidden
         })),
         education: (resumeBuilderState.education || []).map(ed => ({
-          institution: ed.institution,
-          degree: ed.degree,
-          field_of_study: ed.field_of_study,
-          start_date: ed.start_date,
-          end_date: ed.end_date,
-          gpa: ed.grade,
-          location: ed.location
+          institution: ed.institution || "",
+          degree: ed.degree || "",
+          field_of_study: ed.field_of_study || "",
+          start_date: ed.start_date || "",
+          end_date: ed.end_date || "",
+          gpa: ed.grade || "",
+          location: ed.location || "",
+          is_hidden: !!ed.is_hidden
         })),
         certifications: (resumeBuilderState.certifications || []).map(c => ({
-          name: c.name,
-          issuer: c.issuer,
-          issue_date: c.date
+          name: c.name || "",
+          issuer: c.issuer || "",
+          issue_date: c.date || "",
+          is_hidden: !!c.is_hidden
         })),
-        achievements: resumeBuilderState.achievements || [],
-        languages: resumeBuilderState.languages || []
+        achievements: (resumeBuilderState.achievements || []).map(a => typeof a === "string" ? { text: a, is_hidden: false } : a),
+        awards: (resumeBuilderState.awards || []).map(aw => typeof aw === "string" ? { text: aw, is_hidden: false } : aw),
+        languages: (resumeBuilderState.languages || []).map(l => ({
+          language: l.language || "",
+          proficiency: l.proficiency || "",
+          is_hidden: !!l.is_hidden
+        })),
+        volunteer: (resumeBuilderState.volunteer || []).map(v => ({
+          role: v.role || "",
+          organization: v.organization || "",
+          location: v.location || "",
+          start_date: v.start_date || "",
+          end_date: v.end_date || "",
+          is_current: !!v.is_current,
+          description: v.description || "",
+          bullet_points: v.bullets || [],
+          is_hidden: !!v.is_hidden
+        })),
+        leadership: (resumeBuilderState.leadership || []).map(l => ({
+          role: l.role || "",
+          organization: l.organization || "",
+          location: l.location || "",
+          start_date: l.start_date || "",
+          end_date: l.end_date || "",
+          description: l.description || "",
+          bullet_points: l.bullets || [],
+          is_hidden: !!l.is_hidden
+        })),
+        publications: (resumeBuilderState.publications || []).map(pb => ({
+          title: pb.title || "",
+          publisher: pb.publisher || "",
+          date: pb.date || "",
+          url: pb.url || "",
+          description: pb.description || "",
+          is_hidden: !!pb.is_hidden
+        })),
+        courses: (resumeBuilderState.courses || []).map(cs => ({
+          name: cs.name || "",
+          institution: cs.institution || "",
+          date: cs.date || "",
+          is_hidden: !!cs.is_hidden
+        })),
+        custom_sections: resumeBuilderState.customSections || [],
+        section_titles: resumeBuilderState.sectionTitles || {}
       }
     };
 
@@ -2062,9 +2240,269 @@ function loadResumeBuilderView() {
   const accentInput = $("#builderAccentColor");
   if (accentInput && resumeBuilderState.accentColor) accentInput.value = resumeBuilderState.accentColor;
 
+  const dateFmtSelect = $("#builderDateFormat");
+  if (dateFmtSelect && resumeBuilderState.dateFormat) dateFmtSelect.value = resumeBuilderState.dateFormat;
+
   renderBuilderEditorFromState();
   renderResumePreviewCanvas();
 }
+
+// Section management helpers
+window.moveBuilderSection = function(secKey, dir) {
+  const idx = resumeBuilderState.sectionOrder.indexOf(secKey);
+  if (idx === -1) return;
+  const targetIdx = idx + dir;
+  if (targetIdx < 0 || targetIdx >= resumeBuilderState.sectionOrder.length) return;
+  const temp = resumeBuilderState.sectionOrder[idx];
+  resumeBuilderState.sectionOrder[idx] = resumeBuilderState.sectionOrder[targetIdx];
+  resumeBuilderState.sectionOrder[targetIdx] = temp;
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.updateBuilderSectionTitle = function(secKey, title) {
+  if (!resumeBuilderState.sectionTitles) resumeBuilderState.sectionTitles = {};
+  resumeBuilderState.sectionTitles[secKey] = title.trim();
+  if (secKey.startsWith("custom_")) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === secKey);
+    if (cs) cs.title = title.trim();
+  }
+  triggerBuilderAutosave();
+  renderResumePreviewCanvas();
+};
+
+window.removeBuilderSection = function(secKey) {
+  const idx = resumeBuilderState.sectionOrder.indexOf(secKey);
+  if (idx !== -1) {
+    resumeBuilderState.sectionOrder.splice(idx, 1);
+    triggerBuilderAutosave();
+    renderBuilderEditorFromState();
+    renderResumePreviewCanvas();
+    toast("Section removed from resume.");
+  }
+};
+
+// Repeatable entry controls
+window.addBuilderEntry = function(collection, customId) {
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs) {
+      if (!Array.isArray(cs.items)) cs.items = [];
+      cs.items.push({ title: "", subtitle: "", date: "", description: "", bullets: [""], is_hidden: false });
+    }
+  } else if (collection === "experiences") {
+    resumeBuilderState.experiences.push({ title: "", company: "", location: "", start_date: "", end_date: "", is_current: false, bullets: [""], is_hidden: false });
+  } else if (collection === "projects") {
+    resumeBuilderState.projects.push({ title: "", technologies: "", url: "", start_date: "", end_date: "", description: "", bullets: [""], is_hidden: false });
+  } else if (collection === "education") {
+    resumeBuilderState.education.push({ institution: "", degree: "", field_of_study: "", start_date: "", end_date: "", grade: "", location: "", is_hidden: false });
+  } else if (collection === "certifications") {
+    resumeBuilderState.certifications.push({ name: "", issuer: "", date: "", is_hidden: false });
+  } else if (collection === "achievements") {
+    resumeBuilderState.achievements.push({ text: "", is_hidden: false });
+  } else if (collection === "awards") {
+    if (!resumeBuilderState.awards) resumeBuilderState.awards = [];
+    resumeBuilderState.awards.push({ text: "", is_hidden: false });
+  } else if (collection === "languages") {
+    resumeBuilderState.languages.push({ language: "", proficiency: "Proficient", is_hidden: false });
+  } else if (collection === "volunteer") {
+    if (!resumeBuilderState.volunteer) resumeBuilderState.volunteer = [];
+    resumeBuilderState.volunteer.push({ role: "", organization: "", location: "", start_date: "", end_date: "", is_current: false, description: "", bullets: [""], is_hidden: false });
+  } else if (collection === "leadership") {
+    if (!resumeBuilderState.leadership) resumeBuilderState.leadership = [];
+    resumeBuilderState.leadership.push({ role: "", organization: "", location: "", start_date: "", end_date: "", description: "", bullets: [""], is_hidden: false });
+  } else if (collection === "publications") {
+    if (!resumeBuilderState.publications) resumeBuilderState.publications = [];
+    resumeBuilderState.publications.push({ title: "", publisher: "", date: "", url: "", description: "", is_hidden: false });
+  } else if (collection === "courses") {
+    if (!resumeBuilderState.courses) resumeBuilderState.courses = [];
+    resumeBuilderState.courses.push({ name: "", institution: "", date: "", is_hidden: false });
+  }
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.removeBuilderItem = function(collection, idx, customId) {
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs && cs.items) cs.items.splice(idx, 1);
+  } else if (resumeBuilderState[collection]) {
+    resumeBuilderState[collection].splice(idx, 1);
+  }
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.moveBuilderEntry = function(collection, idx, dir, customId) {
+  let list = null;
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs) list = cs.items;
+  } else {
+    list = resumeBuilderState[collection];
+  }
+  if (!list || idx < 0 || idx >= list.length) return;
+  const target = idx + dir;
+  if (target < 0 || target >= list.length) return;
+  const temp = list[idx];
+  list[idx] = list[target];
+  list[target] = temp;
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.duplicateBuilderEntry = function(collection, idx, customId) {
+  let list = null;
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs) list = cs.items;
+  } else {
+    list = resumeBuilderState[collection];
+  }
+  if (!list || idx < 0 || idx >= list.length) return;
+  const copy = JSON.parse(JSON.stringify(list[idx]));
+  list.splice(idx + 1, 0, copy);
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+  toast("Entry duplicated.");
+};
+
+window.toggleBuilderEntryVisibility = function(collection, idx, isHidden, customId) {
+  let list = null;
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs) list = cs.items;
+  } else {
+    list = resumeBuilderState[collection];
+  }
+  if (!list || !list[idx]) return;
+  if (typeof list[idx] === "object") {
+    list[idx].is_hidden = !!isHidden;
+  } else {
+    list[idx] = { text: String(list[idx]), is_hidden: !!isHidden };
+  }
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.updateBuilderItemField = function(collection, idx, field, val, customId) {
+  let item = null;
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs && cs.items) item = cs.items[idx];
+  } else if (resumeBuilderState[collection]) {
+    item = resumeBuilderState[collection][idx];
+  }
+  if (item) {
+    item[field] = val;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  }
+};
+
+window.updateBuilderItemBullets = function(collection, idx, htmlVal, customId) {
+  let item = null;
+  if (collection === "custom" && customId) {
+    const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
+    if (cs && cs.items) item = cs.items[idx];
+  } else if (resumeBuilderState[collection]) {
+    item = resumeBuilderState[collection][idx];
+  }
+  if (item) {
+    item.bullets = cleanBulletHtml(htmlVal);
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  }
+};
+
+window.updateBuilderAchievement = function(idx, val) {
+  if (resumeBuilderState.achievements) {
+    if (typeof resumeBuilderState.achievements[idx] === "object") {
+      resumeBuilderState.achievements[idx].text = val;
+    } else {
+      resumeBuilderState.achievements[idx] = { text: val, is_hidden: false };
+    }
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  }
+};
+
+window.updateBuilderAward = function(idx, val) {
+  if (!resumeBuilderState.awards) resumeBuilderState.awards = [];
+  if (typeof resumeBuilderState.awards[idx] === "object") {
+    resumeBuilderState.awards[idx].text = val;
+  } else {
+    resumeBuilderState.awards[idx] = { text: val, is_hidden: false };
+  }
+  triggerBuilderAutosave();
+  renderResumePreviewCanvas();
+};
+
+// Skills Layout & Categories
+window.setSkillsLayout = function(layout) {
+  resumeBuilderState.skillsLayout = layout;
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.updateSkillsInline = function(val) {
+  resumeBuilderState.skills = val.split(",").map(s => s.trim()).filter(Boolean);
+  triggerBuilderAutosave();
+  renderResumePreviewCanvas();
+};
+
+window.addSkillCategory = function() {
+  if (!resumeBuilderState.skillCategories) resumeBuilderState.skillCategories = [];
+  resumeBuilderState.skillCategories.push({ name: "Core Skills", skills: [] });
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
+
+window.updateSkillCategoryName = function(catIdx, name) {
+  if (resumeBuilderState.skillCategories && resumeBuilderState.skillCategories[catIdx]) {
+    resumeBuilderState.skillCategories[catIdx].name = name;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  }
+};
+
+window.updateSkillCategorySkills = function(catIdx, val) {
+  if (resumeBuilderState.skillCategories && resumeBuilderState.skillCategories[catIdx]) {
+    resumeBuilderState.skillCategories[catIdx].skills = val.split(",").map(s => s.trim()).filter(Boolean);
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  }
+};
+
+window.removeSkillCategory = function(catIdx) {
+  if (resumeBuilderState.skillCategories) {
+    resumeBuilderState.skillCategories.splice(catIdx, 1);
+    triggerBuilderAutosave();
+    renderBuilderEditorFromState();
+    renderResumePreviewCanvas();
+  }
+};
+
+window.moveSkillCategory = function(catIdx, dir) {
+  const cats = resumeBuilderState.skillCategories;
+  if (!cats || catIdx < 0 || catIdx >= cats.length) return;
+  const target = catIdx + dir;
+  if (target < 0 || target >= cats.length) return;
+  const temp = cats[catIdx];
+  cats[catIdx] = cats[target];
+  cats[target] = temp;
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+};
 
 function renderBuilderEditorFromState() {
   const h = resumeBuilderState.header || {};
@@ -2079,262 +2517,579 @@ function renderBuilderEditorFromState() {
   setVal("builderGithub", h.github);
   setVal("builderWebsite", h.website);
 
-  setVal("builderSummary", resumeBuilderState.summary);
-  const countEl = $("#builderSummaryCharCount");
-  if (countEl) countEl.textContent = `${(resumeBuilderState.summary || "").length} characters`;
-
-  setVal("builderSkillsInput", (resumeBuilderState.skills || []).join(", "));
-  renderBuilderSkillsBadges();
-
-  renderBuilderExperienceEditor();
-  renderBuilderProjectsEditor();
-  renderBuilderEducationEditor();
-  renderBuilderCertificationsEditor();
-  renderBuilderAchievementsEditor();
-  renderBuilderLanguagesEditor();
-}
-
-function renderBuilderSkillsBadges() {
-  const container = $("#builderSkillsBadges");
+  const container = $("#builderDynamicSectionsList");
   if (!container) return;
-  const skills = resumeBuilderState.skills || [];
-  container.innerHTML = skills.map(s => `<span class="tag-pill text-xs">${escapeHtml(s)}</span>`).join("");
-}
 
-function renderBuilderExperienceEditor() {
-  const list = $("#builderExperienceList");
-  if (!list) return;
-  const exps = resumeBuilderState.experiences || [];
-  if (exps.length === 0) {
-    list.innerHTML = '<p class="text-xs text-muted" style="margin: 0;">No experience entries yet. Click "+ Add Role" to add work history.</p>';
-    return;
-  }
-  list.innerHTML = exps.map((e, idx) => `
-    <div class="p-3 border rounded bg-surface-2 column-stack gap-2" style="position: relative;">
-      <div class="flex-row justify-between align-center">
-        <strong class="text-xs">Role #${idx + 1}</strong>
-        <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('experiences', ${idx})" title="Remove role">
-          <i data-lucide="trash-2"></i>
-        </button>
+  const sectionOrder = resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
+
+  container.innerHTML = sectionOrder.map((secKey, secIdx) => {
+    const isFirst = secIdx === 0;
+    const isLast = secIdx === sectionOrder.length - 1;
+    const secTitle = (resumeBuilderState.sectionTitles && resumeBuilderState.sectionTitles[secKey]) || DEFAULT_SECTION_TITLES[secKey] || "Section";
+
+    let icon = "file-text";
+    let addBtnHtml = "";
+    let bodyHtml = "";
+
+    if (secKey === "summary") {
+      icon = "align-left";
+      const sumVal = resumeBuilderState.summary || "";
+      bodyHtml = `
+        <div class="rich-text-wrapper mb-2">
+          ${renderRichToolbar("builderSummaryContent")}
+          <div class="rich-text-content" id="builderSummaryContent" contenteditable="true"
+               data-placeholder="Brief 2-4 sentence overview of your domain expertise, quantifiable achievements, and core specializations..."
+               oninput="resumeBuilderState.summary = this.innerHTML; $('#builderSummaryCharCount').textContent = (this.textContent || '').length + ' characters'; triggerBuilderAutosave(); renderResumePreviewCanvas();">${sanitizeHtmlForPreview(sumVal)}</div>
+        </div>
+        <div class="flex-row justify-end">
+          <span class="text-xs text-muted" id="builderSummaryCharCount">${sumVal.replace(/<[^>]+>/g, "").length} characters</span>
+        </div>
+      `;
+    } else if (secKey === "skills") {
+      icon = "award";
+      const isGrouped = resumeBuilderState.skillsLayout === "grouped";
+      const inlineSkillsStr = (resumeBuilderState.skills || []).join(", ");
+      const categories = resumeBuilderState.skillCategories || [];
+
+      bodyHtml = `
+        <div class="column-stack gap-3">
+          <div class="flex-row align-center justify-between p-2 rounded bg-surface border">
+            <span class="text-xs font-semibold">Skills Presentation:</span>
+            <div class="flex-row align-center gap-2">
+              <label class="flex-row align-center gap-1 text-xs" style="cursor: pointer;">
+                <input type="radio" name="skillsLayoutRadio" value="inline" ${!isGrouped ? "checked" : ""} onchange="setSkillsLayout('inline')">
+                <span>Standard Inline (Comma-separated)</span>
+              </label>
+              <label class="flex-row align-center gap-1 text-xs" style="cursor: pointer;">
+                <input type="radio" name="skillsLayoutRadio" value="grouped" ${isGrouped ? "checked" : ""} onchange="setSkillsLayout('grouped')">
+                <span>Grouped by Category</span>
+              </label>
+            </div>
+          </div>
+
+          ${!isGrouped ? `
+            <div>
+              <label class="text-xs text-muted mb-1 block">Enter all skills separated by commas:</label>
+              <textarea rows="3" placeholder="e.g. Strategic Planning, Team Leadership, Budgeting, Financial Analysis, Process Optimization"
+                        oninput="updateSkillsInline(this.value)">${escapeHtml(inlineSkillsStr)}</textarea>
+              <div class="text-xs text-muted mt-1">Skills will render cleanly as inline resume text across ATS layouts.</div>
+            </div>
+          ` : `
+            <div class="column-stack gap-2">
+              ${categories.map((cat, cIdx) => `
+                <div class="p-2 border rounded bg-surface column-stack gap-2">
+                  <div class="flex-row justify-between align-center">
+                    <input type="text" class="text-xs font-bold" style="max-width: 180px; padding: 2px 6px;" value="${escapeHtml(cat.name || "")}" placeholder="Category Name" oninput="updateSkillCategoryName(${cIdx}, this.value)">
+                    <div class="flex-row align-center gap-1">
+                      <button class="icon-btn xs" type="button" onclick="moveSkillCategory(${cIdx}, -1)" ${cIdx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                      <button class="icon-btn xs" type="button" onclick="moveSkillCategory(${cIdx}, 1)" ${cIdx === categories.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                      <button class="icon-btn xs text-danger" type="button" onclick="removeSkillCategory(${cIdx})" title="Remove Category"><i data-lucide="trash-2"></i></button>
+                    </div>
+                  </div>
+                  <input type="text" class="text-xs" value="${escapeHtml((cat.skills || []).join(', '))}" placeholder="Skills for this category (e.g. Excel, PowerBI, SQL)" oninput="updateSkillCategorySkills(${cIdx}, this.value)">
+                </div>
+              `).join("")}
+              <button class="secondary-btn xs align-self-start" type="button" onclick="addSkillCategory()"><i data-lucide="plus"></i><span>Add Skill Category</span></button>
+            </div>
+          `}
+        </div>
+      `;
+    } else if (secKey === "experiences") {
+      icon = "briefcase";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('experiences')"><i data-lucide="plus"></i><span>Add Role</span></button>`;
+      const exps = resumeBuilderState.experiences || [];
+      bodyHtml = exps.length === 0
+        ? '<p class="text-xs text-muted m-0">No experience entries yet. Click "+ Add Role" to add work history.</p>'
+        : `<div class="column-stack gap-3">${exps.map((e, idx) => `
+            <div class="builder-entry-card ${e.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Role #${idx + 1}</strong>
+                  ${e.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('experiences', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('experiences', ${idx}, 1)" ${idx === exps.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('experiences', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!e.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('experiences', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('experiences', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>Job Title / Role
+                  <input type="text" value="${escapeHtml(e.title || "")}" oninput="updateBuilderItemField('experiences', ${idx}, 'title', this.value)">
+                </label>
+                <label>Company / Organization
+                  <input type="text" value="${escapeHtml(e.company || "")}" oninput="updateBuilderItemField('experiences', ${idx}, 'company', this.value)">
+                </label>
+                <label>Location
+                  <input type="text" value="${escapeHtml(e.location || "")}" placeholder="e.g. Remote, City" oninput="updateBuilderItemField('experiences', ${idx}, 'location', this.value)">
+                </label>
+                <label>Start Date
+                  <input type="text" value="${escapeHtml(e.start_date || "")}" placeholder="e.g. May 2023 or 2023" oninput="updateBuilderItemField('experiences', ${idx}, 'start_date', this.value)">
+                </label>
+                <label>End Date
+                  <input type="text" value="${escapeHtml(e.end_date || "")}" placeholder="e.g. Present or 2025" oninput="updateBuilderItemField('experiences', ${idx}, 'end_date', this.value)">
+                </label>
+                <label class="flex-row align-center gap-2 mt-2">
+                  <input type="checkbox" ${e.is_current ? "checked" : ""} onchange="updateBuilderItemField('experiences', ${idx}, 'is_current', this.checked)">
+                  <span class="text-xs">I currently work here</span>
+                </label>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Responsibilities & Achievements (Rich Text Bullet Points):</div>
+                <div class="rich-text-wrapper">
+                  ${renderRichToolbar(`exp-bullets-${idx}`)}
+                  <div class="rich-text-content" id="exp-bullets-${idx}" contenteditable="true"
+                       data-placeholder="Describe achievements, quantifiable results, or responsibilities..."
+                       oninput="updateBuilderItemBullets('experiences', ${idx}, this.innerHTML)">${(e.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "projects") {
+      icon = "folder-git-2";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('projects')"><i data-lucide="plus"></i><span>Add Project</span></button>`;
+      const projs = resumeBuilderState.projects || [];
+      bodyHtml = projs.length === 0
+        ? '<p class="text-xs text-muted m-0">No projects added yet. Click "+ Add Project" to showcase key work.</p>'
+        : `<div class="column-stack gap-3">${projs.map((p, idx) => `
+            <div class="builder-entry-card ${p.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Project #${idx + 1}</strong>
+                  ${p.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('projects', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('projects', ${idx}, 1)" ${idx === projs.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('projects', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!p.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('projects', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('projects', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>Project Title
+                  <input type="text" value="${escapeHtml(p.title || "")}" oninput="updateBuilderItemField('projects', ${idx}, 'title', this.value)">
+                </label>
+                <label>Skills / Tools / Technologies
+                  <input type="text" value="${escapeHtml(p.technologies || "")}" placeholder="e.g. Python, SQL or Financial Modeling" oninput="updateBuilderItemField('projects', ${idx}, 'technologies', this.value)">
+                </label>
+                <label class="span-2">Project URL / Link
+                  <input type="text" value="${escapeHtml(p.url || "")}" placeholder="https://..." oninput="updateBuilderItemField('projects', ${idx}, 'url', this.value)">
+                </label>
+                <label>Start Date
+                  <input type="text" value="${escapeHtml(p.start_date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('projects', ${idx}, 'start_date', this.value)">
+                </label>
+                <label>End Date
+                  <input type="text" value="${escapeHtml(p.end_date || "")}" placeholder="e.g. Present" oninput="updateBuilderItemField('projects', ${idx}, 'end_date', this.value)">
+                </label>
+              </div>
+              <label class="text-xs text-muted mt-2 block">Short Summary:
+                <input type="text" value="${escapeHtml(p.description || "")}" oninput="updateBuilderItemField('projects', ${idx}, 'description', this.value)">
+              </label>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Key Outcomes & Bullets:</div>
+                <div class="rich-text-wrapper">
+                  ${renderRichToolbar(`proj-bullets-${idx}`)}
+                  <div class="rich-text-content" id="proj-bullets-${idx}" contenteditable="true"
+                       data-placeholder="Measurable results, accomplishments, or scope..."
+                       oninput="updateBuilderItemBullets('projects', ${idx}, this.innerHTML)">${(p.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "education") {
+      icon = "graduation-cap";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('education')"><i data-lucide="plus"></i><span>Add Education</span></button>`;
+      const edus = resumeBuilderState.education || [];
+      bodyHtml = edus.length === 0
+        ? '<p class="text-xs text-muted m-0">No education records added yet. Click "+ Add Education" to add degree.</p>'
+        : `<div class="column-stack gap-3">${edus.map((ed, idx) => `
+            <div class="builder-entry-card ${ed.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Education #${idx + 1}</strong>
+                  ${ed.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('education', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('education', ${idx}, 1)" ${idx === edus.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('education', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!ed.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('education', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('education', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label class="span-2">Institution / University
+                  <input type="text" value="${escapeHtml(ed.institution || "")}" oninput="updateBuilderItemField('education', ${idx}, 'institution', this.value)">
+                </label>
+                <label>Degree
+                  <input type="text" value="${escapeHtml(ed.degree || "")}" placeholder="e.g. B.S., B.A., M.B.A., or High School" oninput="updateBuilderItemField('education', ${idx}, 'degree', this.value)">
+                </label>
+                <label>Field of Study
+                  <input type="text" value="${escapeHtml(ed.field_of_study || "")}" placeholder="e.g. Business Administration, Nursing, CS" oninput="updateBuilderItemField('education', ${idx}, 'field_of_study', this.value)">
+                </label>
+                <label>Start Date / Year
+                  <input type="text" value="${escapeHtml(ed.start_date || "")}" placeholder="e.g. 2020" oninput="updateBuilderItemField('education', ${idx}, 'start_date', this.value)">
+                </label>
+                <label>Graduation Year
+                  <input type="text" value="${escapeHtml(ed.end_date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('education', ${idx}, 'end_date', this.value)">
+                </label>
+                <label class="span-2">Location / Honors / GPA (Optional)
+                  <input type="text" value="${escapeHtml(ed.grade || "")}" placeholder="e.g. Magna Cum Laude, GPA 3.8/4.0" oninput="updateBuilderItemField('education', ${idx}, 'grade', this.value)">
+                </label>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "certifications") {
+      icon = "check-circle-2";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('certifications')"><i data-lucide="plus"></i><span>Add Cert</span></button>`;
+      const certs = resumeBuilderState.certifications || [];
+      bodyHtml = certs.length === 0
+        ? '<p class="text-xs text-muted m-0">No certifications added yet.</p>'
+        : `<div class="column-stack gap-3">${certs.map((c, idx) => `
+            <div class="builder-entry-card ${c.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Cert #${idx + 1}</strong>
+                  ${c.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('certifications', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('certifications', ${idx}, 1)" ${idx === certs.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('certifications', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!c.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('certifications', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('certifications', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>Certificate / License Name
+                  <input type="text" value="${escapeHtml(c.name || "")}" oninput="updateBuilderItemField('certifications', ${idx}, 'name', this.value)">
+                </label>
+                <label>Issuing Organization
+                  <input type="text" value="${escapeHtml(c.issuer || "")}" placeholder="e.g. PMI, State Board, AWS" oninput="updateBuilderItemField('certifications', ${idx}, 'issuer', this.value)">
+                </label>
+                <label class="span-2">Issue Date / Year
+                  <input type="text" value="${escapeHtml(c.date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('certifications', ${idx}, 'date', this.value)">
+                </label>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "achievements") {
+      icon = "trophy";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('achievements')"><i data-lucide="plus"></i><span>Add Achievement</span></button>`;
+      const achs = resumeBuilderState.achievements || [];
+      bodyHtml = achs.length === 0
+        ? '<p class="text-xs text-muted m-0">No achievements added yet.</p>'
+        : `<div class="column-stack gap-2">${achs.map((a, idx) => {
+            const val = typeof a === "string" ? a : (a.text || "");
+            const isHid = typeof a === "object" ? !!a.is_hidden : false;
+            return `
+              <div class="flex-row align-center gap-2 ${isHid ? "opacity-50" : ""}">
+                <input type="text" value="${escapeHtml(val)}" placeholder="e.g. Exceeded annual sales quota by 135% in FY2024" oninput="updateBuilderAchievement(${idx}, this.value)" style="flex: 1;">
+                <label class="text-xs flex-row align-center gap-1" style="cursor: pointer;">
+                  <input type="checkbox" ${!isHid ? "checked" : ""} onchange="toggleBuilderEntryVisibility('achievements', ${idx}, !this.checked)">
+                  <span>Visible</span>
+                </label>
+                <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('achievements', ${idx})"><i data-lucide="trash-2"></i></button>
+              </div>
+            `;
+          }).join("")}</div>`;
+    } else if (secKey === "awards") {
+      icon = "award";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('awards')"><i data-lucide="plus"></i><span>Add Award</span></button>`;
+      const awds = resumeBuilderState.awards || [];
+      bodyHtml = awds.length === 0
+        ? '<p class="text-xs text-muted m-0">No awards added yet.</p>'
+        : `<div class="column-stack gap-2">${awds.map((a, idx) => {
+            const val = typeof a === "string" ? a : (a.text || "");
+            const isHid = typeof a === "object" ? !!a.is_hidden : false;
+            return `
+              <div class="flex-row align-center gap-2 ${isHid ? "opacity-50" : ""}">
+                <input type="text" value="${escapeHtml(val)}" placeholder="e.g. Employee of the Year 2023" oninput="updateBuilderAward(${idx}, this.value)" style="flex: 1;">
+                <label class="text-xs flex-row align-center gap-1" style="cursor: pointer;">
+                  <input type="checkbox" ${!isHid ? "checked" : ""} onchange="toggleBuilderEntryVisibility('awards', ${idx}, !this.checked)">
+                  <span>Visible</span>
+                </label>
+                <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('awards', ${idx})"><i data-lucide="trash-2"></i></button>
+              </div>
+            `;
+          }).join("")}</div>`;
+    } else if (secKey === "languages") {
+      icon = "languages";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('languages')"><i data-lucide="plus"></i><span>Add Language</span></button>`;
+      const langs = resumeBuilderState.languages || [];
+      bodyHtml = langs.length === 0
+        ? '<p class="text-xs text-muted m-0">No languages added yet.</p>'
+        : `<div class="column-stack gap-2">${langs.map((l, idx) => `
+            <div class="flex-row align-center gap-2 ${l.is_hidden ? "opacity-50" : ""}">
+              <input type="text" value="${escapeHtml(l.language || "")}" placeholder="Language (e.g. Spanish)" oninput="updateBuilderItemField('languages', ${idx}, 'language', this.value)" style="flex: 1;">
+              <input type="text" value="${escapeHtml(l.proficiency || "")}" placeholder="e.g. Fluent, Native, Professional" oninput="updateBuilderItemField('languages', ${idx}, 'proficiency', this.value)" style="width: 160px;">
+              <label class="text-xs flex-row align-center gap-1" style="cursor: pointer;">
+                <input type="checkbox" ${!l.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('languages', ${idx}, !this.checked)">
+                <span>Visible</span>
+              </label>
+              <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('languages', ${idx})"><i data-lucide="trash-2"></i></button>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "volunteer") {
+      icon = "heart";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('volunteer')"><i data-lucide="plus"></i><span>Add Entry</span></button>`;
+      const vols = resumeBuilderState.volunteer || [];
+      bodyHtml = vols.length === 0
+        ? '<p class="text-xs text-muted m-0">No volunteer experience added yet.</p>'
+        : `<div class="column-stack gap-3">${vols.map((v, idx) => `
+            <div class="builder-entry-card ${v.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Volunteer Entry #${idx + 1}</strong>
+                  ${v.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('volunteer', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('volunteer', ${idx}, 1)" ${idx === vols.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('volunteer', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!v.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('volunteer', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('volunteer', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>Role / Title
+                  <input type="text" value="${escapeHtml(v.role || "")}" oninput="updateBuilderItemField('volunteer', ${idx}, 'role', this.value)">
+                </label>
+                <label>Organization
+                  <input type="text" value="${escapeHtml(v.organization || "")}" oninput="updateBuilderItemField('volunteer', ${idx}, 'organization', this.value)">
+                </label>
+                <label>Location
+                  <input type="text" value="${escapeHtml(v.location || "")}" placeholder="e.g. City" oninput="updateBuilderItemField('volunteer', ${idx}, 'location', this.value)">
+                </label>
+                <label>Start Date
+                  <input type="text" value="${escapeHtml(v.start_date || "")}" placeholder="e.g. 2022" oninput="updateBuilderItemField('volunteer', ${idx}, 'start_date', this.value)">
+                </label>
+                <label>End Date
+                  <input type="text" value="${escapeHtml(v.end_date || "")}" placeholder="e.g. Present" oninput="updateBuilderItemField('volunteer', ${idx}, 'end_date', this.value)">
+                </label>
+                <label class="flex-row align-center gap-2 mt-2">
+                  <input type="checkbox" ${v.is_current ? "checked" : ""} onchange="updateBuilderItemField('volunteer', ${idx}, 'is_current', this.checked)">
+                  <span class="text-xs">Current involvement</span>
+                </label>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Description & Bullet Points:</div>
+                <div class="rich-text-wrapper">
+                  ${renderRichToolbar(`vol-bullets-${idx}`)}
+                  <div class="rich-text-content" id="vol-bullets-${idx}" contenteditable="true"
+                       data-placeholder="Impact, responsibilities, or activities..."
+                       oninput="updateBuilderItemBullets('volunteer', ${idx}, this.innerHTML)">${(v.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "leadership") {
+      icon = "users";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('leadership')"><i data-lucide="plus"></i><span>Add Activity</span></button>`;
+      const leads = resumeBuilderState.leadership || [];
+      bodyHtml = leads.length === 0
+        ? '<p class="text-xs text-muted m-0">No leadership activities added yet.</p>'
+        : `<div class="column-stack gap-3">${leads.map((l, idx) => `
+            <div class="builder-entry-card ${l.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Leadership #${idx + 1}</strong>
+                  ${l.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('leadership', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('leadership', ${idx}, 1)" ${idx === leads.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('leadership', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!l.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('leadership', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('leadership', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>Role / Position
+                  <input type="text" value="${escapeHtml(l.role || "")}" oninput="updateBuilderItemField('leadership', ${idx}, 'role', this.value)">
+                </label>
+                <label>Organization / Committee
+                  <input type="text" value="${escapeHtml(l.organization || "")}" oninput="updateBuilderItemField('leadership', ${idx}, 'organization', this.value)">
+                </label>
+                <label>Location
+                  <input type="text" value="${escapeHtml(l.location || "")}" placeholder="e.g. City" oninput="updateBuilderItemField('leadership', ${idx}, 'location', this.value)">
+                </label>
+                <label>Date / Term
+                  <input type="text" value="${escapeHtml(l.start_date || "")}" placeholder="e.g. 2023 - 2024" oninput="updateBuilderItemField('leadership', ${idx}, 'start_date', this.value)">
+                </label>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Impact & Details:</div>
+                <div class="rich-text-wrapper">
+                  ${renderRichToolbar(`lead-bullets-${idx}`)}
+                  <div class="rich-text-content" id="lead-bullets-${idx}" contenteditable="true"
+                       data-placeholder="Achievements, initiatives led, or responsibilities..."
+                       oninput="updateBuilderItemBullets('leadership', ${idx}, this.innerHTML)">${(l.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "publications") {
+      icon = "book-open";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('publications')"><i data-lucide="plus"></i><span>Add Publication</span></button>`;
+      const pubs = resumeBuilderState.publications || [];
+      bodyHtml = pubs.length === 0
+        ? '<p class="text-xs text-muted m-0">No publications added yet.</p>'
+        : `<div class="column-stack gap-3">${pubs.map((pb, idx) => `
+            <div class="builder-entry-card ${pb.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Publication #${idx + 1}</strong>
+                  ${pb.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('publications', ${idx}, -1)" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('publications', ${idx}, 1)" ${idx === pubs.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('publications', ${idx})" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!pb.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('publications', ${idx}, !this.checked)">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('publications', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label class="span-2">Publication / Paper Title
+                  <input type="text" value="${escapeHtml(pb.title || "")}" oninput="updateBuilderItemField('publications', ${idx}, 'title', this.value)">
+                </label>
+                <label>Publisher / Journal / Conference
+                  <input type="text" value="${escapeHtml(pb.publisher || "")}" oninput="updateBuilderItemField('publications', ${idx}, 'publisher', this.value)">
+                </label>
+                <label>Publication Date / Year
+                  <input type="text" value="${escapeHtml(pb.date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('publications', ${idx}, 'date', this.value)">
+                </label>
+                <label class="span-2">DOI / URL Link
+                  <input type="text" value="${escapeHtml(pb.url || "")}" placeholder="https://..." oninput="updateBuilderItemField('publications', ${idx}, 'url', this.value)">
+                </label>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey === "courses") {
+      icon = "bookmark";
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('courses')"><i data-lucide="plus"></i><span>Add Course</span></button>`;
+      const crss = resumeBuilderState.courses || [];
+      bodyHtml = crss.length === 0
+        ? '<p class="text-xs text-muted m-0">No courses added yet.</p>'
+        : `<div class="column-stack gap-2">${crss.map((cs, idx) => `
+            <div class="flex-row align-center gap-2 ${cs.is_hidden ? "opacity-50" : ""}">
+              <input type="text" value="${escapeHtml(cs.name || "")}" placeholder="Course Name (e.g. Advanced Corporate Finance)" oninput="updateBuilderItemField('courses', ${idx}, 'name', this.value)" style="flex: 1;">
+              <input type="text" value="${escapeHtml(cs.institution || "")}" placeholder="Institution / Provider" oninput="updateBuilderItemField('courses', ${idx}, 'institution', this.value)" style="width: 160px;">
+              <label class="text-xs flex-row align-center gap-1" style="cursor: pointer;">
+                <input type="checkbox" ${!cs.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('courses', ${idx}, !this.checked)">
+                <span>Visible</span>
+              </label>
+              <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('courses', ${idx})"><i data-lucide="trash-2"></i></button>
+            </div>
+          `).join("")}</div>`;
+    } else if (secKey.startsWith("custom_")) {
+      icon = "sparkles";
+      const csObj = (resumeBuilderState.customSections || []).find(c => c.id === secKey) || { id: secKey, title: secTitle, items: [] };
+      addBtnHtml = `<button class="secondary-btn xs" type="button" onclick="addBuilderEntry('custom', '${secKey}')"><i data-lucide="plus"></i><span>Add Entry</span></button>`;
+      const items = csObj.items || [];
+      bodyHtml = items.length === 0
+        ? '<p class="text-xs text-muted m-0">No entries in this custom section yet. Click "+ Add Entry" to add content.</p>'
+        : `<div class="column-stack gap-3">${items.map((it, idx) => `
+            <div class="builder-entry-card ${it.is_hidden ? "is-hidden-entry" : ""}">
+              <div class="builder-entry-toolbar">
+                <div class="flex-row align-center gap-1">
+                  <strong class="text-xs">Entry #${idx + 1}</strong>
+                  ${it.is_hidden ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                </div>
+                <div class="builder-entry-actions">
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('custom', ${idx}, -1, '${secKey}')" ${idx === 0 ? "disabled" : ""} title="Move Up"><i data-lucide="arrow-up"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="moveBuilderEntry('custom', ${idx}, 1, '${secKey}')" ${idx === items.length - 1 ? "disabled" : ""} title="Move Down"><i data-lucide="arrow-down"></i></button>
+                  <button class="icon-btn xs" type="button" onclick="duplicateBuilderEntry('custom', ${idx}, '${secKey}')" title="Duplicate"><i data-lucide="copy"></i></button>
+                  <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                    <input type="checkbox" ${!it.is_hidden ? "checked" : ""} onchange="toggleBuilderEntryVisibility('custom', ${idx}, !this.checked, '${secKey}')">
+                    <span>Visible</span>
+                  </label>
+                  <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('custom', ${idx}, '${secKey}')" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label class="span-2">Title / Name
+                  <input type="text" value="${escapeHtml(it.title || "")}" oninput="updateBuilderItemField('custom', ${idx}, 'title', this.value, '${secKey}')">
+                </label>
+                <label>Subtitle / Organization / Scope
+                  <input type="text" value="${escapeHtml(it.subtitle || "")}" oninput="updateBuilderItemField('custom', ${idx}, 'subtitle', this.value, '${secKey}')">
+                </label>
+                <label>Date / Year
+                  <input type="text" value="${escapeHtml(it.date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('custom', ${idx}, 'date', this.value, '${secKey}')">
+                </label>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-muted mb-1">Details & Bullet Points:</div>
+                <div class="rich-text-wrapper">
+                  ${renderRichToolbar(`custom-bullets-${secKey}-${idx}`)}
+                  <div class="rich-text-content" id="custom-bullets-${secKey}-${idx}" contenteditable="true"
+                       data-placeholder="Description or bullet points..."
+                       oninput="updateBuilderItemBullets('custom', ${idx}, this.innerHTML, '${secKey}')">${(it.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
+                </div>
+              </div>
+            </div>
+          `).join("")}</div>`;
+    }
+
+    return `
+      <div class="panel" id="secEditor-${secKey}">
+        <div class="panel-head flex-row justify-between align-center">
+          <div class="flex-row align-center gap-2">
+            <i data-lucide="${icon}"></i>
+            <input type="text" class="sec-title-input" value="${escapeHtml(secTitle)}"
+                   onchange="updateBuilderSectionTitle('${secKey}', this.value)"
+                   placeholder="Section Title" title="Click to rename section">
+          </div>
+          <div class="sec-header-actions">
+            <button class="icon-btn xs" type="button" onclick="moveBuilderSection('${secKey}', -1)" ${isFirst ? "disabled" : ""} title="Move section up">
+              <i data-lucide="arrow-up"></i>
+            </button>
+            <button class="icon-btn xs" type="button" onclick="moveBuilderSection('${secKey}', 1)" ${isLast ? "disabled" : ""} title="Move section down">
+              <i data-lucide="arrow-down"></i>
+            </button>
+            ${addBtnHtml}
+            <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderSection('${secKey}')" title="Remove section from resume">
+              <i data-lucide="trash-2"></i>
+            </button>
+            <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')" title="Toggle section">
+              <i data-lucide="chevron-down"></i>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body">
+          ${bodyHtml}
+        </div>
       </div>
-      <div class="form-grid">
-        <label>Job Title
-          <input type="text" value="${escapeHtml(e.title || "")}" oninput="updateBuilderItemField('experiences', ${idx}, 'title', this.value)">
-        </label>
-        <label>Company
-          <input type="text" value="${escapeHtml(e.company || "")}" oninput="updateBuilderItemField('experiences', ${idx}, 'company', this.value)">
-        </label>
-        <label>Location
-          <input type="text" value="${escapeHtml(e.location || "")}" placeholder="e.g. Remote, City" oninput="updateBuilderItemField('experiences', ${idx}, 'location', this.value)">
-        </label>
-        <label>Start Date
-          <input type="text" value="${escapeHtml(e.start_date || "")}" placeholder="e.g. May 2023 or 2023" oninput="updateBuilderItemField('experiences', ${idx}, 'start_date', this.value)">
-        </label>
-        <label>End Date
-          <input type="text" value="${escapeHtml(e.end_date || "")}" placeholder="e.g. Present or 2025" oninput="updateBuilderItemField('experiences', ${idx}, 'end_date', this.value)">
-        </label>
-        <label class="flex-row align-center gap-2 mt-2">
-          <input type="checkbox" ${e.is_current ? "checked" : ""} onchange="updateBuilderItemField('experiences', ${idx}, 'is_current', this.checked)">
-          <span class="text-xs">I currently work here</span>
-        </label>
-      </div>
-      <label class="text-xs text-muted mt-1">Bullet Points (one per line):
-        <textarea rows="3" oninput="updateBuilderItemBullets('experiences', ${idx}, this.value)">${escapeHtml((e.bullets || []).join("\n"))}</textarea>
-      </label>
-    </div>
-  `).join("");
+    `;
+  }).join("");
+
   drawIcons();
 }
-
-function renderBuilderProjectsEditor() {
-  const list = $("#builderProjectsList");
-  if (!list) return;
-  const projs = resumeBuilderState.projects || [];
-  if (projs.length === 0) {
-    list.innerHTML = '<p class="text-xs text-muted" style="margin: 0;">No projects added yet. Click "+ Add Project" to showcase key work.</p>';
-    return;
-  }
-  list.innerHTML = projs.map((p, idx) => `
-    <div class="p-3 border rounded bg-surface-2 column-stack gap-2">
-      <div class="flex-row justify-between align-center">
-        <strong class="text-xs">Project #${idx + 1}</strong>
-        <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('projects', ${idx})" title="Remove project">
-          <i data-lucide="trash-2"></i>
-        </button>
-      </div>
-      <div class="form-grid">
-        <label>Project Title
-          <input type="text" value="${escapeHtml(p.title || "")}" oninput="updateBuilderItemField('projects', ${idx}, 'title', this.value)">
-        </label>
-        <label>Tech Stack
-          <input type="text" value="${escapeHtml(p.technologies || "")}" placeholder="e.g. Python, FastAPI, React" oninput="updateBuilderItemField('projects', ${idx}, 'technologies', this.value)">
-        </label>
-        <label class="span-2">Project URL / GitHub
-          <input type="text" value="${escapeHtml(p.url || "")}" placeholder="https://github.com/..." oninput="updateBuilderItemField('projects', ${idx}, 'url', this.value)">
-        </label>
-        <label>Start Date
-          <input type="text" value="${escapeHtml(p.start_date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('projects', ${idx}, 'start_date', this.value)">
-        </label>
-        <label>End Date
-          <input type="text" value="${escapeHtml(p.end_date || "")}" placeholder="e.g. Present" oninput="updateBuilderItemField('projects', ${idx}, 'end_date', this.value)">
-        </label>
-      </div>
-      <label class="text-xs text-muted">Short Description:
-        <input type="text" value="${escapeHtml(p.description || "")}" oninput="updateBuilderItemField('projects', ${idx}, 'description', this.value)">
-      </label>
-      <label class="text-xs text-muted">Bullet Points (one per line):
-        <textarea rows="2" oninput="updateBuilderItemBullets('projects', ${idx}, this.value)">${escapeHtml((p.bullets || []).join("\n"))}</textarea>
-      </label>
-    </div>
-  `).join("");
-  drawIcons();
-}
-
-function renderBuilderEducationEditor() {
-  const list = $("#builderEducationList");
-  if (!list) return;
-  const edus = resumeBuilderState.education || [];
-  if (edus.length === 0) {
-    list.innerHTML = '<p class="text-xs text-muted" style="margin: 0;">No education records added yet. Click "+ Add Education" to add degree.</p>';
-    return;
-  }
-  list.innerHTML = edus.map((ed, idx) => `
-    <div class="p-3 border rounded bg-surface-2 column-stack gap-2">
-      <div class="flex-row justify-between align-center">
-        <strong class="text-xs">Education #${idx + 1}</strong>
-        <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('education', ${idx})" title="Remove education">
-          <i data-lucide="trash-2"></i>
-        </button>
-      </div>
-      <div class="form-grid">
-        <label class="span-2">Institution / University
-          <input type="text" value="${escapeHtml(ed.institution || "")}" oninput="updateBuilderItemField('education', ${idx}, 'institution', this.value)">
-        </label>
-        <label>Degree
-          <input type="text" value="${escapeHtml(ed.degree || "")}" placeholder="e.g. B.Tech or M.Sc." oninput="updateBuilderItemField('education', ${idx}, 'degree', this.value)">
-        </label>
-        <label>Field of Study
-          <input type="text" value="${escapeHtml(ed.field_of_study || "")}" placeholder="e.g. Computer Science" oninput="updateBuilderItemField('education', ${idx}, 'field_of_study', this.value)">
-        </label>
-        <label>Start Year
-          <input type="text" value="${escapeHtml(ed.start_date || "")}" placeholder="e.g. 2021" oninput="updateBuilderItemField('education', ${idx}, 'start_date', this.value)">
-        </label>
-        <label>Graduation Year
-          <input type="text" value="${escapeHtml(ed.end_date || "")}" placeholder="e.g. 2025" oninput="updateBuilderItemField('education', ${idx}, 'end_date', this.value)">
-        </label>
-        <label class="span-2">CGPA / GPA
-          <input type="text" value="${escapeHtml(ed.grade || "")}" placeholder="e.g. 8.5 / 10" oninput="updateBuilderItemField('education', ${idx}, 'grade', this.value)">
-        </label>
-      </div>
-    </div>
-  `).join("");
-  drawIcons();
-}
-
-function renderBuilderCertificationsEditor() {
-  const list = $("#builderCertificationsList");
-  if (!list) return;
-  const certs = resumeBuilderState.certifications || [];
-  if (certs.length === 0) {
-    list.innerHTML = '<p class="text-xs text-muted" style="margin: 0;">No certifications added yet.</p>';
-    return;
-  }
-  list.innerHTML = certs.map((c, idx) => `
-    <div class="p-3 border rounded bg-surface-2 column-stack gap-2">
-      <div class="flex-row justify-between align-center">
-        <strong class="text-xs">Cert #${idx + 1}</strong>
-        <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('certifications', ${idx})" title="Remove certification">
-          <i data-lucide="trash-2"></i>
-        </button>
-      </div>
-      <div class="form-grid">
-        <label>Certificate Name
-          <input type="text" value="${escapeHtml(c.name || "")}" oninput="updateBuilderItemField('certifications', ${idx}, 'name', this.value)">
-        </label>
-        <label>Issuing Organization
-          <input type="text" value="${escapeHtml(c.issuer || "")}" placeholder="e.g. AWS, Coursera" oninput="updateBuilderItemField('certifications', ${idx}, 'issuer', this.value)">
-        </label>
-        <label class="span-2">Issue Date / Year
-          <input type="text" value="${escapeHtml(c.date || "")}" placeholder="e.g. 2024" oninput="updateBuilderItemField('certifications', ${idx}, 'date', this.value)">
-        </label>
-      </div>
-    </div>
-  `).join("");
-  drawIcons();
-}
-
-function renderBuilderAchievementsEditor() {
-  const list = $("#builderAchievementsList");
-  if (!list) return;
-  const achs = resumeBuilderState.achievements || [];
-  if (achs.length === 0) {
-    list.innerHTML = '<p class="text-xs text-muted" style="margin: 0;">No achievements added yet.</p>';
-    return;
-  }
-  list.innerHTML = achs.map((a, idx) => `
-    <div class="flex-row align-center gap-2 mb-2">
-      <input type="text" value="${escapeHtml(a || "")}" placeholder="e.g. Ranked 1st in University Hackathon 2024" oninput="updateBuilderAchievement(${idx}, this.value)" style="flex: 1;">
-      <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('achievements', ${idx})">
-        <i data-lucide="trash-2"></i>
-      </button>
-    </div>
-  `).join("");
-  drawIcons();
-}
-
-function renderBuilderLanguagesEditor() {
-  const list = $("#builderLanguagesList");
-  if (!list) return;
-  const langs = resumeBuilderState.languages || [];
-  if (langs.length === 0) {
-    list.innerHTML = '<p class="text-xs text-muted" style="margin: 0;">No languages added yet.</p>';
-    return;
-  }
-  list.innerHTML = langs.map((l, idx) => `
-    <div class="flex-row align-center gap-2 mb-2">
-      <input type="text" value="${escapeHtml(l.language || "")}" placeholder="Language" oninput="updateBuilderItemField('languages', ${idx}, 'language', this.value)" style="flex: 1;">
-      <input type="text" value="${escapeHtml(l.proficiency || "")}" placeholder="e.g. Fluent, Native" oninput="updateBuilderItemField('languages', ${idx}, 'proficiency', this.value)" style="width: 140px;">
-      <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('languages', ${idx})">
-        <i data-lucide="trash-2"></i>
-      </button>
-    </div>
-  `).join("");
-  drawIcons();
-}
-
-// Global helpers for inline editor events
-window.removeBuilderItem = function(collection, idx) {
-  if (resumeBuilderState[collection]) {
-    resumeBuilderState[collection].splice(idx, 1);
-    triggerBuilderAutosave();
-    renderBuilderEditorFromState();
-    renderResumePreviewCanvas();
-  }
-};
-
-window.updateBuilderItemField = function(collection, idx, field, val) {
-  if (resumeBuilderState[collection] && resumeBuilderState[collection][idx]) {
-    resumeBuilderState[collection][idx][field] = val;
-    triggerBuilderAutosave();
-    renderResumePreviewCanvas();
-  }
-};
-
-window.updateBuilderItemBullets = function(collection, idx, textVal) {
-  if (resumeBuilderState[collection] && resumeBuilderState[collection][idx]) {
-    resumeBuilderState[collection][idx].bullets = textVal.split("\n").map(b => b.trim()).filter(Boolean);
-    triggerBuilderAutosave();
-    renderResumePreviewCanvas();
-  }
-};
-
-window.updateBuilderAchievement = function(idx, val) {
-  if (resumeBuilderState.achievements) {
-    resumeBuilderState.achievements[idx] = val;
-    triggerBuilderAutosave();
-    renderResumePreviewCanvas();
-  }
-};
 
 function renderResumePreviewCanvas() {
   const canvas = $("#builderPreviewCanvas");
@@ -2403,44 +3158,66 @@ function renderResumePreviewCanvas() {
   container.innerHTML = "";
 
   const sectionOrder = resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
+  const titles = resumeBuilderState.sectionTitles || {};
+  const fmt = resumeBuilderState.dateFormat || "MMM YYYY";
 
   sectionOrder.forEach(secKey => {
+    const secTitle = titles[secKey] || DEFAULT_SECTION_TITLES[secKey] || "Section";
+
     if (secKey === "summary") {
       const sum = (resumeBuilderState.summary || "").trim();
-      if (sum) {
+      const textClean = sum.replace(/<[^>]+>/g, "").trim();
+      if (textClean) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Professional Summary</h3>
-          <p class="text-xs" style="line-height: var(--resume-line-height); margin: 0; color: #374151;">${escapeHtml(sum)}</p>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <div class="resume-summary-text text-xs" style="line-height: var(--resume-line-height); margin: 0; color: #374151;">${sanitizeHtmlForPreview(sum)}</div>
         `;
         container.appendChild(sec);
       }
     } else if (secKey === "skills") {
+      const isGrouped = resumeBuilderState.skillsLayout === "grouped";
+      const categories = (resumeBuilderState.skillCategories || []).filter(c => c && c.name && c.skills && c.skills.length > 0);
       const skills = (resumeBuilderState.skills || []).filter(s => s && s.trim());
-      if (skills.length > 0) {
+
+      if (isGrouped && categories.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Skills & Technologies</h3>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <div class="prev-skills-container prev-skills-grouped column-stack gap-1">
+            ${categories.map(c => `
+              <div class="prev-skills-text text-xs" style="line-height: var(--resume-line-height); margin: 0; color: #374151;">
+                <strong>${escapeHtml(c.name)}:</strong> ${escapeHtml(c.skills.join(", "))}
+              </div>
+            `).join("")}
+          </div>
+        `;
+        container.appendChild(sec);
+      } else if (skills.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-skills-container">
-            <div class="prev-skill-row">
-              ${skills.map(s => `<span class="prev-skill-pill">${escapeHtml(s)}</span>`).join("")}
-            </div>
+            <p class="prev-skills-text text-xs" style="line-height: var(--resume-line-height); margin: 0; color: #374151;">
+              ${skills.map(s => escapeHtml(s)).join(", ")}
+            </p>
           </div>
         `;
         container.appendChild(sec);
       }
     } else if (secKey === "experiences") {
-      const exps = (resumeBuilderState.experiences || []).filter(e => (e.company || e.title));
+      const exps = (resumeBuilderState.experiences || []).filter(e => !e.is_hidden && (e.company || e.title));
       if (exps.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Work Experience</h3>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
             ${exps.map(e => {
-              const dateStr = (e.start_date || "") + ((e.start_date && (e.end_date || e.is_current)) ? " – " : "") + (e.is_current ? "Present" : (e.end_date || ""));
+              const dateStr = formatClientDateRange(e.start_date, e.end_date, e.is_current, fmt);
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
@@ -2450,7 +3227,7 @@ function renderResumePreviewCanvas() {
                   ${e.location ? `<div class="prev-item-sub">${escapeHtml(e.location)}</div>` : ""}
                   ${(e.bullets || []).filter(b => b && b.trim()).length > 0 ? `
                     <ul class="prev-item-bullets">
-                      ${e.bullets.filter(b => b && b.trim()).map(b => `<li>${escapeHtml(b)}</li>`).join("")}
+                      ${e.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
                     </ul>
                   ` : ""}
                 </div>
@@ -2461,25 +3238,25 @@ function renderResumePreviewCanvas() {
         container.appendChild(sec);
       }
     } else if (secKey === "projects") {
-      const projs = (resumeBuilderState.projects || []).filter(p => p.title);
+      const projs = (resumeBuilderState.projects || []).filter(p => !p.is_hidden && p.title);
       if (projs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Key Projects</h3>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
             ${projs.map(p => {
-              const dateStr = (p.start_date || "") + ((p.start_date && p.end_date) ? " – " : "") + (p.end_date || "");
+              const dateStr = formatClientDateRange(p.start_date, p.end_date, false, fmt);
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
                     <span class="prev-item-title-col"><strong>${escapeHtml(p.title)}</strong>${p.technologies ? ` <span class="text-muted" style="font-weight: 400; font-size: 0.9em;">| ${escapeHtml(p.technologies)}</span>` : ""}</span>
                     ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
                   </div>
-                  ${p.description ? `<p class="text-xs" style="margin: 2px 0; color: #374151;">${escapeHtml(p.description)}</p>` : ""}
+                  ${p.description ? `<p class="text-xs" style="margin: 2px 0; color: #374151;">${sanitizeHtmlForPreview(p.description)}</p>` : ""}
                   ${(p.bullets || []).filter(b => b && b.trim()).length > 0 ? `
                     <ul class="prev-item-bullets">
-                      ${p.bullets.filter(b => b && b.trim()).map(b => `<li>${escapeHtml(b)}</li>`).join("")}
+                      ${p.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
                     </ul>
                   ` : ""}
                 </div>
@@ -2490,19 +3267,19 @@ function renderResumePreviewCanvas() {
         container.appendChild(sec);
       }
     } else if (secKey === "education") {
-      const edus = (resumeBuilderState.education || []).filter(ed => (ed.institution || ed.degree));
+      const edus = (resumeBuilderState.education || []).filter(ed => !ed.is_hidden && (ed.institution || ed.degree));
       if (edus.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Education</h3>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
             ${edus.map(ed => {
-              const dateStr = (ed.start_date || "") + ((ed.start_date && ed.end_date) ? " – " : "") + (ed.end_date || "");
+              const dateStr = formatClientDateRange(ed.start_date, ed.end_date, false, fmt);
               const deg = ed.degree ? `<strong>${escapeHtml(ed.degree)}</strong>` : "";
               const field = ed.field_of_study ? ` in ${escapeHtml(ed.field_of_study)}` : "";
               const titleStr = deg + field + (ed.institution ? ` — ${escapeHtml(ed.institution)}` : "");
-              const meta = [ed.location, ed.grade ? `CGPA / GPA: ${ed.grade}` : ""].filter(Boolean).join(" | ");
+              const meta = [ed.location, ed.grade ? `Honors / GPA: ${ed.grade}` : ""].filter(Boolean).join(" | ");
               return `
                 <div class="prev-item-entry">
                   <div class="prev-item-header">
@@ -2518,48 +3295,193 @@ function renderResumePreviewCanvas() {
         container.appendChild(sec);
       }
     } else if (secKey === "certifications") {
-      const certs = (resumeBuilderState.certifications || []).filter(c => (c.name && c.name.trim()));
+      const certs = (resumeBuilderState.certifications || []).filter(c => !c.is_hidden && (c.name && c.name.trim()));
       if (certs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Certifications</h3>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="prev-items-list">
-            ${certs.map(c => `
-              <div class="prev-item-entry">
-                <div class="prev-item-header">
-                  <span class="prev-item-title-col"><strong>${escapeHtml(c.name)}</strong>${c.issuer ? ` — ${escapeHtml(c.issuer)}` : ""}</span>
-                  ${c.date ? `<span class="prev-item-date">${escapeHtml(c.date)}</span>` : ""}
+            ${certs.map(c => {
+              const d = formatDateStrClient(c.date, fmt);
+              return `
+                <div class="prev-item-entry">
+                  <div class="prev-item-header">
+                    <span class="prev-item-title-col"><strong>${escapeHtml(c.name)}</strong>${c.issuer ? ` — ${escapeHtml(c.issuer)}` : ""}</span>
+                    ${d ? `<span class="prev-item-date">${escapeHtml(d)}</span>` : ""}
+                  </div>
                 </div>
-              </div>
-            `).join("")}
+              `;
+            }).join("")}
           </div>
         `;
         container.appendChild(sec);
       }
     } else if (secKey === "achievements") {
-      const achs = (resumeBuilderState.achievements || []).filter(a => (a && a.trim()));
+      const achs = (resumeBuilderState.achievements || []).filter(a => {
+        if (typeof a === "string") return a && a.trim();
+        return !a.is_hidden && a.text && a.text.trim();
+      });
       if (achs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Achievements & Awards</h3>
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <ul class="prev-item-bullets">
-            ${achs.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
+            ${achs.map(a => `<li>${sanitizeHtmlForPreview(typeof a === "string" ? a : a.text)}</li>`).join("")}
+          </ul>
+        `;
+        container.appendChild(sec);
+      }
+    } else if (secKey === "awards") {
+      const awds = (resumeBuilderState.awards || []).filter(a => {
+        if (typeof a === "string") return a && a.trim();
+        return !a.is_hidden && a.text && a.text.trim();
+      });
+      if (awds.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <ul class="prev-item-bullets">
+            ${awds.map(a => `<li>${sanitizeHtmlForPreview(typeof a === "string" ? a : a.text)}</li>`).join("")}
           </ul>
         `;
         container.appendChild(sec);
       }
     } else if (secKey === "languages") {
-      const langs = (resumeBuilderState.languages || []).filter(l => (l.language && l.language.trim()));
+      const langs = (resumeBuilderState.languages || []).filter(l => !l.is_hidden && (l.language && l.language.trim()));
       if (langs.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
         sec.innerHTML = `
-          <h3 class="preview-section-title">Languages</h3>
-          <p class="text-xs" style="color: #374151; margin: 0;">
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <p class="text-xs" style="color: #374151; margin: 0; line-height: var(--resume-line-height);">
             ${langs.map(l => `<strong>${escapeHtml(l.language)}</strong>${l.proficiency ? ` (${escapeHtml(l.proficiency)})` : ""}`).join(" • ")}
           </p>
+        `;
+        container.appendChild(sec);
+      }
+    } else if (secKey === "volunteer") {
+      const vols = (resumeBuilderState.volunteer || []).filter(v => !v.is_hidden && (v.organization || v.role));
+      if (vols.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <div class="prev-items-list">
+            ${vols.map(v => {
+              const dateStr = formatClientDateRange(v.start_date, v.end_date, v.is_current, fmt);
+              return `
+                <div class="prev-item-entry">
+                  <div class="prev-item-header">
+                    <span class="prev-item-title-col"><strong>${escapeHtml(v.role || "Volunteer")}</strong>${v.organization ? ` — ${escapeHtml(v.organization)}` : ""}</span>
+                    ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
+                  </div>
+                  ${v.location ? `<div class="prev-item-sub">${escapeHtml(v.location)}</div>` : ""}
+                  ${(v.bullets || []).filter(b => b && b.trim()).length > 0 ? `
+                    <ul class="prev-item-bullets">
+                      ${v.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
+                    </ul>
+                  ` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        container.appendChild(sec);
+      }
+    } else if (secKey === "leadership") {
+      const leads = (resumeBuilderState.leadership || []).filter(l => !l.is_hidden && (l.organization || l.role));
+      if (leads.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <div class="prev-items-list">
+            ${leads.map(l => {
+              const dateStr = formatDateStrClient(l.start_date, fmt);
+              return `
+                <div class="prev-item-entry">
+                  <div class="prev-item-header">
+                    <span class="prev-item-title-col"><strong>${escapeHtml(l.role || "Leader")}</strong>${l.organization ? ` — ${escapeHtml(l.organization)}` : ""}</span>
+                    ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
+                  </div>
+                  ${(l.bullets || []).filter(b => b && b.trim()).length > 0 ? `
+                    <ul class="prev-item-bullets">
+                      ${l.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
+                    </ul>
+                  ` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        container.appendChild(sec);
+      }
+    } else if (secKey === "publications") {
+      const pubs = (resumeBuilderState.publications || []).filter(pb => !pb.is_hidden && pb.title);
+      if (pubs.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <div class="prev-items-list">
+            ${pubs.map(pb => {
+              const dateStr = formatDateStrClient(pb.date, fmt);
+              return `
+                <div class="prev-item-entry">
+                  <div class="prev-item-header">
+                    <span class="prev-item-title-col"><strong>${escapeHtml(pb.title)}</strong>${pb.publisher ? ` — <em>${escapeHtml(pb.publisher)}</em>` : ""}</span>
+                    ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
+                  </div>
+                  ${pb.url ? `<div class="prev-item-sub"><a href="${escapeHtml(pb.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(pb.url)}</a></div>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+        container.appendChild(sec);
+      }
+    } else if (secKey === "courses") {
+      const crss = (resumeBuilderState.courses || []).filter(cs => !cs.is_hidden && cs.name);
+      if (crss.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <p class="text-xs" style="color: #374151; margin: 0; line-height: var(--resume-line-height);">
+            ${crss.map(cs => `${escapeHtml(cs.name)}${cs.institution ? ` (${escapeHtml(cs.institution)})` : ""}`).join(" • ")}
+          </p>
+        `;
+        container.appendChild(sec);
+      }
+    } else if (secKey.startsWith("custom_")) {
+      const csObj = (resumeBuilderState.customSections || []).find(c => c.id === secKey);
+      const items = (csObj && csObj.items ? csObj.items : []).filter(it => !it.is_hidden && (it.title || it.description || (it.bullets && it.bullets.length > 0)));
+      if (items.length > 0) {
+        const sec = document.createElement("div");
+        sec.className = "prev-section";
+        sec.innerHTML = `
+          <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
+          <div class="prev-items-list">
+            ${items.map(it => {
+              const dateStr = formatDateStrClient(it.date, fmt);
+              return `
+                <div class="prev-item-entry">
+                  <div class="prev-item-header">
+                    <span class="prev-item-title-col"><strong>${escapeHtml(it.title || "")}</strong>${it.subtitle ? ` — ${escapeHtml(it.subtitle)}` : ""}</span>
+                    ${dateStr ? `<span class="prev-item-date">${escapeHtml(dateStr)}</span>` : ""}
+                  </div>
+                  ${(it.bullets || []).filter(b => b && b.trim()).length > 0 ? `
+                    <ul class="prev-item-bullets">
+                      ${it.bullets.filter(b => b && b.trim()).map(b => `<li>${sanitizeHtmlForPreview(b)}</li>`).join("")}
+                    </ul>
+                  ` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
         `;
         container.appendChild(sec);
       }

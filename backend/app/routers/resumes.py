@@ -188,6 +188,7 @@ def export_profile_resume_post(
     section_order = payload.get("section_order")
 
     content = payload.get("content") or payload
+    date_format = payload.get("date_format") or (content.get("date_format") if isinstance(content, dict) else None) or "MMM YYYY"
 
     raw_name = content.get("candidate_name") or content.get("full_name") or current_user.full_name or "Resume"
     safe_name = re.sub(r"[^\w\-]", "_", str(raw_name).strip())
@@ -201,6 +202,7 @@ def export_profile_resume_post(
             font_size=font_size,
             spacing=spacing,
             section_order=section_order,
+            date_format=date_format,
         )
         media_type = "application/pdf"
     else:
@@ -211,6 +213,7 @@ def export_profile_resume_post(
             font_size=font_size,
             spacing=spacing,
             section_order=section_order,
+            date_format=date_format,
         )
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 

@@ -1,6 +1,7 @@
 from io import BytesIO
 import re
 from typing import Any
+from html.parser import HTMLParser
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -25,7 +26,7 @@ TEMPLATE_COLORS: dict[str, str] = {
     "executive": "#0f172a",
     "modern_professional": "#0284c7",
     "minimal_professional": "#1f2937",
-    "professional": "#1e3a8a",  # Backward compatibility alias
+    "professional": "#1e3a8a",
 }
 
 TEMPLATE_SECTION_ORDERS: dict[str, list[str]] = {
@@ -46,13 +47,129 @@ TEMPLATE_SECTION_ORDERS: dict[str, list[str]] = {
     "professional": ["summary", "experiences", "skills", "education", "projects", "certifications"],
 }
 
+MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+MONTH_MAP: dict[str, int] = {}
+for _i, _m in enumerate(MONTHS_SHORT):
+    MONTH_MAP[_m.lower()] = _i + 1
+for _i, _m in enumerate(MONTHS_LONG):
+    MONTH_MAP[_m.lower()] = _i + 1
 
-def _clean_date_str(start: str = "", end: str = "", is_current: bool = False) -> str:
-    s = (start or "").strip()
-    e = "Present" if is_current else (end or "").strip()
+
+def format_date_str(raw: str, fmt: str = "MMM YYYY") -> str:
+    if not raw:
+        return ""
+    s = str(raw).strip()
+    if s.lower() == "present":
+        return "Present"
+    if re.fullmatch(r"\d{4}", s):
+        return s
+    m_iso = re.fullmatch(r"(\d{4})[-/](\d{1,2})", s)
+    if m_iso:
+        yr, mo = m_iso.group(1), int(m_iso.group(2))
+    else:
+        m_slash = re.fullmatch(r"(\d{1,2})[-/](\d{4})", s)
+        if m_slash:
+            mo, yr = int(m_slash.group(1)), m_slash.group(2)
+        else:
+            m_text = re.search(r"([A-Za-z]+)\s*(\d{4})", s)
+            if m_text and m_text.group(1).lower() in MONTH_MAP:
+                mo = MONTH_MAP[m_text.group(1).lower()]
+                yr = m_text.group(2)
+            else:
+                return s
+    if not (1 <= mo <= 12):
+        return s
+    if fmt == "YYYY":
+        return yr
+    elif fmt == "MM/YYYY":
+        return f"{mo:02d}/{yr}"
+    elif fmt == "MMMM YYYY":
+        return f"{MONTHS_LONG[mo - 1]} {yr}"
+    else:
+        return f"{MONTHS_SHORT[mo - 1]} {yr}"
+
+
+def _clean_date_str(start: str = "", end: str = "", is_current: bool = False, fmt: str = "MMM YYYY") -> str:
+    s = format_date_str(start, fmt)
+    e = "Present" if is_current else format_date_str(end, fmt)
     if s and e:
         return f"{s} – {e}"
     return s or e or ""
+
+
+def sanitize_reportlab_html(text: str) -> str:
+    """Normalize and sanitize HTML markup for safe ReportLab Paragraph rendering."""
+    if not text:
+        return ""
+    t = str(text).strip()
+    # Normalize tags
+    t = re.sub(r"<\s*strong[^>]*>", "<b>", t, flags=re.I)
+    t = re.sub(r"<\s*/\s*strong\s*>", "</b>", t, flags=re.I)
+    t = re.sub(r"<\s*em[^>]*>", "<i>", t, flags=re.I)
+    t = re.sub(r"<\s*/\s*em\s*>", "</i>", t, flags=re.I)
+    t = re.sub(r"<\s*br\s*/?\s*>", "<br/>", t, flags=re.I)
+    # Strip block wrappers
+    t = re.sub(r"</?\s*(?:p|div|span)[^>]*>", "", t, flags=re.I)
+    # Fix unescaped ampersands
+    t = re.sub(r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)", "&amp;", t)
+    return t
+
+
+class DocxRichTextParser(HTMLParser):
+    """Parses HTML and appends formatted runs to a python-docx paragraph."""
+    def __init__(self, paragraph):
+        super().__init__()
+        self.paragraph = paragraph
+        self.bold_stack = 0
+        self.italic_stack = 0
+        self.underline_stack = 0
+
+    def handle_starttag(self, tag, attrs):
+        t = tag.lower()
+        if t in ("b", "strong"):
+            self.bold_stack += 1
+        elif t in ("i", "em"):
+            self.italic_stack += 1
+        elif t in ("u",):
+            self.underline_stack += 1
+        elif t == "br":
+            self.paragraph.add_run("\n")
+
+    def handle_endtag(self, tag):
+        t = tag.lower()
+        if t in ("b", "strong"):
+            self.bold_stack = max(0, self.bold_stack - 1)
+        elif t in ("i", "em"):
+            self.italic_stack = max(0, self.italic_stack - 1)
+        elif t in ("u",):
+            self.underline_stack = max(0, self.underline_stack - 1)
+
+    def handle_data(self, data):
+        if not data:
+            return
+        run = self.paragraph.add_run(data)
+        if self.bold_stack > 0:
+            run.bold = True
+        if self.italic_stack > 0:
+            run.italic = True
+        if self.underline_stack > 0:
+            run.underline = True
+
+
+def docx_add_html_paragraph(doc: Document, html_text: str, style: str | None = None) -> Any:
+    """Adds a paragraph with inline HTML tags formatted as docx runs."""
+    p = doc.add_paragraph(style=style) if style else doc.add_paragraph()
+    raw = str(html_text or "").strip()
+    if not raw:
+        return p
+    raw = re.sub(r"<\s*strong[^>]*>", "<b>", raw, flags=re.I)
+    raw = re.sub(r"<\s*/\s*strong\s*>", "</b>", raw, flags=re.I)
+    raw = re.sub(r"<\s*em[^>]*>", "<i>", raw, flags=re.I)
+    raw = re.sub(r"<\s*/\s*em\s*>", "</i>", raw, flags=re.I)
+    parser = DocxRichTextParser(p)
+    parser.feed(raw)
+    return p
 
 
 def build_pdf_styles(accent_hex: str = "#1e3a8a", font_size_scale: float = 1.0, spacing_scale: float = 1.0):
@@ -153,10 +270,9 @@ def generate_resume_pdf(
     font_size: str = "medium",
     spacing: str = "standard",
     section_order: list[str] | None = None,
+    date_format: str = "MMM YYYY",
 ) -> bytes:
     buffer = BytesIO()
-    # A4 standard dimensions: 595.27 x 841.89 pt
-    # Margins: 36pt (0.5 inch) left/right/top/bottom -> printable width = 523.27 pt
     printable_width = 523.27
     doc = SimpleDocTemplate(
         buffer,
@@ -167,30 +283,27 @@ def generate_resume_pdf(
         bottomMargin=36,
     )
 
-    # Resolve accent color
     accent_hex = accent_color if (accent_color and accent_color.startswith("#")) else TEMPLATE_COLORS.get(template_name, "#1e3a8a")
 
-    # Font size scale
     font_scales = {"small": 0.88, "medium": 1.0, "large": 1.12}
     font_size_scale = font_scales.get(font_size, 1.0)
 
-    # Spacing scale
     spacing_scales = {"compact": 0.70, "standard": 1.0, "relaxed": 1.30}
     spacing_scale = spacing_scales.get(spacing, 1.0)
 
     styles = build_pdf_styles(accent_hex, font_size_scale, spacing_scale)
     story = []
 
-    # Extract Header fields
-    name = (
-        content.get("candidate_name")
-        or content.get("full_name")
-        or "Candidate Name"
-    ).strip()
+    # Custom Section Titles
+    sec_titles: dict[str, str] = content.get("section_titles") or {}
+    fmt = content.get("date_format") or date_format or "MMM YYYY"
+
+    # Header fields
+    name = (content.get("candidate_name") or content.get("full_name") or "Candidate Name").strip()
     headline = (content.get("headline") or "").strip()
     summary = (content.get("summary") or "").strip()
 
-    # Contact & Links
+    # Contact & Links (never render empty separators)
     contact_info = content.get("contact_info") or {}
     email = (content.get("email") or contact_info.get("email") or "").strip()
     phone = (content.get("phone") or contact_info.get("phone") or "").strip()
@@ -207,18 +320,17 @@ def generate_resume_pdf(
     if email:
         contact_parts.append(email)
     if linkedin:
-        clean_li = linkedin.replace("https://www.", "").replace("https://", "").replace("http://", "")
+        clean_li = re.sub(r"^https?://(www\.)?", "", linkedin).rstrip("/")
         contact_parts.append(clean_li)
     if github:
-        clean_gh = github.replace("https://www.", "").replace("https://", "").replace("http://", "")
+        clean_gh = re.sub(r"^https?://(www\.)?", "", github).rstrip("/")
         contact_parts.append(clean_gh)
     if website:
-        clean_wb = website.replace("https://www.", "").replace("https://", "").replace("http://", "")
+        clean_wb = re.sub(r"^https?://(www\.)?", "", website).rstrip("/")
         contact_parts.append(clean_wb)
 
     contact_str = " | ".join(contact_parts)
 
-    # 1. Header (Centered)
     story.append(Paragraph(name, styles["CandidateName"]))
     if headline:
         story.append(Paragraph(headline, styles["CandidateHeadline"]))
@@ -234,9 +346,8 @@ def generate_resume_pdf(
         spaceAfter=max(4, round(6 * spacing_scale)),
     ))
 
-    # Two-column row generator (Title Left, Date Right)
     def make_title_date_row(title_html: str, date_str: str) -> Table:
-        date_w = 120
+        date_w = 130
         title_w = printable_width - date_w
         t = Table(
             [[Paragraph(title_html, styles["ItemTitle"]), Paragraph(date_str, styles["ItemDateRight"])]],
@@ -245,66 +356,78 @@ def generate_resume_pdf(
             spaceAfter=1,
         )
         t.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('TOPPADDING', (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
         ]))
         return t
 
-    # SECTION RENDERERS (With Strict Empty-Section Suppression)
+    # SECTION RENDERERS
     def render_summary():
-        if not summary:
+        if not summary.strip():
             return
-        title = "EXECUTIVE SUMMARY" if template_name == "executive" else "PROFESSIONAL SUMMARY"
-        story.append(Paragraph(title, styles["SectionHeader"]))
-        story.append(Paragraph(summary, styles["ResumeBody"]))
+        title = sec_titles.get("summary") or ("EXECUTIVE SUMMARY" if template_name == "executive" else "PROFESSIONAL SUMMARY")
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+        clean_sum = sanitize_reportlab_html(summary)
+        story.append(Paragraph(clean_sum, styles["ResumeBody"]))
 
     def render_skills():
         raw_skills = content.get("skills") or []
-        if not raw_skills:
-            return
-        
-        header_title = (
-            "CORE TECHNICAL SKILLS & ARCHITECTURE" if template_name == "technical_ats"
-            else "FINANCIAL & QUANTITATIVE COMPETENCIES" if template_name == "finance_professional"
-            else "CLINICAL COMPETENCIES" if template_name == "healthcare_pharmacy"
-            else "SKILLS"
-        )
-        story.append(Paragraph(header_title, styles["SectionHeader"]))
+        skill_cats = content.get("skill_categories") or []
+        layout = (content.get("skills_layout") or "inline").lower()
 
-        # Group by category if skills are dicts with categories
-        if isinstance(raw_skills, list) and len(raw_skills) > 0 and isinstance(raw_skills[0], dict) and any(s.get("category") for s in raw_skills):
+        has_categories = len(skill_cats) > 0 or (
+            isinstance(raw_skills, list) and len(raw_skills) > 0 and isinstance(raw_skills[0], dict) and any(s.get("category") for s in raw_skills)
+        )
+
+        title = sec_titles.get("skills") or "SKILLS"
+
+        if has_categories and (layout == "grouped" or len(skill_cats) > 0):
             cat_map: dict[str, list[str]] = {}
-            for s in raw_skills:
-                cat = s.get("category") or "Technical Skills"
-                sname = s.get("name", "").strip()
-                if sname:
-                    cat_map.setdefault(cat, []).append(sname)
-            for cat, items in cat_map.items():
-                story.append(Paragraph(f"<b>{cat}:</b> {', '.join(items)}", styles["ResumeBody"]))
+            if skill_cats:
+                for sc in skill_cats:
+                    cname = sc.get("name") or "Core Skills"
+                    slist = sc.get("skills") or []
+                    if isinstance(slist, str):
+                        slist = [s.strip() for s in slist.split(",") if s.strip()]
+                    if slist:
+                        cat_map[cname] = slist
+            else:
+                for s in raw_skills:
+                    cname = s.get("category") or "Core Skills"
+                    sname = s.get("name", "").strip()
+                    if sname:
+                        cat_map.setdefault(cname, []).append(sname)
+
+            if not cat_map:
+                return
+
+            story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+            for cname, items in cat_map.items():
+                items_str = ", ".join(items)
+                story.append(Paragraph(f"<b>{cname}:</b> {items_str}", styles["ResumeBody"]))
         else:
             skill_names = []
             for s in raw_skills:
-                if isinstance(s, str):
-                    if s.strip():
-                        skill_names.append(s.strip())
+                if isinstance(s, str) and s.strip():
+                    skill_names.append(s.strip())
                 elif isinstance(s, dict) and s.get("name"):
                     skill_names.append(s["name"].strip())
-            if skill_names:
-                story.append(Paragraph(" • ".join(skill_names), styles["ResumeBody"]))
+            if not skill_names:
+                return
+            story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+            story.append(Paragraph(", ".join(skill_names), styles["ResumeBody"]))
 
     def render_experiences():
-        exps = content.get("experiences") or []
-        if not exps:
-            return
+        exps = [e for e in (content.get("experiences") or []) if not e.get("is_hidden")]
         valid_exps = [e for e in exps if (e.get("company") or e.get("role_title") or e.get("title"))]
         if not valid_exps:
             return
 
-        header_title = "ENGAGEMENT & ADVISORY EXPERIENCE" if template_name == "consulting_management" else "WORK EXPERIENCE"
-        story.append(Paragraph(header_title, styles["SectionHeader"]))
+        title = sec_titles.get("experiences") or ("ENGAGEMENT & ADVISORY EXPERIENCE" if template_name == "consulting_management" else "WORK EXPERIENCE")
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
 
         for exp in valid_exps:
             comp = exp.get("company", "").strip()
@@ -312,11 +435,11 @@ def generate_resume_pdf(
             start = exp.get("start_date", "").strip()
             end = exp.get("end_date", "").strip()
             is_curr = bool(exp.get("is_current"))
-            date_str = _clean_date_str(start, end, is_curr)
+            date_str = _clean_date_str(start, end, is_curr, fmt)
 
-            title_str = f"<b>{role}</b>" if role else ""
+            title_str = f"<b>{sanitize_reportlab_html(role)}</b>" if role else ""
             if comp:
-                title_str = f"{title_str} — {comp}" if title_str else f"<b>{comp}</b>"
+                title_str = f"{title_str} — {sanitize_reportlab_html(comp)}" if title_str else f"<b>{sanitize_reportlab_html(comp)}</b>"
 
             story.append(make_title_date_row(title_str, date_str))
 
@@ -328,30 +451,29 @@ def generate_resume_pdf(
             for b in bullets:
                 b_text = b if isinstance(b, str) else b.get("text", "")
                 if b_text and b_text.strip():
-                    story.append(Paragraph(f"• {b_text.strip()}", styles["ResumeBullet"]))
+                    clean_b = sanitize_reportlab_html(b_text.strip())
+                    story.append(Paragraph(f"• {clean_b}", styles["ResumeBullet"]))
             story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     def render_projects():
-        projs = content.get("projects") or []
-        if not projs:
-            return
+        projs = [p for p in (content.get("projects") or []) if not p.get("is_hidden")]
         valid_projs = [p for p in projs if (p.get("title") or p.get("name"))]
         if not valid_projs:
             return
 
-        header_title = "PUBLICATIONS & RESEARCH" if template_name == "academic_research" else "KEY PROJECTS"
-        story.append(Paragraph(header_title, styles["SectionHeader"]))
+        title = sec_titles.get("projects") or ("PUBLICATIONS & RESEARCH" if template_name == "academic_research" else "KEY PROJECTS")
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
 
         for proj in valid_projs:
-            title = (proj.get("title") or proj.get("name") or "").strip()
+            p_title = (proj.get("title") or proj.get("name") or "").strip()
             start = proj.get("start_date", "").strip()
             end = proj.get("end_date", "").strip()
-            date_str = _clean_date_str(start, end)
+            date_str = _clean_date_str(start, end, False, fmt)
             tech = proj.get("technologies") or []
             if isinstance(tech, str):
                 tech = [t.strip() for t in tech.split(",") if t.strip()]
 
-            title_str = f"<b>{title}</b>"
+            title_str = f"<b>{sanitize_reportlab_html(p_title)}</b>"
             if tech:
                 title_str += f" <font color='#4b5563'>| {', '.join(tech)}</font>"
 
@@ -359,24 +481,24 @@ def generate_resume_pdf(
 
             desc = proj.get("description", "").strip()
             if desc:
-                story.append(Paragraph(desc, styles["ResumeBody"]))
+                story.append(Paragraph(sanitize_reportlab_html(desc), styles["ResumeBody"]))
 
             bullets = proj.get("bullet_points") or proj.get("bullets") or []
             for b in bullets:
                 b_text = b if isinstance(b, str) else b.get("text", "")
                 if b_text and b_text.strip():
-                    story.append(Paragraph(f"• {b_text.strip()}", styles["ResumeBullet"]))
+                    clean_b = sanitize_reportlab_html(b_text.strip())
+                    story.append(Paragraph(f"• {clean_b}", styles["ResumeBullet"]))
             story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     def render_education():
-        edus = content.get("education") or []
-        if not edus:
-            return
+        edus = [e for e in (content.get("education") or []) if not e.get("is_hidden")]
         valid_edus = [e for e in edus if (e.get("institution") or e.get("degree"))]
         if not valid_edus:
             return
 
-        story.append(Paragraph("EDUCATION", styles["SectionHeader"]))
+        title = sec_titles.get("education") or "EDUCATION"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
 
         for edu in valid_edus:
             inst = edu.get("institution", "").strip()
@@ -384,7 +506,7 @@ def generate_resume_pdf(
             field = edu.get("field_of_study", "").strip()
             start = str(edu.get("start_date") or edu.get("start_year") or "").strip()
             end = str(edu.get("end_date") or edu.get("graduation_year") or "").strip()
-            date_str = _clean_date_str(start, end)
+            date_str = _clean_date_str(start, end, False, fmt)
 
             full_deg = f"<b>{deg}</b>" if deg else ""
             if field:
@@ -396,7 +518,7 @@ def generate_resume_pdf(
 
             story.append(make_title_date_row(title_str, date_str))
 
-            gpa = str(edu.get("gpa") or edu.get("cgpa") or "").strip()
+            gpa = str(edu.get("gpa") or edu.get("cgpa") or edu.get("grade") or "").strip()
             loc = edu.get("location", "").strip()
             meta_parts = []
             if loc:
@@ -408,74 +530,90 @@ def generate_resume_pdf(
             story.append(Spacer(1, max(2, round(2 * spacing_scale))))
 
     def render_certifications():
-        certs = content.get("certifications") or []
+        certs = [c for c in (content.get("certifications") or []) if not (isinstance(c, dict) and c.get("is_hidden"))]
         if not certs:
             return
-        story.append(Paragraph("CERTIFICATIONS", styles["SectionHeader"]))
-        for cert in certs:
+        valid_certs = []
+        for c in certs:
+            cname = c.get("name", "") if isinstance(c, dict) else str(c)
+            if cname.strip():
+                valid_certs.append(c)
+        if not valid_certs:
+            return
+
+        title = sec_titles.get("certifications") or "CERTIFICATIONS & LICENSES"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+
+        for cert in valid_certs:
             cname = cert.get("name", "") if isinstance(cert, dict) else str(cert)
-            if not cname.strip():
-                continue
             issuer = cert.get("issuer", "") if isinstance(cert, dict) else ""
-            date = str(cert.get("issue_date") or cert.get("date") or "") if isinstance(cert, dict) else ""
+            date_raw = str(cert.get("issue_date") or cert.get("date") or "") if isinstance(cert, dict) else ""
+            date_str = format_date_str(date_raw, fmt)
+
             title_str = f"<b>{cname.strip()}</b>"
             if issuer:
                 title_str += f" — {issuer.strip()}"
-            story.append(make_title_date_row(title_str, date.strip()))
+            story.append(make_title_date_row(title_str, date_str))
         story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     def render_achievements():
-        achievements = content.get("achievements") or []
-        if not achievements:
+        achs = [a for a in (content.get("achievements") or []) if not (isinstance(a, dict) and a.get("is_hidden"))]
+        if not achs:
             return
-        story.append(Paragraph("ACHIEVEMENTS", styles["SectionHeader"]))
-        for a in achievements:
+        title = sec_titles.get("achievements") or "ACHIEVEMENTS"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+        for a in achs:
             if isinstance(a, str) and a.strip():
-                story.append(Paragraph(f"• {a.strip()}", styles["ResumeBullet"]))
+                story.append(Paragraph(f"• {sanitize_reportlab_html(a.strip())}", styles["ResumeBullet"]))
             elif isinstance(a, dict):
-                title = a.get("title") or a.get("name") or ""
+                atitle = a.get("title") or a.get("name") or ""
                 desc = a.get("description") or ""
-                if title:
-                    story.append(Paragraph(f"• <b>{title.strip()}</b>: {desc.strip()}", styles["ResumeBullet"]))
+                if atitle or desc:
+                    full = f"<b>{sanitize_reportlab_html(atitle.strip())}</b>: {sanitize_reportlab_html(desc.strip())}" if (atitle and desc) else sanitize_reportlab_html(atitle or desc)
+                    story.append(Paragraph(f"• {full}", styles["ResumeBullet"]))
         story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     def render_awards():
-        awards = content.get("awards") or []
+        awards = [aw for aw in (content.get("awards") or []) if not (isinstance(aw, dict) and aw.get("is_hidden"))]
         if not awards:
             return
-        story.append(Paragraph("AWARDS & HONORS", styles["SectionHeader"]))
+        title = sec_titles.get("awards") or "AWARDS & HONORS"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
         for aw in awards:
             aname = aw.get("title") or aw.get("name") or (aw if isinstance(aw, str) else "")
             issuer = aw.get("organization") or aw.get("issuer") or "" if isinstance(aw, dict) else ""
-            year = str(aw.get("year") or "") if isinstance(aw, dict) else ""
+            date_raw = str(aw.get("year") or aw.get("date") or "") if isinstance(aw, dict) else ""
+            date_str = format_date_str(date_raw, fmt)
             title_str = f"<b>{aname}</b>"
             if issuer:
                 title_str += f" — {issuer}"
-            story.append(make_title_date_row(title_str, year))
+            story.append(make_title_date_row(title_str, date_str))
         story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     def render_courses():
-        courses = content.get("courses") or []
+        courses = [c for c in (content.get("courses") or []) if not (isinstance(c, dict) and c.get("is_hidden"))]
         if not courses:
             return
-        story.append(Paragraph("COURSES & TRAINING", styles["SectionHeader"]))
+        title = sec_titles.get("courses") or "COURSES & TRAINING"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
         c_strs = []
         for c in courses:
             if isinstance(c, str) and c.strip():
                 c_strs.append(c.strip())
             elif isinstance(c, dict):
-                name = c.get("name") or c.get("title") or ""
+                cname = c.get("name") or c.get("title") or ""
                 prov = c.get("provider") or c.get("organization") or ""
-                c_strs.append(f"{name} ({prov})" if prov else name)
+                c_strs.append(f"{cname} ({prov})" if prov else cname)
         if c_strs:
             story.append(Paragraph(" • ".join(c_strs), styles["ResumeBody"]))
         story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     def render_languages():
-        langs = content.get("languages") or []
+        langs = [l for l in (content.get("languages") or []) if not (isinstance(l, dict) and l.get("is_hidden"))]
         if not langs:
             return
-        story.append(Paragraph("LANGUAGES", styles["SectionHeader"]))
+        title = sec_titles.get("languages") or "LANGUAGES"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
         l_strs = []
         for l in langs:
             if isinstance(l, str) and l.strip():
@@ -483,10 +621,125 @@ def generate_resume_pdf(
             elif isinstance(l, dict):
                 lname = l.get("language") or l.get("name") or ""
                 prof = l.get("proficiency") or ""
-                l_strs.append(f"{lname} ({prof})" if prof else lname)
+                l_strs.append(f"{lname} — {prof}" if prof else lname)
         if l_strs:
             story.append(Paragraph(" • ".join(l_strs), styles["ResumeBody"]))
         story.append(Spacer(1, max(2, round(3 * spacing_scale))))
+
+    def render_volunteer():
+        vols = [v for v in (content.get("volunteer") or []) if not v.get("is_hidden")]
+        valid_vols = [v for v in vols if (v.get("role") or v.get("organization") or v.get("title"))]
+        if not valid_vols:
+            return
+        title = sec_titles.get("volunteer") or "VOLUNTEER & COMMUNITY EXPERIENCE"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+        for v in valid_vols:
+            v_role = (v.get("role") or v.get("title") or "").strip()
+            v_org = v.get("organization", "").strip()
+            start = v.get("start_date", "").strip()
+            end = v.get("end_date", "").strip()
+            is_curr = bool(v.get("is_current"))
+            date_str = _clean_date_str(start, end, is_curr, fmt)
+
+            title_str = f"<b>{sanitize_reportlab_html(v_role)}</b>" if v_role else ""
+            if v_org:
+                title_str = f"{title_str} — {sanitize_reportlab_html(v_org)}" if title_str else f"<b>{sanitize_reportlab_html(v_org)}</b>"
+            story.append(make_title_date_row(title_str, date_str))
+
+            loc = v.get("location", "").strip()
+            if loc:
+                story.append(Paragraph(loc, styles["ItemSub"]))
+
+            bullets = v.get("bullet_points") or v.get("bullets") or []
+            for b in bullets:
+                b_text = b if isinstance(b, str) else b.get("text", "")
+                if b_text and b_text.strip():
+                    clean_b = sanitize_reportlab_html(b_text.strip())
+                    story.append(Paragraph(f"• {clean_b}", styles["ResumeBullet"]))
+            story.append(Spacer(1, max(2, round(3 * spacing_scale))))
+
+    def render_leadership():
+        leads = [ld for ld in (content.get("leadership") or []) if not ld.get("is_hidden")]
+        valid_leads = [ld for ld in leads if (ld.get("role") or ld.get("organization") or ld.get("title"))]
+        if not valid_leads:
+            return
+        title = sec_titles.get("leadership") or "LEADERSHIP & ACTIVITIES"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+        for ld in valid_leads:
+            ld_role = (ld.get("role") or ld.get("title") or "").strip()
+            ld_org = ld.get("organization", "").strip()
+            start = ld.get("start_date", "").strip()
+            end = ld.get("end_date", "").strip()
+            date_str = _clean_date_str(start, end, bool(ld.get("is_current")), fmt)
+
+            title_str = f"<b>{sanitize_reportlab_html(ld_role)}</b>" if ld_role else ""
+            if ld_org:
+                title_str = f"{title_str} — {sanitize_reportlab_html(ld_org)}" if title_str else f"<b>{sanitize_reportlab_html(ld_org)}</b>"
+            story.append(make_title_date_row(title_str, date_str))
+
+            bullets = ld.get("bullet_points") or ld.get("bullets") or []
+            for b in bullets:
+                b_text = b if isinstance(b, str) else b.get("text", "")
+                if b_text and b_text.strip():
+                    story.append(Paragraph(f"• {sanitize_reportlab_html(b_text.strip())}", styles["ResumeBullet"]))
+            story.append(Spacer(1, max(2, round(3 * spacing_scale))))
+
+    def render_publications():
+        pubs = [p for p in (content.get("publications") or []) if not p.get("is_hidden")]
+        valid_pubs = [p for p in pubs if (p.get("title") or p.get("name"))]
+        if not valid_pubs:
+            return
+        title = sec_titles.get("publications") or "PUBLICATIONS & RESEARCH"
+        story.append(Paragraph(title.upper(), styles["SectionHeader"]))
+        for p in valid_pubs:
+            p_title = (p.get("title") or p.get("name") or "").strip()
+            p_pub = (p.get("publisher") or p.get("journal") or "").strip()
+            p_date = format_date_str(p.get("date") or p.get("year") or "", fmt)
+            title_str = f"<b>{sanitize_reportlab_html(p_title)}</b>"
+            if p_pub:
+                title_str += f" — {sanitize_reportlab_html(p_pub)}"
+            story.append(make_title_date_row(title_str, p_date))
+            desc = (p.get("description") or "").strip()
+            if desc:
+                story.append(Paragraph(sanitize_reportlab_html(desc), styles["ResumeBody"]))
+            story.append(Spacer(1, max(2, round(2 * spacing_scale))))
+
+    def render_custom_section(custom_id: str):
+        csecs = content.get("custom_sections") or []
+        csec = next((c for c in csecs if c.get("id") == custom_id), None)
+        if not csec:
+            return
+        c_title = csec.get("title") or "ADDITIONAL SECTION"
+        entries = [e for e in (csec.get("entries") or []) if not e.get("is_hidden") and (e.get("title") or e.get("subtitle") or e.get("description"))]
+        if not entries:
+            return
+        story.append(Paragraph(c_title.upper(), styles["SectionHeader"]))
+        for e in entries:
+            e_title = (e.get("title") or "").strip()
+            e_sub = (e.get("subtitle") or e.get("organization") or "").strip()
+            start = e.get("start_date", "").strip()
+            end = e.get("end_date", "").strip()
+            date_str = _clean_date_str(start, end, bool(e.get("is_current")), fmt)
+
+            title_str = f"<b>{sanitize_reportlab_html(e_title)}</b>" if e_title else ""
+            if e_sub:
+                title_str = f"{title_str} — {sanitize_reportlab_html(e_sub)}" if title_str else f"<b>{sanitize_reportlab_html(e_sub)}</b>"
+            story.append(make_title_date_row(title_str, date_str))
+
+            loc = e.get("location", "").strip()
+            if loc:
+                story.append(Paragraph(loc, styles["ItemSub"]))
+
+            desc = e.get("description", "").strip()
+            if desc:
+                story.append(Paragraph(sanitize_reportlab_html(desc), styles["ResumeBody"]))
+
+            bullets = e.get("bullet_points") or e.get("bullets") or []
+            for b in bullets:
+                b_text = b if isinstance(b, str) else b.get("text", "")
+                if b_text and b_text.strip():
+                    story.append(Paragraph(f"• {sanitize_reportlab_html(b_text.strip())}", styles["ResumeBullet"]))
+            story.append(Spacer(1, max(2, round(3 * spacing_scale))))
 
     section_renderers = {
         "summary": render_summary,
@@ -499,13 +752,17 @@ def generate_resume_pdf(
         "awards": render_awards,
         "courses": render_courses,
         "languages": render_languages,
+        "volunteer": render_volunteer,
+        "leadership": render_leadership,
+        "publications": render_publications,
     }
 
     order = section_order or TEMPLATE_SECTION_ORDERS.get(template_name, TEMPLATE_SECTION_ORDERS["classic_ats"])
     for sec in order:
-        renderer = section_renderers.get(sec)
-        if renderer:
-            renderer()
+        if sec in section_renderers:
+            section_renderers[sec]()
+        elif sec.startswith("custom"):
+            render_custom_section(sec)
 
     doc.build(story)
     return buffer.getvalue()
@@ -518,6 +775,7 @@ def generate_resume_docx(
     font_size: str = "medium",
     spacing: str = "standard",
     section_order: list[str] | None = None,
+    date_format: str = "MMM YYYY",
 ) -> bytes:
     doc = Document()
     for section in doc.sections:
@@ -526,11 +784,10 @@ def generate_resume_docx(
         section.left_margin = Inches(0.5)
         section.right_margin = Inches(0.5)
 
-    name = (
-        content.get("candidate_name")
-        or content.get("full_name")
-        or "Candidate Name"
-    ).strip()
+    sec_titles: dict[str, str] = content.get("section_titles") or {}
+    fmt = content.get("date_format") or date_format or "MMM YYYY"
+
+    name = (content.get("candidate_name") or content.get("full_name") or "Candidate Name").strip()
     headline = (content.get("headline") or "").strip()
     summary = (content.get("summary") or "").strip()
 
@@ -559,11 +816,11 @@ def generate_resume_docx(
     if email:
         contact_parts.append(email)
     if linkedin:
-        contact_parts.append(linkedin.replace("https://www.", "").replace("https://", ""))
+        contact_parts.append(re.sub(r"^https?://(www\.)?", "", linkedin).rstrip("/"))
     if github:
-        contact_parts.append(github.replace("https://www.", "").replace("https://", ""))
+        contact_parts.append(re.sub(r"^https?://(www\.)?", "", github).rstrip("/"))
     if website:
-        contact_parts.append(website.replace("https://www.", "").replace("https://", ""))
+        contact_parts.append(re.sub(r"^https?://(www\.)?", "", website).rstrip("/"))
 
     if contact_parts:
         p_contact = doc.add_paragraph(" | ".join(contact_parts))
@@ -571,41 +828,73 @@ def generate_resume_docx(
 
     # SECTION RENDERERS FOR DOCX
     def docx_summary():
-        if not summary:
+        if not summary.strip():
             return
-        title = "Executive Summary" if template_name == "executive" else "Professional Summary"
+        title = sec_titles.get("summary") or ("Executive Summary" if template_name == "executive" else "Professional Summary")
         doc.add_heading(title, level=2)
-        doc.add_paragraph(summary)
+        docx_add_html_paragraph(doc, summary)
 
     def docx_skills():
         raw_skills = content.get("skills") or []
-        if not raw_skills:
-            return
-        doc.add_heading("Skills", level=2)
-        skill_strs = []
-        for s in raw_skills:
-            if isinstance(s, str) and s.strip():
-                skill_strs.append(s.strip())
-            elif isinstance(s, dict) and s.get("name"):
-                skill_strs.append(s["name"].strip())
-        if skill_strs:
-            doc.add_paragraph(" • ".join(skill_strs))
+        skill_cats = content.get("skill_categories") or []
+        layout = (content.get("skills_layout") or "inline").lower()
+
+        has_categories = len(skill_cats) > 0 or (
+            isinstance(raw_skills, list) and len(raw_skills) > 0 and isinstance(raw_skills[0], dict) and any(s.get("category") for s in raw_skills)
+        )
+
+        title = sec_titles.get("skills") or "Skills"
+
+        if has_categories and (layout == "grouped" or len(skill_cats) > 0):
+            cat_map: dict[str, list[str]] = {}
+            if skill_cats:
+                for sc in skill_cats:
+                    cname = sc.get("name") or "Core Skills"
+                    slist = sc.get("skills") or []
+                    if isinstance(slist, str):
+                        slist = [s.strip() for s in slist.split(",") if s.strip()]
+                    if slist:
+                        cat_map[cname] = slist
+            else:
+                for s in raw_skills:
+                    cname = s.get("category") or "Core Skills"
+                    sname = s.get("name", "").strip()
+                    if sname:
+                        cat_map.setdefault(cname, []).append(sname)
+            if not cat_map:
+                return
+            doc.add_heading(title, level=2)
+            for cname, items in cat_map.items():
+                p = doc.add_paragraph()
+                r = p.add_run(f"{cname}: ")
+                r.bold = True
+                p.add_run(", ".join(items))
+        else:
+            skill_strs = []
+            for s in raw_skills:
+                if isinstance(s, str) and s.strip():
+                    skill_strs.append(s.strip())
+                elif isinstance(s, dict) and s.get("name"):
+                    skill_strs.append(s["name"].strip())
+            if not skill_strs:
+                return
+            doc.add_heading(title, level=2)
+            doc.add_paragraph(", ".join(skill_strs))
 
     def docx_experiences():
-        exps = content.get("experiences") or []
-        if not exps:
-            return
+        exps = [e for e in (content.get("experiences") or []) if not e.get("is_hidden")]
         valid_exps = [e for e in exps if (e.get("company") or e.get("role_title") or e.get("title"))]
         if not valid_exps:
             return
-        doc.add_heading("Work Experience", level=2)
+        title = sec_titles.get("experiences") or "Work Experience"
+        doc.add_heading(title, level=2)
         for exp in valid_exps:
             comp = exp.get("company", "").strip()
             role = (exp.get("role_title") or exp.get("title") or "").strip()
             start = exp.get("start_date", "").strip()
             end = exp.get("end_date", "").strip()
             is_curr = bool(exp.get("is_current"))
-            date_str = _clean_date_str(start, end, is_curr)
+            date_str = _clean_date_str(start, end, is_curr, fmt)
 
             p = doc.add_paragraph()
             r1 = p.add_run(f"{role} — {comp}" if comp else role)
@@ -623,27 +912,26 @@ def generate_resume_docx(
             for b in bullets:
                 b_text = b if isinstance(b, str) else b.get("text", "")
                 if b_text and b_text.strip():
-                    doc.add_paragraph(b_text.strip(), style="List Bullet")
+                    docx_add_html_paragraph(doc, b_text.strip(), style="List Bullet")
 
     def docx_projects():
-        projs = content.get("projects") or []
-        if not projs:
-            return
+        projs = [p for p in (content.get("projects") or []) if not p.get("is_hidden")]
         valid_projs = [p for p in projs if (p.get("title") or p.get("name"))]
         if not valid_projs:
             return
-        doc.add_heading("Key Projects", level=2)
+        title = sec_titles.get("projects") or "Key Projects"
+        doc.add_heading(title, level=2)
         for proj in valid_projs:
-            title = (proj.get("title") or proj.get("name") or "").strip()
+            p_title = (proj.get("title") or proj.get("name") or "").strip()
             start = proj.get("start_date", "").strip()
             end = proj.get("end_date", "").strip()
-            date_str = _clean_date_str(start, end)
+            date_str = _clean_date_str(start, end, False, fmt)
             tech = proj.get("technologies") or []
             if isinstance(tech, str):
                 tech = [t.strip() for t in tech.split(",") if t.strip()]
 
             p = doc.add_paragraph()
-            r1 = p.add_run(title)
+            r1 = p.add_run(p_title)
             r1.bold = True
             if tech:
                 p.add_run(f" [{', '.join(tech)}]")
@@ -653,29 +941,28 @@ def generate_resume_docx(
 
             desc = proj.get("description", "").strip()
             if desc:
-                doc.add_paragraph(desc)
+                docx_add_html_paragraph(doc, desc)
 
             bullets = proj.get("bullet_points") or proj.get("bullets") or []
             for b in bullets:
                 b_text = b if isinstance(b, str) else b.get("text", "")
                 if b_text and b_text.strip():
-                    doc.add_paragraph(b_text.strip(), style="List Bullet")
+                    docx_add_html_paragraph(doc, b_text.strip(), style="List Bullet")
 
     def docx_education():
-        edus = content.get("education") or []
-        if not edus:
-            return
+        edus = [e for e in (content.get("education") or []) if not e.get("is_hidden")]
         valid_edus = [e for e in edus if (e.get("institution") or e.get("degree"))]
         if not valid_edus:
             return
-        doc.add_heading("Education", level=2)
+        title = sec_titles.get("education") or "Education"
+        doc.add_heading(title, level=2)
         for edu in valid_edus:
             inst = edu.get("institution", "").strip()
             deg = edu.get("degree", "").strip()
             field = edu.get("field_of_study", "").strip()
             start = str(edu.get("start_date") or edu.get("start_year") or "").strip()
             end = str(edu.get("end_date") or edu.get("graduation_year") or "").strip()
-            date_str = _clean_date_str(start, end)
+            date_str = _clean_date_str(start, end, False, fmt)
 
             p = doc.add_paragraph()
             full_deg = f"{deg} in {field}" if field and deg else (deg or field)
@@ -684,36 +971,206 @@ def generate_resume_docx(
             if date_str:
                 p.add_run(f"    ({date_str})")
 
+            gpa = str(edu.get("gpa") or edu.get("cgpa") or edu.get("grade") or "").strip()
+            if gpa:
+                p_gpa = doc.add_paragraph(f"CGPA / GPA: {gpa}")
+                p_gpa.style.font.italic = True
+
     def docx_certifications():
-        certs = content.get("certifications") or []
+        certs = [c for c in (content.get("certifications") or []) if not (isinstance(c, dict) and c.get("is_hidden"))]
         if not certs:
             return
-        doc.add_heading("Certifications", level=2)
-        for cert in certs:
+        valid_certs = [c for c in certs if (c.get("name", "") if isinstance(c, dict) else str(c)).strip()]
+        if not valid_certs:
+            return
+        title = sec_titles.get("certifications") or "Certifications & Licenses"
+        doc.add_heading(title, level=2)
+        for cert in valid_certs:
             cname = cert.get("name", "") if isinstance(cert, dict) else str(cert)
-            if not cname.strip():
-                continue
             issuer = cert.get("issuer", "") if isinstance(cert, dict) else ""
-            date = str(cert.get("issue_date") or cert.get("date") or "") if isinstance(cert, dict) else ""
+            date_raw = str(cert.get("issue_date") or cert.get("date") or "") if isinstance(cert, dict) else ""
+            date_str = format_date_str(date_raw, fmt)
             p = doc.add_paragraph()
             r1 = p.add_run(cname.strip())
             r1.bold = True
-            if issuer or date:
-                p.add_run(f" — {issuer} ({date})" if (issuer and date) else (f" — {issuer}" if issuer else f" ({date})"))
+            if issuer or date_str:
+                p.add_run(f" — {issuer} ({date_str})" if (issuer and date_str) else (f" — {issuer}" if issuer else f" ({date_str})"))
 
     def docx_achievements():
-        achievements = content.get("achievements") or []
-        if not achievements:
+        achs = [a for a in (content.get("achievements") or []) if not (isinstance(a, dict) and a.get("is_hidden"))]
+        if not achs:
             return
-        doc.add_heading("Achievements", level=2)
-        for a in achievements:
+        title = sec_titles.get("achievements") or "Achievements"
+        doc.add_heading(title, level=2)
+        for a in achs:
             if isinstance(a, str) and a.strip():
-                doc.add_paragraph(a.strip(), style="List Bullet")
+                docx_add_html_paragraph(doc, a.strip(), style="List Bullet")
             elif isinstance(a, dict):
-                title = a.get("title") or a.get("name") or ""
+                atitle = a.get("title") or a.get("name") or ""
                 desc = a.get("description") or ""
-                if title:
-                    doc.add_paragraph(f"{title}: {desc}" if desc else title, style="List Bullet")
+                if atitle or desc:
+                    full = f"<b>{atitle.strip()}</b>: {desc.strip()}" if (atitle and desc) else (atitle or desc)
+                    docx_add_html_paragraph(doc, full, style="List Bullet")
+
+    def docx_awards():
+        awards = [aw for aw in (content.get("awards") or []) if not (isinstance(aw, dict) and aw.get("is_hidden"))]
+        if not awards:
+            return
+        title = sec_titles.get("awards") or "Awards & Honors"
+        doc.add_heading(title, level=2)
+        for aw in awards:
+            aname = aw.get("title") or aw.get("name") or (aw if isinstance(aw, str) else "")
+            issuer = aw.get("organization") or aw.get("issuer") or "" if isinstance(aw, dict) else ""
+            date_raw = str(aw.get("year") or aw.get("date") or "") if isinstance(aw, dict) else ""
+            date_str = format_date_str(date_raw, fmt)
+            p = doc.add_paragraph()
+            r = p.add_run(str(aname))
+            r.bold = True
+            if issuer or date_str:
+                p.add_run(f" — {issuer} ({date_str})" if (issuer and date_str) else (f" — {issuer}" if issuer else f" ({date_str})"))
+
+    def docx_courses():
+        courses = [c for c in (content.get("courses") or []) if not (isinstance(c, dict) and c.get("is_hidden"))]
+        if not courses:
+            return
+        title = sec_titles.get("courses") or "Courses & Training"
+        doc.add_heading(title, level=2)
+        c_strs = []
+        for c in courses:
+            if isinstance(c, str) and c.strip():
+                c_strs.append(c.strip())
+            elif isinstance(c, dict):
+                cname = c.get("name") or c.get("title") or ""
+                prov = c.get("provider") or c.get("organization") or ""
+                c_strs.append(f"{cname} ({prov})" if prov else cname)
+        if c_strs:
+            doc.add_paragraph(" • ".join(c_strs))
+
+    def docx_languages():
+        langs = [l for l in (content.get("languages") or []) if not (isinstance(l, dict) and l.get("is_hidden"))]
+        if not langs:
+            return
+        title = sec_titles.get("languages") or "Languages"
+        doc.add_heading(title, level=2)
+        l_strs = []
+        for l in langs:
+            if isinstance(l, str) and l.strip():
+                l_strs.append(l.strip())
+            elif isinstance(l, dict):
+                lname = l.get("language") or l.get("name") or ""
+                prof = l.get("proficiency") or ""
+                l_strs.append(f"{lname} ({prof})" if prof else lname)
+        if l_strs:
+            doc.add_paragraph(" • ".join(l_strs))
+
+    def docx_volunteer():
+        vols = [v for v in (content.get("volunteer") or []) if not v.get("is_hidden")]
+        valid_vols = [v for v in vols if (v.get("role") or v.get("organization") or v.get("title"))]
+        if not valid_vols:
+            return
+        title = sec_titles.get("volunteer") or "Volunteer Experience"
+        doc.add_heading(title, level=2)
+        for v in valid_vols:
+            v_role = (v.get("role") or v.get("title") or "").strip()
+            v_org = v.get("organization", "").strip()
+            start = v.get("start_date", "").strip()
+            end = v.get("end_date", "").strip()
+            date_str = _clean_date_str(start, end, bool(v.get("is_current")), fmt)
+            p = doc.add_paragraph()
+            r = p.add_run(f"{v_role} — {v_org}" if v_org else v_role)
+            r.bold = True
+            if date_str:
+                r2 = p.add_run(f"    ({date_str})")
+                r2.italic = True
+            loc = v.get("location", "").strip()
+            if loc:
+                p_loc = doc.add_paragraph(loc)
+                p_loc.style.font.italic = True
+            bullets = v.get("bullet_points") or v.get("bullets") or []
+            for b in bullets:
+                b_text = b if isinstance(b, str) else b.get("text", "")
+                if b_text and b_text.strip():
+                    docx_add_html_paragraph(doc, b_text.strip(), style="List Bullet")
+
+    def docx_leadership():
+        leads = [ld for ld in (content.get("leadership") or []) if not ld.get("is_hidden")]
+        valid_leads = [ld for ld in leads if (ld.get("role") or ld.get("organization") or ld.get("title"))]
+        if not valid_leads:
+            return
+        title = sec_titles.get("leadership") or "Leadership & Activities"
+        doc.add_heading(title, level=2)
+        for ld in valid_leads:
+            ld_role = (ld.get("role") or ld.get("title") or "").strip()
+            ld_org = ld.get("organization", "").strip()
+            start = ld.get("start_date", "").strip()
+            end = ld.get("end_date", "").strip()
+            date_str = _clean_date_str(start, end, bool(ld.get("is_current")), fmt)
+            p = doc.add_paragraph()
+            r = p.add_run(f"{ld_role} — {ld_org}" if ld_org else ld_role)
+            r.bold = True
+            if date_str:
+                r2 = p.add_run(f"    ({date_str})")
+                r2.italic = True
+            bullets = ld.get("bullet_points") or ld.get("bullets") or []
+            for b in bullets:
+                b_text = b if isinstance(b, str) else b.get("text", "")
+                if b_text and b_text.strip():
+                    docx_add_html_paragraph(doc, b_text.strip(), style="List Bullet")
+
+    def docx_publications():
+        pubs = [p for p in (content.get("publications") or []) if not p.get("is_hidden")]
+        valid_pubs = [p for p in pubs if (p.get("title") or p.get("name"))]
+        if not valid_pubs:
+            return
+        title = sec_titles.get("publications") or "Publications & Research"
+        doc.add_heading(title, level=2)
+        for p in valid_pubs:
+            p_title = (p.get("title") or p.get("name") or "").strip()
+            p_pub = (p.get("publisher") or p.get("journal") or "").strip()
+            p_date = format_date_str(p.get("date") or p.get("year") or "", fmt)
+            p_par = doc.add_paragraph()
+            r = p_par.add_run(p_title)
+            r.bold = True
+            if p_pub or p_date:
+                p_par.add_run(f" — {p_pub} ({p_date})" if (p_pub and p_date) else (f" — {p_pub}" if p_pub else f" ({p_date})"))
+            desc = (p.get("description") or "").strip()
+            if desc:
+                docx_add_html_paragraph(doc, desc)
+
+    def docx_custom_section(custom_id: str):
+        csecs = content.get("custom_sections") or []
+        csec = next((c for c in csecs if c.get("id") == custom_id), None)
+        if not csec:
+            return
+        c_title = csec.get("title") or "Additional Section"
+        entries = [e for e in (csec.get("entries") or []) if not e.get("is_hidden") and (e.get("title") or e.get("subtitle") or e.get("description"))]
+        if not entries:
+            return
+        doc.add_heading(c_title, level=2)
+        for e in entries:
+            e_title = (e.get("title") or "").strip()
+            e_sub = (e.get("subtitle") or e.get("organization") or "").strip()
+            start = e.get("start_date", "").strip()
+            end = e.get("end_date", "").strip()
+            date_str = _clean_date_str(start, end, bool(e.get("is_current")), fmt)
+            p = doc.add_paragraph()
+            r = p.add_run(f"{e_title} — {e_sub}" if e_sub else e_title)
+            r.bold = True
+            if date_str:
+                r2 = p.add_run(f"    ({date_str})")
+                r2.italic = True
+            loc = e.get("location", "").strip()
+            if loc:
+                p_loc = doc.add_paragraph(loc)
+                p_loc.style.font.italic = True
+            desc = e.get("description", "").strip()
+            if desc:
+                docx_add_html_paragraph(doc, desc)
+            bullets = e.get("bullet_points") or e.get("bullets") or []
+            for b in bullets:
+                b_text = b if isinstance(b, str) else b.get("text", "")
+                if b_text and b_text.strip():
+                    docx_add_html_paragraph(doc, b_text.strip(), style="List Bullet")
 
     section_renderers = {
         "summary": docx_summary,
@@ -723,13 +1180,20 @@ def generate_resume_docx(
         "education": docx_education,
         "certifications": docx_certifications,
         "achievements": docx_achievements,
+        "awards": docx_awards,
+        "courses": docx_courses,
+        "languages": docx_languages,
+        "volunteer": docx_volunteer,
+        "leadership": docx_leadership,
+        "publications": docx_publications,
     }
 
     order = section_order or TEMPLATE_SECTION_ORDERS.get(template_name, TEMPLATE_SECTION_ORDERS["classic_ats"])
     for sec in order:
-        renderer = section_renderers.get(sec)
-        if renderer:
-            renderer()
+        if sec in section_renderers:
+            section_renderers[sec]()
+        elif sec.startswith("custom"):
+            docx_custom_section(sec)
 
     buffer = BytesIO()
     doc.save(buffer)

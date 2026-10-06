@@ -336,7 +336,7 @@ def calculate_evidence_based_score(
     what_is_holding_back = []
 
     if skills:
-        what_is_helping.append(f"Technical skills clearly cataloged ({len(skills)} skills listed).")
+        what_is_helping.append(f"Relevant skills clearly cataloged ({len(skills)} skills listed).")
     if projects:
         what_is_helping.append(f"Demonstrated project portfolio ({len(projects)} key project{'s' if len(projects) > 1 else ''}).")
     if education:
@@ -349,7 +349,7 @@ def calculate_evidence_based_score(
         what_is_helping.append(f"Strong grounding: {len(supported_skills)} skills are explicitly backed by project or coursework evidence.")
 
     if not summary or len(summary) < 50:
-        what_is_holding_back.append("Professional summary is missing or brief; does not clearly state your technical focus for the target role.")
+        what_is_holding_back.append(f"Professional summary is missing or brief; does not clearly state your focus for the target {target_role} role.")
     elif dim_summary < 75:
         what_is_holding_back.append(f"Professional summary does not strongly target the selected {target_role} role.")
 

@@ -813,14 +813,37 @@
               <input type="color" id="builderAccentColor" value="#1e3a8a" title="Choose resume accent color" style="width: 32px; height: 28px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
             </div>
             <div class="flex-row align-center gap-2">
-              <select id="builderAddSectionSelect" class="form-select sm" style="width: 135px; color: var(--primary); font-weight: 500;">
+              <label class="text-xs text-muted" for="builderDateFormat">Dates:</label>
+              <select id="builderDateFormat" class="form-select sm" style="width: 105px;">
+                <option value="MMM YYYY" selected>MMM YYYY</option>
+                <option value="MM/YYYY">MM/YYYY</option>
+                <option value="MMMM YYYY">MMMM YYYY</option>
+                <option value="YYYY">YYYY</option>
+              </select>
+            </div>
+            <div class="flex-row align-center gap-2">
+              <select id="builderAddSectionSelect" class="form-select sm" style="width: 140px; color: var(--primary); font-weight: 500;">
                 <option value="" disabled selected>+ Add Section</option>
-                <option value="certifications">Certifications</option>
-                <option value="projects">Key Projects</option>
-                <option value="achievements">Achievements</option>
-                <option value="awards">Awards</option>
-                <option value="languages">Languages</option>
-                <option value="courses">Courses</option>
+                <optgroup label="Core & Common">
+                  <option value="summary">Summary</option>
+                  <option value="skills">Skills</option>
+                  <option value="experiences">Work Experience</option>
+                  <option value="education">Education</option>
+                  <option value="projects">Key Projects</option>
+                  <option value="certifications">Certifications & Licenses</option>
+                  <option value="achievements">Achievements</option>
+                  <option value="awards">Awards & Honors</option>
+                  <option value="languages">Languages</option>
+                  <option value="courses">Courses & Training</option>
+                </optgroup>
+                <optgroup label="Additional">
+                  <option value="volunteer">Volunteer Experience</option>
+                  <option value="leadership">Leadership & Activities</option>
+                  <option value="publications">Publications & Research</option>
+                </optgroup>
+                <optgroup label="Universal Custom">
+                  <option value="custom_new">+ Custom Section...</option>
+                </optgroup>
               </select>
             </div>
           </div>
@@ -878,161 +901,9 @@
               </div>
             </div>
 
-            <!-- Section 2: Professional Summary -->
-            <div class="panel" id="secEditorSummary">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="file-text"></i> Professional Summary</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')" title="Toggle section">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <textarea id="builderSummary" rows="4" placeholder="Brief 2-4 sentence overview of your domain expertise, quantifiable achievements, and technical specializations..."></textarea>
-                <div class="flex-row justify-end mt-1">
-                  <span class="text-xs text-muted" id="builderSummaryCharCount">0 characters</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Section 3: Work Experience -->
-            <div class="panel" id="secEditorExperience">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="briefcase"></i> Work Experience</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="secondary-btn xs" type="button" id="builderAddExperienceBtn">
-                    <i data-lucide="plus"></i><span>Add Role</span>
-                  </button>
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div id="builderExperienceList" class="column-stack gap-3"></div>
-              </div>
-            </div>
-
-            <!-- Section 4: Key Projects -->
-            <div class="panel" id="secEditorProjects">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="folder-git-2"></i> Key Projects</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="secondary-btn xs" type="button" id="builderAddProjectBtn">
-                    <i data-lucide="plus"></i><span>Add Project</span>
-                  </button>
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div id="builderProjectsList" class="column-stack gap-3"></div>
-              </div>
-            </div>
-
-            <!-- Section 5: Skills & Technologies -->
-            <div class="panel" id="secEditorSkills">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="award"></i> Skills & Technologies</h4>
-                </div>
-                <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                  <i data-lucide="chevron-down"></i>
-                </button>
-              </div>
-              <div class="panel-body">
-                <label class="text-xs text-muted mb-1">Enter skills separated by commas:</label>
-                <textarea id="builderSkillsInput" rows="3" placeholder="e.g. Python, FastAPI, PostgreSQL, Docker, Redis, React, TypeScript, Git, AWS"></textarea>
-                <div id="builderSkillsBadges" class="flex-row flex-wrap gap-1 mt-2"></div>
-              </div>
-            </div>
-
-            <!-- Section 6: Education -->
-            <div class="panel" id="secEditorEducation">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="graduation-cap"></i> Education</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="secondary-btn xs" type="button" id="builderAddEducationBtn">
-                    <i data-lucide="plus"></i><span>Add Education</span>
-                  </button>
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div id="builderEducationList" class="column-stack gap-3"></div>
-              </div>
-            </div>
-
-            <!-- Section 7: Certifications -->
-            <div class="panel" id="secEditorCertifications">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="check-circle-2"></i> Certifications</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="secondary-btn xs" type="button" id="builderAddCertificationBtn">
-                    <i data-lucide="plus"></i><span>Add Cert</span>
-                  </button>
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div id="builderCertificationsList" class="column-stack gap-3"></div>
-              </div>
-            </div>
-
-            <!-- Section 8: Achievements & Honors -->
-            <div class="panel" id="secEditorAchievements">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="trophy"></i> Achievements & Awards</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="secondary-btn xs" type="button" id="builderAddAchievementBtn">
-                    <i data-lucide="plus"></i><span>Add Achievement</span>
-                  </button>
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div id="builderAchievementsList" class="column-stack gap-3"></div>
-              </div>
-            </div>
-
-            <!-- Section 9: Languages -->
-            <div class="panel" id="secEditorLanguages">
-              <div class="panel-head flex-row justify-between align-center">
-                <div class="flex-row align-center gap-2">
-                  <h4><i data-lucide="languages"></i> Languages</h4>
-                </div>
-                <div class="flex-row align-center gap-1">
-                  <button class="secondary-btn xs" type="button" id="builderAddLanguageBtn">
-                    <i data-lucide="plus"></i><span>Add Language</span>
-                  </button>
-                  <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')">
-                    <i data-lucide="chevron-down"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div id="builderLanguagesList" class="column-stack gap-3"></div>
-              </div>
+            <!-- Dynamic Modular Sections (Ordered, Renamable, Expandable, Repeatable) -->
+            <div id="builderDynamicSectionsList" class="column-stack gap-3">
+              <!-- Dynamically populated by renderBuilderEditorFromState() according to resumeBuilderState.sectionOrder -->
             </div>
           </div>
 
