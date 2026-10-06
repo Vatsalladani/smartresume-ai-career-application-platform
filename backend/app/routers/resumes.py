@@ -183,8 +183,22 @@ def export_profile_resume_post(
     target_format = (payload.get("format") or format or "pdf").lower()
     template_id = payload.get("template_id") or payload.get("template_name") or "classic_ats"
     accent_color = payload.get("accent_color")
+    secondary_color = payload.get("secondary_color")
     font_size = payload.get("font_size") or "medium"
     spacing = payload.get("spacing") or "standard"
+    font_family = payload.get("font_family")
+    layout = payload.get("layout") or "single"
+    page_size = payload.get("page_size") or "a4"
+    margins = payload.get("margins") or "standard"
+    line_height = payload.get("line_height") or "standard"
+    contact_separator = payload.get("contact_separator")
+    bullet_style = payload.get("bullet_style")
+    date_alignment = payload.get("date_alignment")
+    photo_url = payload.get("photo_url")
+    photo_shape = payload.get("photo_shape")
+    photo_size = payload.get("photo_size")
+    element_colors = payload.get("element_colors")
+    section_styles = payload.get("section_styles")
     section_order = payload.get("section_order")
 
     content = payload.get("content") or payload
@@ -199,8 +213,22 @@ def export_profile_resume_post(
             content,
             template_name=template_id,
             accent_color=accent_color,
+            secondary_color=secondary_color,
             font_size=font_size,
             spacing=spacing,
+            font_family=font_family,
+            layout=layout,
+            page_size=page_size,
+            margins=margins,
+            line_height=line_height,
+            contact_separator=contact_separator,
+            bullet_style=bullet_style,
+            date_alignment=date_alignment,
+            photo_url=photo_url,
+            photo_shape=photo_shape,
+            photo_size=photo_size,
+            element_colors=element_colors,
+            section_styles=section_styles,
             section_order=section_order,
             date_format=date_format,
         )
@@ -210,8 +238,22 @@ def export_profile_resume_post(
             content,
             template_name=template_id,
             accent_color=accent_color,
+            secondary_color=secondary_color,
             font_size=font_size,
             spacing=spacing,
+            font_family=font_family,
+            layout=layout,
+            page_size=page_size,
+            margins=margins,
+            line_height=line_height,
+            contact_separator=contact_separator,
+            bullet_style=bullet_style,
+            date_alignment=date_alignment,
+            photo_url=photo_url,
+            photo_shape=photo_shape,
+            photo_size=photo_size,
+            element_colors=element_colors,
+            section_styles=section_styles,
             section_order=section_order,
             date_format=date_format,
         )

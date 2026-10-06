@@ -4024,28 +4024,28 @@ svg {
 }
 
 /* ==========================================================================
-   TEMPLATE 4: TECHNICAL ATS
-   High density, monospace tags, terminal header accent, code badges, tech-first
+   TEMPLATE 4: TECHNICAL PROFESSIONAL ATS (REDESIGNED: NO TERMINAL/MONOSPACE GIMMICKS)
+   Crisp modern sans-serif, high hierarchy, compact technical density, clean tags
    ========================================================================== */
 .resume-preview-sheet.tpl-technical_ats .resume-preview-canvas,
 .resume-preview-sheet.tpl-technical-ats .resume-preview-canvas {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #0f172a;
-  padding: 34px 40px;
+  padding: 36px 44px;
 }
 
 .resume-preview-sheet.tpl-technical_ats .preview-canvas-header,
 .resume-preview-sheet.tpl-technical-ats .preview-canvas-header {
   text-align: left;
-  margin-bottom: calc(var(--resume-spacing) * 0.7);
+  margin-bottom: calc(var(--resume-spacing) * 0.8);
 }
 
 .resume-preview-sheet.tpl-technical_ats .prev-canvas-name,
 .resume-preview-sheet.tpl-technical-ats .prev-canvas-name {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: calc(var(--resume-font-size) * 1.75);
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 1.85);
   font-weight: 800;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.5px;
   color: #0f172a;
   text-align: left;
   margin-bottom: 2px;
@@ -4053,10 +4053,10 @@ svg {
 
 .resume-preview-sheet.tpl-technical_ats .prev-canvas-headline,
 .resume-preview-sheet.tpl-technical-ats .prev-canvas-headline {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: calc(var(--resume-font-size) * 0.94);
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 0.95);
   font-weight: 600;
-  color: var(--resume-accent, #0284c7);
+  color: var(--resume-accent, #0369a1);
   text-align: left;
   letter-spacing: 0.2px;
   margin-bottom: 6px;
@@ -4065,49 +4065,39 @@ svg {
 .resume-preview-sheet.tpl-technical_ats .prev-canvas-contact,
 .resume-preview-sheet.tpl-technical-ats .prev-canvas-contact {
   justify-content: flex-start;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: calc(var(--resume-font-size) * 0.82);
+  font-size: calc(var(--resume-font-size) * 0.84);
   color: #475569;
-  gap: 7px;
+  gap: 8px;
 }
 
 .resume-preview-sheet.tpl-technical_ats .prev-contact-sep,
 .resume-preview-sheet.tpl-technical-ats .prev-contact-sep {
-  color: var(--resume-accent, #0284c7);
-  font-weight: 700;
+  color: var(--resume-accent, #0369a1);
+  font-weight: 600;
 }
 
 .resume-preview-sheet.tpl-technical_ats .preview-canvas-divider,
 .resume-preview-sheet.tpl-technical-ats .preview-canvas-divider {
   display: block;
   height: 2px;
-  background: var(--resume-accent, #0284c7);
-  margin: 8px 0 var(--resume-spacing) 0;
+  background: var(--resume-accent, #0369a1);
+  margin: 10px 0 var(--resume-spacing) 0;
   border: none;
 }
 
 .resume-preview-sheet.tpl-technical_ats .preview-section-title,
 .resume-preview-sheet.tpl-technical-ats .preview-section-title {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: calc(var(--resume-font-size) * 0.94);
-  font-weight: 700;
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 0.92);
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--resume-accent, #0284c7);
-  border-bottom: 2px solid var(--resume-accent, #0284c7);
-  padding-bottom: 2px;
-  margin-top: calc(var(--resume-spacing) * 0.9);
-  margin-bottom: calc(var(--resume-spacing) * 0.45);
+  letter-spacing: 1px;
+  color: var(--resume-accent, #0369a1);
+  border-bottom: 1.5px solid var(--resume-accent, #0369a1);
+  padding-bottom: 3px;
+  margin-top: calc(var(--resume-spacing) * 1.0);
+  margin-bottom: calc(var(--resume-spacing) * 0.5);
   text-align: left;
-  display: flex;
-  align-items: center;
-}
-
-.resume-preview-sheet.tpl-technical_ats .preview-section-title::before,
-.resume-preview-sheet.tpl-technical-ats .preview-section-title::before {
-  content: "// ";
-  opacity: 0.7;
-  margin-right: 4px;
 }
 
 .resume-preview-sheet.tpl-technical_ats .prev-item-title-col,
@@ -4118,16 +4108,15 @@ svg {
 
 .resume-preview-sheet.tpl-technical_ats .prev-item-date,
 .resume-preview-sheet.tpl-technical-ats .prev-item-date {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: calc(var(--resume-font-size) * 0.82);
+  font-size: calc(var(--resume-font-size) * 0.84);
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .resume-preview-sheet.tpl-technical_ats .prev-item-bullets,
 .resume-preview-sheet.tpl-technical-ats .prev-item-bullets {
   list-style-type: disc;
-  margin: 3px 0 0 16px;
+  margin: 4px 0 0 16px;
 }
 
 .resume-preview-sheet.tpl-technical_ats .prev-item-bullets li,
@@ -4138,27 +4127,398 @@ svg {
 
 .resume-preview-sheet.tpl-technical_ats .prev-skills-grouped .prev-skills-text strong,
 .resume-preview-sheet.tpl-technical-ats .prev-skills-grouped .prev-skills-text strong {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-weight: 700;
   font-size: 0.94em;
-  color: var(--resume-accent, #0284c7);
+  color: #0f172a;
 }
 
 .resume-preview-sheet.tpl-technical_ats .prev-proj-tech,
 .resume-preview-sheet.tpl-technical-ats .prev-proj-tech {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
-  font-size: 0.82em !important;
+  font-size: 0.84em !important;
   font-weight: 600 !important;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  padding: 1.5px 6px;
-  border-radius: 3px;
-  color: #0f172a !important;
+  color: var(--resume-accent, #0369a1) !important;
   margin-left: 6px;
 }
-.resume-preview-sheet.tpl-technical_ats .prev-proj-tech::before,
-.resume-preview-sheet.tpl-technical-ats .prev-proj-tech::before {
-  content: "tech: ";
-  opacity: 0.6;
+
+/* ==========================================================================
+   TEMPLATE 5: EXECUTIVE PROFESSIONAL
+   Authoritative, distinguished leadership header, double border accents
+   ========================================================================== */
+.resume-preview-sheet.tpl-executive_professional .resume-preview-canvas,
+.resume-preview-sheet.tpl-executive-professional .resume-preview-canvas,
+.resume-preview-sheet.tpl-executive .resume-preview-canvas {
+  font-family: "Georgia", "Times New Roman", Times, serif;
+  color: #1e293b;
+  padding: 42px 48px;
+}
+
+.resume-preview-sheet.tpl-executive_professional .preview-canvas-header,
+.resume-preview-sheet.tpl-executive-professional .preview-canvas-header,
+.resume-preview-sheet.tpl-executive .preview-canvas-header {
+  text-align: center;
+  margin-bottom: calc(var(--resume-spacing) * 0.9);
+}
+
+.resume-preview-sheet.tpl-executive_professional .prev-canvas-name,
+.resume-preview-sheet.tpl-executive-professional .prev-canvas-name,
+.resume-preview-sheet.tpl-executive .prev-canvas-name {
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 1.95);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--resume-accent, #1e293b);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.resume-preview-sheet.tpl-executive_professional .prev-canvas-headline,
+.resume-preview-sheet.tpl-executive-professional .prev-canvas-headline,
+.resume-preview-sheet.tpl-executive .prev-canvas-headline {
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 1.0);
+  font-style: italic;
+  font-weight: 500;
+  color: #475569;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.resume-preview-sheet.tpl-executive_professional .prev-canvas-contact,
+.resume-preview-sheet.tpl-executive-professional .prev-canvas-contact,
+.resume-preview-sheet.tpl-executive .prev-canvas-contact {
+  justify-content: center;
+  font-size: calc(var(--resume-font-size) * 0.86);
+  color: #475569;
+  gap: 12px;
+}
+
+.resume-preview-sheet.tpl-executive_professional .preview-canvas-divider,
+.resume-preview-sheet.tpl-executive-professional .preview-canvas-divider,
+.resume-preview-sheet.tpl-executive .preview-canvas-divider {
+  display: block;
+  height: 3px;
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 2px solid var(--resume-accent, #1e293b);
+  background: transparent;
+  margin: 12px 0 var(--resume-spacing) 0;
+}
+
+.resume-preview-sheet.tpl-executive_professional .preview-section-title,
+.resume-preview-sheet.tpl-executive-professional .preview-section-title,
+.resume-preview-sheet.tpl-executive .preview-section-title {
+  font-family: inherit;
+  font-size: calc(var(--resume-font-size) * 0.96);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--resume-accent, #1e293b);
+  border-bottom: 1.5px solid var(--resume-accent, #1e293b);
+  padding-bottom: 3px;
+  margin-top: calc(var(--resume-spacing) * 1.15);
+  margin-bottom: calc(var(--resume-spacing) * 0.55);
+}
+
+.resume-preview-sheet.tpl-executive_professional .prev-item-title-col,
+.resume-preview-sheet.tpl-executive-professional .prev-item-title-col,
+.resume-preview-sheet.tpl-executive .prev-item-title-col {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   TEMPLATE 6: TWO-COLUMN PROFESSIONAL
+   Semantic ATS-ordered 2-column layout (Primary + Secondary sidebar)
+   ========================================================================== */
+.resume-preview-sheet.tpl-two_column_professional .resume-preview-canvas,
+.resume-preview-sheet.tpl-two-column-professional .resume-preview-canvas,
+.resume-preview-sheet.layout-two_column .resume-preview-canvas {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+  padding: 38px 44px;
+}
+
+.resume-preview-sheet.layout-two_column .prev-sections-container,
+.resume-preview-sheet.tpl-two_column_professional .prev-sections-container,
+.resume-preview-sheet.tpl-two-column-professional .prev-sections-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 20px;
+  align-items: start;
+}
+
+.resume-preview-sheet .prev-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--resume-spacing, 12px) * 0.85);
+  min-width: 0;
+}
+
+.resume-preview-sheet .prev-side-col {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--resume-spacing, 12px) * 0.85);
+  border-left: 1.5px solid #e2e8f0;
+  padding-left: 18px;
+  min-width: 0;
+}
+
+.resume-preview-sheet.tpl-two_column_professional .preview-section-title,
+.resume-preview-sheet.tpl-two-column-professional .preview-section-title {
+  font-size: calc(var(--resume-font-size) * 0.9);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--resume-accent, #0f766e);
+  border-bottom: 2px solid var(--resume-accent, #0f766e);
+  padding-bottom: 2px;
+  margin-top: calc(var(--resume-spacing) * 0.8);
+  margin-bottom: calc(var(--resume-spacing) * 0.4);
+}
+
+/* ==========================================================================
+   TEMPLATE 7: CREATIVE PROFESSIONAL
+   Polished design accent, elegant modern hierarchy, optional candidate photo
+   ========================================================================== */
+.resume-preview-sheet.tpl-creative_professional .resume-preview-canvas,
+.resume-preview-sheet.tpl-creative-professional .resume-preview-canvas {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+  padding: 40px 48px;
+}
+
+.resume-preview-sheet.tpl-creative_professional .preview-canvas-header,
+.resume-preview-sheet.tpl-creative-professional .preview-canvas-header {
+  border-left: 4px solid var(--resume-accent, #6366f1);
+  padding-left: 16px;
+  margin-bottom: calc(var(--resume-spacing) * 0.9);
+}
+
+.resume-preview-sheet.tpl-creative_professional .prev-canvas-name,
+.resume-preview-sheet.tpl-creative-professional .prev-canvas-name {
+  font-size: calc(var(--resume-font-size) * 1.9);
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.resume-preview-sheet.tpl-creative_professional .prev-canvas-headline,
+.resume-preview-sheet.tpl-creative-professional .prev-canvas-headline {
+  font-size: calc(var(--resume-font-size) * 0.96);
+  font-weight: 600;
+  color: var(--resume-accent, #6366f1);
+  margin-bottom: 6px;
+}
+
+.resume-preview-sheet.tpl-creative_professional .preview-canvas-divider,
+.resume-preview-sheet.tpl-creative-professional .preview-canvas-divider {
+  display: block;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 8px 0 var(--resume-spacing) 0;
+  border: none;
+}
+
+.resume-preview-sheet.tpl-creative_professional .preview-section-title,
+.resume-preview-sheet.tpl-creative-professional .preview-section-title {
+  font-size: calc(var(--resume-font-size) * 0.92);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--resume-accent, #6366f1);
+  display: inline-block;
+  border-bottom: 2px solid var(--resume-accent, #6366f1);
+  padding-bottom: 2px;
+  margin-top: calc(var(--resume-spacing) * 1.0);
+  margin-bottom: calc(var(--resume-spacing) * 0.5);
+}
+
+/* ==========================================================================
+   PHOTO SUPPORT IN RESUME PREVIEW
+   ========================================================================== */
+.preview-canvas-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.preview-canvas-header.header-center {
+  justify-content: center;
+  text-align: center;
+}
+.prev-photo-container {
+  flex-shrink: 0;
+}
+.prev-photo-img {
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  border: 2px solid #ffffff;
+}
+.prev-photo-img.sm { width: 56px; height: 56px; }
+.prev-photo-img.md { width: 76px; height: 76px; }
+.prev-photo-img.lg { width: 96px; height: 96px; }
+.prev-photo-img.circle { border-radius: 50%; }
+.prev-photo-img.rounded { border-radius: 12px; }
+.prev-photo-img.square { border-radius: 2px; }
+.prev-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   PAGE SIZE & MARGINS
+   ========================================================================== */
+.resume-preview-sheet.size-a4 {
+  max-width: 820px;
+}
+.resume-preview-sheet.size-letter {
+  max-width: 850px;
+}
+.resume-preview-sheet.margin-narrow .resume-preview-canvas {
+  padding: 22px 28px !important;
+}
+.resume-preview-sheet.margin-standard .resume-preview-canvas {
+  padding: 38px 46px !important;
+}
+.resume-preview-sheet.margin-wide .resume-preview-canvas {
+  padding: 50px 60px !important;
+}
+
+/* Date alignment overrides */
+.resume-preview-sheet.date-align-inline .prev-item-header {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: baseline !important;
+  gap: 12px !important;
+}
+
+/* Advanced element color overrides */
+.resume-preview-canvas {
+  color: var(--resume-body-color, #1e293b);
+}
+.prev-canvas-name {
+  color: var(--resume-name-color, var(--resume-accent, #0f172a)) !important;
+}
+.prev-canvas-headline {
+  color: var(--resume-headline-color, #4b5563) !important;
+}
+.prev-item-date {
+  color: var(--resume-dates-color, #64748b) !important;
+}
+.resume-summary-text, .prev-skills-text, .prev-item-entry p {
+  color: var(--resume-body-color, #374151) !important;
+}
+.prev-canvas-contact a, .prev-item-entry a {
+  color: var(--resume-links-color, var(--resume-accent, #0284c7)) !important;
+}
+.prev-item-bullets {
+  list-style-type: var(--resume-bullet-style, disc) !important;
+}
+.prev-item-bullets li {
+  color: var(--resume-body-color, #334155) !important;
+}
+.prev-item-bullets li::marker {
+  color: var(--resume-bullets-color, inherit) !important;
+}
+
+/* ==========================================================================
+   BUILDER CUSTOMIZER UI STYLES
+   Palette swatches, toggle slider, drawers, rich text color picker
+   ========================================================================== */
+.builder-customizer-panel {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+.color-palette-swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.swatch-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.swatch-btn:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--primary);
+}
+.custom-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.custom-toggle-label input[type="checkbox"] {
+  display: none;
+}
+.custom-toggle-label .toggle-slider {
+  width: 28px;
+  height: 16px;
+  background: #cbd5e1;
+  border-radius: 20px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+.custom-toggle-label .toggle-slider::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+.custom-toggle-label input[type="checkbox"]:checked + .toggle-slider {
+  background: var(--primary, #0284c7);
+}
+.custom-toggle-label input[type="checkbox"]:checked + .toggle-slider::after {
+  transform: translateX(12px);
+}
+.customizer-drawer {
+  animation: fadeInDrawer 0.2s ease-out;
+}
+@keyframes fadeInDrawer {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Rich Text Color Picker Button in Editor */
+.rich-toolbar-color-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.rich-color-preview-badge {
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1;
+  border-bottom: 2.5px solid currentColor;
+}
+.rich-color-picker {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  left: 0;
+  top: 0;
 }
 
 /* Autosave indicator */

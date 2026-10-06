@@ -780,82 +780,321 @@
           <button class="subnav-pill" type="button" onclick="navigateToTab('templates')"><i data-lucide="layout-template"></i><span>Templates & Styles</span></button>
         </div>
 
-        <!-- Customizer Toolbar -->
-        <div class="panel p-3 mb-4 flex-row justify-between align-center flex-wrap gap-3 builder-toolbar">
-          <div class="flex-row align-center gap-3 flex-wrap">
-            <div class="flex-row align-center gap-2">
-              <label class="text-xs text-muted" for="builderTemplateSelect">Template:</label>
-              <select id="builderTemplateSelect" class="form-select sm" style="width: 160px; font-weight: 600;">
-                <option value="classic_ats" selected>Classic ATS</option>
-                <option value="modern_professional">Modern Professional</option>
-                <option value="minimal_professional">Minimal Professional</option>
-                <option value="technical_ats">Technical ATS</option>
-              </select>
+        <!-- Customizer Toolbar (Progressive Disclosure) -->
+        <div class="panel p-3 mb-4 builder-customizer-panel">
+          <!-- Level 1: Quick Customize Toolbar -->
+          <div class="flex-row justify-between align-center flex-wrap gap-3 builder-toolbar">
+            <div class="flex-row align-center gap-3 flex-wrap">
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderTemplateSelect">Template:</label>
+                <select id="builderTemplateSelect" class="form-select sm" style="width: 175px; font-weight: 600;">
+                  <option value="classic_ats" selected>Classic ATS</option>
+                  <option value="modern_professional">Modern Professional</option>
+                  <option value="minimal_professional">Minimal Professional</option>
+                  <option value="technical_ats">Technical Professional ATS</option>
+                  <option value="executive_professional">Executive Professional</option>
+                  <option value="two_column_professional">Two-Column Professional</option>
+                  <option value="creative_professional">Creative Professional</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderFontFamily">Font:</label>
+                <select id="builderFontFamily" class="form-select sm" style="width: 115px;">
+                  <option value="inter">Inter</option>
+                  <option value="arial">Arial</option>
+                  <option value="calibri">Calibri</option>
+                  <option value="georgia">Georgia</option>
+                  <option value="times">Times New Roman</option>
+                  <option value="roboto">Roboto</option>
+                  <option value="helvetica">Helvetica</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderFontSize">Font Size:</label>
+                <select id="builderFontSize" class="form-select sm" style="width: 95px;">
+                  <option value="small">Small</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="large">Large</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderSpacing">Spacing:</label>
+                <select id="builderSpacing" class="form-select sm" style="width: 100px;">
+                  <option value="compact">Compact</option>
+                  <option value="standard" selected>Standard</option>
+                  <option value="relaxed">Relaxed</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderLayoutSelect">Layout:</label>
+                <select id="builderLayoutSelect" class="form-select sm" style="width: 115px;">
+                  <option value="single" selected>Single Column</option>
+                  <option value="two_column">Two Column</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderAccentColor">Color:</label>
+                <div class="flex-row align-center gap-1">
+                  <div class="color-palette-swatches">
+                    <button type="button" class="swatch-btn" data-color="#1e3a8a" style="background:#1e3a8a;" title="Navy Blue"></button>
+                    <button type="button" class="swatch-btn" data-color="#0284c7" style="background:#0284c7;" title="Sky Blue"></button>
+                    <button type="button" class="swatch-btn" data-color="#0f766e" style="background:#0f766e;" title="Teal"></button>
+                    <button type="button" class="swatch-btn" data-color="#334155" style="background:#334155;" title="Slate"></button>
+                    <button type="button" class="swatch-btn" data-color="#881337" style="background:#881337;" title="Burgundy"></button>
+                    <button type="button" class="swatch-btn" data-color="#18181b" style="background:#18181b;" title="Charcoal"></button>
+                  </div>
+                  <input type="color" id="builderAccentColor" value="#1e3a8a" title="Custom accent color" style="width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+                </div>
+              </div>
+              <div class="flex-row align-center gap-1">
+                <label class="custom-toggle-label" title="Enable / Disable candidate photo">
+                  <input type="checkbox" id="builderPhotoToggle">
+                  <span class="toggle-slider"></span>
+                  <span class="text-xs text-muted" style="margin-left: 4px; font-weight: 500;">Photo</span>
+                </label>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <select id="builderAddSectionSelect" class="form-select sm" style="width: 130px; color: var(--primary); font-weight: 500;">
+                  <option value="" disabled selected>+ Add Section</option>
+                  <optgroup label="Core & Common">
+                    <option value="summary">Summary</option>
+                    <option value="skills">Skills</option>
+                    <option value="experiences">Work Experience</option>
+                    <option value="education">Education</option>
+                    <option value="projects">Key Projects</option>
+                    <option value="certifications">Certifications & Licenses</option>
+                    <option value="achievements">Achievements</option>
+                    <option value="awards">Awards & Honors</option>
+                    <option value="languages">Languages</option>
+                    <option value="courses">Courses & Training</option>
+                  </optgroup>
+                  <optgroup label="Additional">
+                    <option value="volunteer">Volunteer Experience</option>
+                    <option value="leadership">Leadership & Activities</option>
+                    <option value="publications">Publications & Research</option>
+                  </optgroup>
+                  <optgroup label="Universal Custom">
+                    <option value="custom_new">+ Custom Section...</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
             <div class="flex-row align-center gap-2">
-              <label class="text-xs text-muted" for="builderFontSize">Font Size:</label>
-              <select id="builderFontSize" class="form-select sm" style="width: 95px;">
-                <option value="small">Small</option>
-                <option value="medium" selected>Medium</option>
-                <option value="large">Large</option>
-              </select>
+              <button class="secondary-btn sm" type="button" id="builderToggleSectionStylesBtn" onclick="toggleCustomizerDrawer('sectionStyles')" title="Section titles, borders, alignment">
+                <i data-lucide="sliders"></i><span>Section Styles ▾</span>
+              </button>
+              <button class="secondary-btn sm" type="button" id="builderToggleAdvancedBtn" onclick="toggleCustomizerDrawer('advanced')" title="Element colors, margins, paper size">
+                <i data-lucide="settings-2"></i><span>Advanced ▾</span>
+              </button>
+              <button class="secondary-btn sm" type="button" id="builderFullscreenPreviewBtn">
+                <i data-lucide="maximize-2"></i><span>Fullscreen</span>
+              </button>
             </div>
-            <div class="flex-row align-center gap-2">
-              <label class="text-xs text-muted" for="builderSpacing">Spacing:</label>
-              <select id="builderSpacing" class="form-select sm" style="width: 105px;">
-                <option value="compact">Compact</option>
-                <option value="standard" selected>Standard</option>
-                <option value="relaxed">Relaxed</option>
-              </select>
+          </div>
+
+          <!-- Photo Controls Bar (shown when photo is ON) -->
+          <div id="builderPhotoControlsBar" class="customizer-drawer photo-drawer hidden pt-2 mt-2" style="border-top: 1px solid var(--border);">
+            <div class="flex-row align-center justify-between flex-wrap gap-3">
+              <div class="flex-row align-center gap-3 flex-wrap">
+                <span class="text-xs font-bold text-muted uppercase">Candidate Photo:</span>
+                <label class="secondary-btn xs cursor-pointer">
+                  <i data-lucide="upload"></i><span>Upload Photo</span>
+                  <input type="file" id="builderPhotoInput" accept="image/*" class="hidden">
+                </label>
+                <div class="flex-row align-center gap-2">
+                  <label class="text-xs text-muted" for="builderPhotoShape">Shape:</label>
+                  <select id="builderPhotoShape" class="form-select xs" style="width: 90px;">
+                    <option value="circle" selected>Circle</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="square">Square</option>
+                  </select>
+                </div>
+                <div class="flex-row align-center gap-2">
+                  <label class="text-xs text-muted" for="builderPhotoSize">Size:</label>
+                  <select id="builderPhotoSize" class="form-select xs" style="width: 85px;">
+                    <option value="sm">Small</option>
+                    <option value="md" selected>Medium</option>
+                    <option value="lg">Large</option>
+                  </select>
+                </div>
+                <button type="button" class="text-btn xs text-danger" id="builderPhotoRemoveBtn" onclick="removeBuilderPhoto()">
+                  <i data-lucide="trash-2"></i><span>Remove Photo</span>
+                </button>
+              </div>
+              <span class="text-xs text-muted">Preview updates automatically. Positioned next to name in header.</span>
             </div>
-            <div class="flex-row align-center gap-2">
-              <label class="text-xs text-muted" for="builderAccentColor">Accent Color:</label>
-              <input type="color" id="builderAccentColor" value="#1e3a8a" title="Choose resume accent color" style="width: 32px; height: 28px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+          </div>
+
+          <!-- Level 2: Section Styling Drawer -->
+          <div id="builderSectionStylesDrawer" class="customizer-drawer section-styles-drawer hidden pt-3 mt-2" style="border-top: 1px solid var(--border);">
+            <div class="flex-row align-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase text-muted tracking-wider"><i data-lucide="sliders" style="width: 14px; height: 14px; vertical-align: middle;"></i> Section Styling Controls</span>
+              <button type="button" class="text-btn xs" onclick="resetCurrentSectionStyle()"><i data-lucide="rotate-ccw"></i> Reset Section to Preset</button>
             </div>
-            <div class="flex-row align-center gap-2">
-              <label class="text-xs text-muted" for="builderDateFormat">Dates:</label>
-              <select id="builderDateFormat" class="form-select sm" style="width: 105px;">
-                <option value="MMM YYYY" selected>MMM YYYY</option>
-                <option value="MM/YYYY">MM/YYYY</option>
-                <option value="MMMM YYYY">MMMM YYYY</option>
-                <option value="YYYY">YYYY</option>
-              </select>
-            </div>
-            <div class="flex-row align-center gap-2">
-              <select id="builderAddSectionSelect" class="form-select sm" style="width: 140px; color: var(--primary); font-weight: 500;">
-                <option value="" disabled selected>+ Add Section</option>
-                <optgroup label="Core & Common">
+            <div class="flex-row align-center gap-3 flex-wrap">
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderStyleTargetSection">Select Section:</label>
+                <select id="builderStyleTargetSection" class="form-select sm" style="width: 145px;" onchange="onSectionStyleTargetChange()">
+                  <option value="all">All Sections</option>
                   <option value="summary">Summary</option>
                   <option value="skills">Skills</option>
                   <option value="experiences">Work Experience</option>
                   <option value="education">Education</option>
                   <option value="projects">Key Projects</option>
-                  <option value="certifications">Certifications & Licenses</option>
+                  <option value="certifications">Certifications</option>
                   <option value="achievements">Achievements</option>
-                  <option value="awards">Awards & Honors</option>
+                  <option value="awards">Awards</option>
                   <option value="languages">Languages</option>
-                  <option value="courses">Courses & Training</option>
-                </optgroup>
-                <optgroup label="Additional">
-                  <option value="volunteer">Volunteer Experience</option>
-                  <option value="leadership">Leadership & Activities</option>
-                  <option value="publications">Publications & Research</option>
-                </optgroup>
-                <optgroup label="Universal Custom">
-                  <option value="custom_new">+ Custom Section...</option>
-                </optgroup>
-              </select>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderSecHeadingAlign">Heading Alignment:</label>
+                <select id="builderSecHeadingAlign" class="form-select sm" style="width: 95px;">
+                  <option value="left" selected>Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderSecHeadingColor">Title Color:</label>
+                <input type="color" id="builderSecHeadingColor" value="#0f172a" style="width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderSecDividerStyle">Divider Line:</label>
+                <select id="builderSecDividerStyle" class="form-select sm" style="width: 110px;">
+                  <option value="solid" selected>Solid Line</option>
+                  <option value="accent_bar">Accent Bar</option>
+                  <option value="hairline">Hairline</option>
+                  <option value="double">Double Line</option>
+                  <option value="none">No Divider</option>
+                </select>
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderSecDividerColor">Divider Color:</label>
+                <input type="color" id="builderSecDividerColor" value="#e2e8f0" style="width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; padding: 1px; cursor: pointer;">
+              </div>
+              <div class="flex-row align-center gap-2">
+                <label class="text-xs text-muted" for="builderSecSpacingSelect">Section Spacing:</label>
+                <select id="builderSecSpacingSelect" class="form-select sm" style="width: 95px;">
+                  <option value="compact">Compact</option>
+                  <option value="standard" selected>Standard</option>
+                  <option value="relaxed">Relaxed</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div class="flex-row align-center gap-2">
-            <button class="secondary-btn sm" type="button" id="builderFullscreenPreviewBtn">
-              <i data-lucide="maximize-2"></i>
-              <span>Fullscreen Preview</span>
-            </button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('profile')">
-              <i data-lucide="edit-3"></i>
-              <span>Edit Full Profile</span>
-            </button>
+
+          <!-- Level 3: Advanced Customization Drawer -->
+          <div id="builderAdvancedDrawer" class="customizer-drawer advanced-drawer hidden pt-3 mt-2" style="border-top: 1px solid var(--border);">
+            <div class="flex-row align-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase text-muted tracking-wider"><i data-lucide="settings-2" style="width: 14px; height: 14px; vertical-align: middle;"></i> Advanced Typography, Page & Color Control</span>
+              <button type="button" class="text-btn xs" onclick="resetAllBuilderCustomizations()"><i data-lucide="rotate-ccw"></i> Reset All Customizations</button>
+            </div>
+            
+            <div class="grid two gap-3">
+              <!-- Sub-Column 1: Detailed Element Colors -->
+              <div class="p-2" style="background: var(--surface-2); border-radius: 6px;">
+                <div class="text-xs font-bold text-muted mb-2">SPECIFIC ELEMENT COLORS</div>
+                <div class="grid three gap-2">
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorName">Name:</label>
+                    <input type="color" id="builderColorName" value="#0f172a" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorHeadline">Headline:</label>
+                    <input type="color" id="builderColorHeadline" value="#475569" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorBody">Body Text:</label>
+                    <input type="color" id="builderColorBody" value="#374151" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorLinks">Links:</label>
+                    <input type="color" id="builderColorLinks" value="#0284c7" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorDates">Dates:</label>
+                    <input type="color" id="builderColorDates" value="#64748b" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorDividers">Dividers:</label>
+                    <input type="color" id="builderColorDividers" value="#e2e8f0" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorBullets">Bullets:</label>
+                    <input type="color" id="builderColorBullets" value="#475569" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderColorSecondary">Secondary:</label>
+                    <input type="color" id="builderColorSecondary" value="#64748b" style="width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 1px;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sub-Column 2: Page Geometry & Formatting -->
+              <div class="p-2" style="background: var(--surface-2); border-radius: 6px;">
+                <div class="text-xs font-bold text-muted mb-2">PAGE GEOMETRY & FORMATTING</div>
+                <div class="grid three gap-2">
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderPageSize">Paper:</label>
+                    <select id="builderPageSize" class="form-select xs" style="width: 80px;">
+                      <option value="a4" selected>A4</option>
+                      <option value="letter">Letter</option>
+                    </select>
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderMargins">Margins:</label>
+                    <select id="builderMargins" class="form-select xs" style="width: 85px;">
+                      <option value="narrow">Narrow</option>
+                      <option value="standard" selected>Standard</option>
+                      <option value="wide">Wide</option>
+                    </select>
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderLineHeight">Line Height:</label>
+                    <select id="builderLineHeight" class="form-select xs" style="width: 85px;">
+                      <option value="compact">Compact</option>
+                      <option value="standard" selected>Standard</option>
+                      <option value="comfortable">Comfortable</option>
+                    </select>
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderContactSep">Separator:</label>
+                    <select id="builderContactSep" class="form-select xs" style="width: 80px;">
+                      <option value="|" selected>| (Pipe)</option>
+                      <option value="•">• (Bullet)</option>
+                      <option value="·">· (Dot)</option>
+                      <option value="/">/ (Slash)</option>
+                      <option value="none">None</option>
+                    </select>
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderBulletStyle">Bullet Style:</label>
+                    <select id="builderBulletStyle" class="form-select xs" style="width: 85px;">
+                      <option value="disc" selected>• Bullet</option>
+                      <option value="dash">– Dash</option>
+                      <option value="none">None</option>
+                    </select>
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderDateFormat">Dates:</label>
+                    <select id="builderDateFormat" class="form-select xs" style="width: 85px;">
+                      <option value="MMM YYYY" selected>MMM YYYY</option>
+                      <option value="MM/YYYY">MM/YYYY</option>
+                      <option value="MMMM YYYY">MMMM YYYY</option>
+                      <option value="YYYY">YYYY</option>
+                    </select>
+                  </div>
+                  <div class="flex-row align-center gap-1">
+                    <label class="text-xs text-muted" for="builderDateAlign">Date Align:</label>
+                    <select id="builderDateAlign" class="form-select xs" style="width: 80px;">
+                      <option value="right" selected>Right</option>
+                      <option value="inline">Inline</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -911,10 +1150,15 @@
           <div class="builder-preview-container" style="position: sticky; top: 80px;">
             <div class="resume-preview-sheet tpl-classic-ats" id="builderLivePreviewSheet">
               <div class="resume-preview-canvas" id="builderPreviewCanvas">
-                <div class="preview-canvas-header">
-                  <h2 id="prevCanvasName" class="prev-canvas-name">Candidate Name</h2>
-                  <p class="prev-canvas-headline" id="prevCanvasHeadline">Professional Headline</p>
-                  <div class="prev-canvas-contact" id="prevCanvasContact"></div>
+                <div class="preview-canvas-header" id="prevCanvasHeader">
+                  <div class="prev-photo-container hidden" id="prevCanvasPhotoContainer">
+                    <img id="prevCanvasPhotoImg" src="" alt="Candidate Photo" class="prev-photo-img circle md">
+                  </div>
+                  <div class="prev-header-content">
+                    <h2 id="prevCanvasName" class="prev-canvas-name">Candidate Name</h2>
+                    <p class="prev-canvas-headline" id="prevCanvasHeadline">Professional Headline</p>
+                    <div class="prev-canvas-contact" id="prevCanvasContact"></div>
+                  </div>
                 </div>
                 <div class="preview-canvas-divider" id="prevCanvasDivider"></div>
                 

@@ -1359,11 +1359,14 @@ const RESUME_BUILDER_TEMPLATES = {
   classic_ats: {
     id: "classic_ats",
     name: "Classic ATS",
-    fontFamily: 'Georgia, "Times New Roman", Times, serif',
+    fontFamily: '"Georgia", "Times New Roman", Times, serif',
+    fontId: "georgia",
     headerAlignment: "center",
     contactSeparator: "|",
     headingStyle: "classic-underline",
     accentColor: "#1e3a8a",
+    secondaryColor: "#475569",
+    layout: "single",
     dateStyle: "classic",
     skillDisplay: "inline",
     defaultSectionOrder: ["summary", "experiences", "education", "skills", "projects", "certifications", "achievements", "awards", "courses", "languages"]
@@ -1372,10 +1375,13 @@ const RESUME_BUILDER_TEMPLATES = {
     id: "modern_professional",
     name: "Modern Professional",
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
     headerAlignment: "left",
     contactSeparator: "•",
     headingStyle: "modern-accent-bar",
     accentColor: "#0284c7",
+    secondaryColor: "#64748b",
+    layout: "single",
     dateStyle: "pill",
     skillDisplay: "tags",
     defaultSectionOrder: ["summary", "experiences", "projects", "skills", "education", "certifications", "achievements"]
@@ -1384,35 +1390,115 @@ const RESUME_BUILDER_TEMPLATES = {
     id: "minimal_professional",
     name: "Minimal Professional",
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontId: "helvetica",
     headerAlignment: "left",
     contactSeparator: "·",
     headingStyle: "minimal-hairline",
     accentColor: "#334155",
+    secondaryColor: "#94a3b8",
+    layout: "single",
     dateStyle: "subtle",
     skillDisplay: "minimal",
     defaultSectionOrder: ["summary", "experiences", "skills", "education", "projects", "certifications"]
   },
   technical_ats: {
     id: "technical_ats",
-    name: "Technical ATS",
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    monoFontFamily: 'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace',
+    name: "Technical Professional ATS",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
     headerAlignment: "left",
-    contactSeparator: "//",
-    headingStyle: "tech-terminal",
+    contactSeparator: "•",
+    headingStyle: "tech-clean-line",
     accentColor: "#0369a1",
-    dateStyle: "mono",
-    skillDisplay: "tech-mono",
-    defaultSectionOrder: ["skills", "projects", "experiences", "education", "certifications", "achievements", "summary"]
+    secondaryColor: "#475569",
+    layout: "single",
+    dateStyle: "standard",
+    skillDisplay: "compact-grouped",
+    defaultSectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements"]
+  },
+  executive_professional: {
+    id: "executive_professional",
+    name: "Executive Professional",
+    fontFamily: '"Georgia", "Times New Roman", Times, serif',
+    fontId: "georgia",
+    headerAlignment: "center",
+    contactSeparator: "|",
+    headingStyle: "executive-double-line",
+    accentColor: "#1e293b",
+    secondaryColor: "#475569",
+    layout: "single",
+    dateStyle: "classic",
+    skillDisplay: "inline",
+    defaultSectionOrder: ["summary", "experiences", "achievements", "education", "skills", "certifications", "projects"]
+  },
+  two_column_professional: {
+    id: "two_column_professional",
+    name: "Two-Column Professional",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "modern-accent-bar",
+    accentColor: "#0f766e",
+    secondaryColor: "#64748b",
+    layout: "two_column",
+    dateStyle: "pill",
+    skillDisplay: "tags",
+    defaultSectionOrder: ["summary", "experiences", "projects", "skills", "education", "certifications", "languages"],
+    primarySections: ["summary", "experiences", "projects", "volunteer", "leadership"],
+    secondarySections: ["skills", "education", "certifications", "achievements", "awards", "languages", "courses"]
+  },
+  creative_professional: {
+    id: "creative_professional",
+    name: "Creative Professional",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontId: "inter",
+    headerAlignment: "left",
+    contactSeparator: "•",
+    headingStyle: "creative-pill",
+    accentColor: "#6366f1",
+    secondaryColor: "#818cf8",
+    layout: "single",
+    dateStyle: "pill",
+    skillDisplay: "tags",
+    photoEnabled: true,
+    defaultSectionOrder: ["summary", "projects", "experiences", "skills", "education", "certifications", "achievements"]
   }
 };
+// Aliases for compatibility
+RESUME_BUILDER_TEMPLATES.executive = RESUME_BUILDER_TEMPLATES.executive_professional;
+RESUME_BUILDER_TEMPLATES.two_column = RESUME_BUILDER_TEMPLATES.two_column_professional;
 
 let resumeBuilderState = {
   template: "classic_ats",
+  fontFamily: "georgia",
   fontSize: "medium",
   spacing: "standard",
   accentColor: "#1e3a8a",
+  secondaryColor: "#475569",
+  layout: "single",
+  pageSize: "a4",
+  margins: "standard",
+  lineHeight: "standard",
+  contactSeparator: "|",
+  bulletStyle: "disc",
+  dateAlignment: "right",
   dateFormat: "MMM YYYY",
+  photoEnabled: false,
+  photoUrl: "",
+  photoShape: "circle",
+  photoSize: "md",
+  elementColors: {
+    name: "",
+    headline: "",
+    body: "",
+    links: "",
+    dates: "",
+    dividers: "",
+    bullets: "",
+    secondary: ""
+  },
+  sectionStyles: {},
   skillsLayout: "inline", // "inline" or "grouped"
   sectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
   sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
@@ -1465,7 +1551,7 @@ let builderAutosaveTimeout = null;
 
 function sanitizeHtmlForPreview(rawHtml) {
   if (!rawHtml || typeof rawHtml !== "string") return "";
-  const allowed = new Set(["B", "STRONG", "I", "EM", "U", "A", "UL", "OL", "LI", "P", "SPAN", "BR"]);
+  const allowed = new Set(["B", "STRONG", "I", "EM", "U", "A", "UL", "OL", "LI", "P", "SPAN", "BR", "FONT"]);
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(rawHtml, "text/html");
@@ -1483,6 +1569,10 @@ function sanitizeHtmlForPreview(rawHtml) {
                 if (attr.name === "href" && !/^(https?:\/\/|mailto:|tel:)/i.test(attr.value)) {
                   child.removeAttribute(attr.name);
                 }
+              } else if (child.tagName === "FONT" && attr.name.toLowerCase() === "color") {
+                // Keep font color attribute
+              } else if (child.tagName === "SPAN" && attr.name.toLowerCase() === "style" && /color\s*:/i.test(attr.value)) {
+                // Keep style color
               } else {
                 child.removeAttribute(attr.name);
               }
@@ -1570,7 +1660,10 @@ function cleanBulletHtml(html) {
     .replace(/<\/li>/gi, "\n")
     .replace(/<[!\/]?[a-z0-9]+[^>]*>/gi, (match) => {
       const tag = match.toLowerCase();
-      if (/^<\/?(b|i|u|strong|em|a)(\s|>)/.test(tag)) {
+      if (/^<\/?(b|i|u|strong|em|a|font)(\s|>)/i.test(tag)) {
+        return match;
+      }
+      if (/^<span\s+style=["'][^"']*color:[^"']*["']/i.test(match) || /^<\/span>/i.test(tag)) {
         return match;
       }
       return "";
@@ -1581,12 +1674,25 @@ function cleanBulletHtml(html) {
     .filter(Boolean);
 }
 
+window.applyRichTextColor = function(color, inputEl) {
+  const wrapper = inputEl.closest(".rich-text-wrapper");
+  const content = wrapper ? wrapper.querySelector('.rich-text-content[contenteditable="true"]') : null;
+  if (!content) return;
+  content.focus();
+  document.execCommand("foreColor", false, color);
+  content.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
 function renderRichToolbar(editorId) {
   return `
     <div class="rich-text-toolbar" data-for="${editorId}">
       <button type="button" class="rich-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
       <button type="button" class="rich-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
       <button type="button" class="rich-toolbar-btn" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+      <label class="rich-toolbar-color-btn" title="Text Color">
+        <span class="rich-color-preview-badge">A</span>
+        <input type="color" class="rich-color-picker" value="#1f2937" onchange="applyRichTextColor(this.value, this)" onclick="event.stopPropagation()">
+      </label>
       <span class="rich-toolbar-sep"></span>
       <button type="button" class="rich-toolbar-btn" data-command="insertUnorderedList" title="Bullet List">• list</button>
       <button type="button" class="rich-toolbar-btn" data-command="createLink" title="Insert Link">🔗</button>
@@ -1617,13 +1723,39 @@ function renderSharedRichTextField({
 function getCleanResumeBuilderState() {
   const p = state.profile || {};
   const u = state.user || {};
+  const tpl = state.activeTemplateId || "classic_ats";
+  const tplConf = RESUME_BUILDER_TEMPLATES[tpl] || RESUME_BUILDER_TEMPLATES.classic_ats;
 
   return {
-    template: state.activeTemplateId || "classic_ats",
+    template: tpl,
+    fontFamily: tplConf.fontId || "inter",
     fontSize: state.customizer?.fontSize || "medium",
     spacing: state.customizer?.spacing || "standard",
-    accentColor: state.customizer?.accentColor || "#1e3a8a",
+    accentColor: state.customizer?.accentColor || tplConf.accentColor || "#1e3a8a",
+    secondaryColor: tplConf.secondaryColor || "#475569",
+    layout: tplConf.layout || "single",
+    pageSize: "a4",
+    margins: "standard",
+    lineHeight: "standard",
+    contactSeparator: tplConf.contactSeparator || "|",
+    bulletStyle: "disc",
+    dateAlignment: "right",
     dateFormat: "MMM YYYY",
+    photoEnabled: false,
+    photoUrl: "",
+    photoShape: "circle",
+    photoSize: "md",
+    elementColors: {
+      name: "",
+      headline: "",
+      body: "",
+      links: "",
+      dates: "",
+      dividers: "",
+      bullets: "",
+      secondary: ""
+    },
+    sectionStyles: {},
     skillsLayout: "inline",
     sectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
     sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
@@ -1713,6 +1845,26 @@ function loadResumeBuilderState() {
         if (!resumeBuilderState.template) {
           resumeBuilderState.template = state.activeTemplateId || localStorage.getItem("activeTemplateId") || "classic_ats";
         }
+        const tconf = RESUME_BUILDER_TEMPLATES[resumeBuilderState.template] || {};
+        if (!resumeBuilderState.fontFamily) resumeBuilderState.fontFamily = tconf.fontId || "inter";
+        if (!resumeBuilderState.layout) resumeBuilderState.layout = tconf.layout || "single";
+        if (!resumeBuilderState.pageSize) resumeBuilderState.pageSize = "a4";
+        if (!resumeBuilderState.margins) resumeBuilderState.margins = "standard";
+        if (!resumeBuilderState.lineHeight) resumeBuilderState.lineHeight = "standard";
+        if (!resumeBuilderState.contactSeparator) resumeBuilderState.contactSeparator = tconf.contactSeparator || "|";
+        if (!resumeBuilderState.bulletStyle) resumeBuilderState.bulletStyle = "disc";
+        if (!resumeBuilderState.dateAlignment) resumeBuilderState.dateAlignment = "right";
+        if (typeof resumeBuilderState.photoEnabled !== "boolean") resumeBuilderState.photoEnabled = false;
+        if (!resumeBuilderState.photoUrl) resumeBuilderState.photoUrl = "";
+        if (!resumeBuilderState.photoShape) resumeBuilderState.photoShape = "circle";
+        if (!resumeBuilderState.photoSize) resumeBuilderState.photoSize = "md";
+        if (!resumeBuilderState.elementColors || typeof resumeBuilderState.elementColors !== "object") {
+          resumeBuilderState.elementColors = {};
+        }
+        if (!resumeBuilderState.sectionStyles || typeof resumeBuilderState.sectionStyles !== "object") {
+          resumeBuilderState.sectionStyles = {};
+        }
+
         state.activeTemplateId = resumeBuilderState.template;
         localStorage.setItem("activeTemplateId", resumeBuilderState.template);
         return;
@@ -1775,6 +1927,42 @@ function wireResumeBuilder() {
     state.activeTemplateId = val;
     localStorage.setItem("activeTemplateId", val);
 
+    const tplConfig = RESUME_BUILDER_TEMPLATES[val] || RESUME_BUILDER_TEMPLATES.classic_ats;
+    if (tplConfig) {
+      if (tplConfig.fontId) {
+        resumeBuilderState.fontFamily = tplConfig.fontId;
+        const fontEl = $("#builderFontFamily");
+        if (fontEl) fontEl.value = tplConfig.fontId;
+      }
+      if (tplConfig.layout) {
+        resumeBuilderState.layout = tplConfig.layout;
+        const layoutEl = $("#builderLayoutSelect");
+        if (layoutEl) layoutEl.value = tplConfig.layout;
+      }
+      if (tplConfig.accentColor) {
+        resumeBuilderState.accentColor = tplConfig.accentColor;
+        const accentEl = $("#builderAccentColor");
+        if (accentEl) accentEl.value = tplConfig.accentColor;
+      }
+      if (tplConfig.secondaryColor) {
+        resumeBuilderState.secondaryColor = tplConfig.secondaryColor;
+        const secEl = $("#builderColorSecondary");
+        if (secEl) secEl.value = tplConfig.secondaryColor;
+      }
+      if (tplConfig.contactSeparator) {
+        resumeBuilderState.contactSeparator = tplConfig.contactSeparator;
+        const sepEl = $("#builderContactSep");
+        if (sepEl) sepEl.value = tplConfig.contactSeparator;
+      }
+      if (typeof tplConfig.photoEnabled === "boolean") {
+        resumeBuilderState.photoEnabled = tplConfig.photoEnabled;
+        const pToggle = $("#builderPhotoToggle");
+        if (pToggle) pToggle.checked = tplConfig.photoEnabled;
+        const pBar = $("#builderPhotoControlsBar");
+        if (pBar) pBar.classList.toggle("hidden", !tplConfig.photoEnabled);
+      }
+    }
+
     if (isDefaultOrder && RESUME_BUILDER_TEMPLATES[val]?.defaultSectionOrder) {
       resumeBuilderState.sectionOrder = [...RESUME_BUILDER_TEMPLATES[val].defaultSectionOrder];
       renderBuilderEditorFromState();
@@ -1783,6 +1971,20 @@ function wireResumeBuilder() {
     triggerBuilderAutosave();
     renderResumePreviewCanvas();
     syncActiveTemplateDisplay();
+  });
+
+  // Font family
+  $("#builderFontFamily")?.addEventListener("change", (e) => {
+    resumeBuilderState.fontFamily = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+
+  // Layout select
+  $("#builderLayoutSelect")?.addEventListener("change", (e) => {
+    resumeBuilderState.layout = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
   });
 
   // Font size
@@ -1805,6 +2007,225 @@ function wireResumeBuilder() {
     triggerBuilderAutosave();
     renderResumePreviewCanvas();
   });
+
+  // Palette swatches
+  document.querySelectorAll(".swatch-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const col = btn.dataset.color;
+      if (col) {
+        resumeBuilderState.accentColor = col;
+        const colInput = $("#builderAccentColor");
+        if (colInput) colInput.value = col;
+        triggerBuilderAutosave();
+        renderResumePreviewCanvas();
+      }
+    });
+  });
+
+  // Photo controls
+  const photoToggle = $("#builderPhotoToggle");
+  const photoBar = $("#builderPhotoControlsBar");
+  if (photoToggle) {
+    photoToggle.addEventListener("change", (e) => {
+      resumeBuilderState.photoEnabled = e.target.checked;
+      if (photoBar) {
+        photoBar.classList.toggle("hidden", !e.target.checked);
+      }
+      triggerBuilderAutosave();
+      renderResumePreviewCanvas();
+    });
+  }
+
+  const photoInput = $("#builderPhotoInput");
+  if (photoInput) {
+    photoInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast("Please select an image file (PNG, JPG, WebP).");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (loadEvt) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 300;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+          resumeBuilderState.photoUrl = dataUrl;
+          resumeBuilderState.photoEnabled = true;
+          if (photoToggle) photoToggle.checked = true;
+          if (photoBar) photoBar.classList.remove("hidden");
+          triggerBuilderAutosave();
+          renderResumePreviewCanvas();
+          toast("Photo added to resume.");
+        };
+        img.src = loadEvt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  $("#builderPhotoShape")?.addEventListener("change", (e) => {
+    resumeBuilderState.photoShape = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+
+  $("#builderPhotoSize")?.addEventListener("change", (e) => {
+    resumeBuilderState.photoSize = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+
+  window.removeBuilderPhoto = function() {
+    resumeBuilderState.photoUrl = "";
+    resumeBuilderState.photoEnabled = false;
+    if (photoToggle) photoToggle.checked = false;
+    if (photoBar) photoBar.classList.add("hidden");
+    const pInput = $("#builderPhotoInput");
+    if (pInput) pInput.value = "";
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+    toast("Photo removed.");
+  };
+
+  window.toggleCustomizerDrawer = function(drawerType) {
+    const secDrawer = $("#builderSectionStylesDrawer");
+    const advDrawer = $("#builderAdvancedDrawer");
+    if (drawerType === "sectionStyles") {
+      if (secDrawer) secDrawer.classList.toggle("hidden");
+    } else if (drawerType === "advanced") {
+      if (advDrawer) advDrawer.classList.toggle("hidden");
+    }
+  };
+
+  // Section Styling Controls
+  window.onSectionStyleTargetChange = function() {
+    const target = $("#builderStyleTargetSection")?.value || "all";
+    const styles = (resumeBuilderState.sectionStyles || {})[target] || {};
+    if ($("#builderSecHeadingAlign")) $("#builderSecHeadingAlign").value = styles.alignment || "left";
+    if ($("#builderSecHeadingColor")) $("#builderSecHeadingColor").value = styles.titleColor || resumeBuilderState.accentColor || "#0f172a";
+    if ($("#builderSecDividerStyle")) $("#builderSecDividerStyle").value = styles.dividerStyle || "solid";
+    if ($("#builderSecDividerColor")) $("#builderSecDividerColor").value = styles.dividerColor || "#e2e8f0";
+    if ($("#builderSecSpacingSelect")) $("#builderSecSpacingSelect").value = styles.spacing || "standard";
+  };
+
+  function updateActiveSectionStyle(key, val) {
+    const target = $("#builderStyleTargetSection")?.value || "all";
+    if (!resumeBuilderState.sectionStyles) resumeBuilderState.sectionStyles = {};
+    if (!resumeBuilderState.sectionStyles[target]) resumeBuilderState.sectionStyles[target] = {};
+    resumeBuilderState.sectionStyles[target][key] = val;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  }
+
+  $("#builderSecHeadingAlign")?.addEventListener("change", (e) => updateActiveSectionStyle("alignment", e.target.value));
+  $("#builderSecHeadingColor")?.addEventListener("input", (e) => updateActiveSectionStyle("titleColor", e.target.value));
+  $("#builderSecDividerStyle")?.addEventListener("change", (e) => updateActiveSectionStyle("dividerStyle", e.target.value));
+  $("#builderSecDividerColor")?.addEventListener("input", (e) => updateActiveSectionStyle("dividerColor", e.target.value));
+  $("#builderSecSpacingSelect")?.addEventListener("change", (e) => updateActiveSectionStyle("spacing", e.target.value));
+
+  window.resetCurrentSectionStyle = function() {
+    const target = $("#builderStyleTargetSection")?.value || "all";
+    if (resumeBuilderState.sectionStyles && resumeBuilderState.sectionStyles[target]) {
+      delete resumeBuilderState.sectionStyles[target];
+    }
+    window.onSectionStyleTargetChange();
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+    toast(`Reset styling for ${target === "all" ? "all sections" : target}.`);
+  };
+
+  // Advanced Controls
+  const elementColorMap = [
+    ["builderColorName", "name"],
+    ["builderColorHeadline", "headline"],
+    ["builderColorBody", "body"],
+    ["builderColorLinks", "links"],
+    ["builderColorDates", "dates"],
+    ["builderColorDividers", "dividers"],
+    ["builderColorBullets", "bullets"],
+    ["builderColorSecondary", "secondary"]
+  ];
+  elementColorMap.forEach(([elId, prop]) => {
+    $(`#${elId}`)?.addEventListener("input", (e) => {
+      if (!resumeBuilderState.elementColors) resumeBuilderState.elementColors = {};
+      resumeBuilderState.elementColors[prop] = e.target.value;
+      triggerBuilderAutosave();
+      renderResumePreviewCanvas();
+    });
+  });
+
+  $("#builderPageSize")?.addEventListener("change", (e) => {
+    resumeBuilderState.pageSize = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+  $("#builderMargins")?.addEventListener("change", (e) => {
+    resumeBuilderState.margins = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+  $("#builderLineHeight")?.addEventListener("change", (e) => {
+    resumeBuilderState.lineHeight = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+  $("#builderContactSep")?.addEventListener("change", (e) => {
+    resumeBuilderState.contactSeparator = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+  $("#builderBulletStyle")?.addEventListener("change", (e) => {
+    resumeBuilderState.bulletStyle = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+  $("#builderDateAlign")?.addEventListener("change", (e) => {
+    resumeBuilderState.dateAlignment = e.target.value;
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+  });
+
+  window.resetAllBuilderCustomizations = function() {
+    const tplId = resumeBuilderState.template || "classic_ats";
+    const tplConfig = RESUME_BUILDER_TEMPLATES[tplId] || RESUME_BUILDER_TEMPLATES.classic_ats;
+    resumeBuilderState.fontFamily = tplConfig.fontId || "inter";
+    resumeBuilderState.fontSize = "medium";
+    resumeBuilderState.spacing = "standard";
+    resumeBuilderState.layout = tplConfig.layout || "single";
+    resumeBuilderState.accentColor = tplConfig.accentColor || "#1e3a8a";
+    resumeBuilderState.secondaryColor = tplConfig.secondaryColor || "#475569";
+    resumeBuilderState.pageSize = "a4";
+    resumeBuilderState.margins = "standard";
+    resumeBuilderState.lineHeight = "standard";
+    resumeBuilderState.contactSeparator = tplConfig.contactSeparator || "|";
+    resumeBuilderState.bulletStyle = "disc";
+    resumeBuilderState.dateAlignment = "right";
+    resumeBuilderState.elementColors = {};
+    resumeBuilderState.sectionStyles = {};
+    loadResumeBuilderView();
+    triggerBuilderAutosave();
+    renderResumePreviewCanvas();
+    toast("Reset all customizations to preset defaults.");
+  };
 
   // Date Format Select
   $("#builderDateFormat")?.addEventListener("change", (e) => {
@@ -2171,10 +2592,25 @@ async function executeResumeBuilderExport(format = "pdf") {
     const payload = {
       format,
       template_name: resumeBuilderState.template || "classic_ats",
+      font_family: resumeBuilderState.fontFamily || "Inter",
       accent_color: resumeBuilderState.accentColor || "#1e3a8a",
+      secondary_color: resumeBuilderState.secondaryColor || "",
       font_size: resumeBuilderState.fontSize || "medium",
       spacing: resumeBuilderState.spacing || "standard",
+      layout: resumeBuilderState.layout || "single",
+      page_size: resumeBuilderState.pageSize || "a4",
+      margins: resumeBuilderState.margins || "standard",
+      line_height: resumeBuilderState.lineHeight || "standard",
+      contact_separator: resumeBuilderState.contactSeparator || "|",
+      bullet_style: resumeBuilderState.bulletStyle || "disc",
+      date_alignment: resumeBuilderState.dateAlignment || "right",
       date_format: resumeBuilderState.dateFormat || "MMM YYYY",
+      photo_enabled: !!resumeBuilderState.photoEnabled,
+      photo_url: resumeBuilderState.photoEnabled ? (resumeBuilderState.photoUrl || "") : "",
+      photo_shape: resumeBuilderState.photoShape || "circle",
+      photo_size: resumeBuilderState.photoSize || "md",
+      element_colors: resumeBuilderState.elementColors || {},
+      section_styles: resumeBuilderState.sectionStyles || {},
       section_order: resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
       section_titles: resumeBuilderState.sectionTitles || {},
       content: {
@@ -2368,9 +2804,12 @@ window.closeActiveResumePreview = closeActiveResumePreview;
 function loadResumeBuilderView() {
   loadResumeBuilderState();
 
-  // Sync toolbar selects to loaded state
+  // 1. Sync Level 1 Quick Customize selects
   const tplSelect = $("#builderTemplateSelect");
   if (tplSelect && resumeBuilderState.template) tplSelect.value = resumeBuilderState.template;
+
+  const fontFamSelect = $("#builderFontFamily");
+  if (fontFamSelect && resumeBuilderState.fontFamily) fontFamSelect.value = resumeBuilderState.fontFamily;
 
   const fontSelect = $("#builderFontSize");
   if (fontSelect && resumeBuilderState.fontSize) fontSelect.value = resumeBuilderState.fontSize;
@@ -2378,11 +2817,72 @@ function loadResumeBuilderView() {
   const spacingSelect = $("#builderSpacing");
   if (spacingSelect && resumeBuilderState.spacing) spacingSelect.value = resumeBuilderState.spacing;
 
+  const layoutSelect = $("#builderLayout");
+  if (layoutSelect && resumeBuilderState.layout) layoutSelect.value = resumeBuilderState.layout;
+
   const accentInput = $("#builderAccentColor");
   if (accentInput && resumeBuilderState.accentColor) accentInput.value = resumeBuilderState.accentColor;
 
-  const dateFmtSelect = $("#builderDateFormat");
-  if (dateFmtSelect && resumeBuilderState.dateFormat) dateFmtSelect.value = resumeBuilderState.dateFormat;
+  // Sync palette swatches active border
+  const swatches = document.querySelectorAll(".accent-preset-swatch");
+  swatches.forEach(sw => {
+    if (sw.getAttribute("data-color")?.toLowerCase() === (resumeBuilderState.accentColor || "").toLowerCase()) {
+      sw.style.boxShadow = "0 0 0 2px var(--surface), 0 0 0 3px var(--primary)";
+    } else {
+      sw.style.boxShadow = "none";
+    }
+  });
+
+  // Photo controls
+  const photoToggle = $("#builderPhotoToggle");
+  if (photoToggle) photoToggle.checked = !!resumeBuilderState.photoEnabled;
+  const photoBar = $("#builderPhotoControlsBar");
+  if (photoBar) {
+    if (resumeBuilderState.photoEnabled) photoBar.classList.remove("hidden");
+    else photoBar.classList.add("hidden");
+  }
+  const photoShape = $("#builderPhotoShape");
+  if (photoShape && resumeBuilderState.photoShape) photoShape.value = resumeBuilderState.photoShape;
+  const photoSize = $("#builderPhotoSize");
+  if (photoSize && resumeBuilderState.photoSize) photoSize.value = resumeBuilderState.photoSize;
+
+  // Level 2 Section Styling: populate section list in select
+  const secTargetSel = $("#builderStyleTargetSection");
+  if (secTargetSel) {
+    const currVal = secTargetSel.value || "all";
+    secTargetSel.innerHTML = '<option value="all">All Sections</option>';
+    const order = resumeBuilderState.sectionOrder || [];
+    const titles = resumeBuilderState.sectionTitles || {};
+    order.forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = titles[k] || DEFAULT_SECTION_TITLES[k] || k;
+      secTargetSel.appendChild(opt);
+    });
+    secTargetSel.value = currVal;
+    if (typeof window.onSectionStyleTargetChange === "function") {
+      window.onSectionStyleTargetChange();
+    }
+  }
+
+  // Level 3 Advanced Drawer inputs
+  const colors = resumeBuilderState.elementColors || {};
+  if ($("#builderColorName") && colors.name) $("#builderColorName").value = colors.name;
+  if ($("#builderColorHeadline") && colors.headline) $("#builderColorHeadline").value = colors.headline;
+  if ($("#builderColorBody") && colors.body) $("#builderColorBody").value = colors.body;
+  if ($("#builderColorLinks") && colors.links) $("#builderColorLinks").value = colors.links;
+  if ($("#builderColorDates") && colors.dates) $("#builderColorDates").value = colors.dates;
+  if ($("#builderColorDividers") && colors.dividers) $("#builderColorDividers").value = colors.dividers;
+  if ($("#builderColorBullets") && colors.bullets) $("#builderColorBullets").value = colors.bullets;
+  if ($("#builderColorSecondary") && resumeBuilderState.secondaryColor) $("#builderColorSecondary").value = resumeBuilderState.secondaryColor;
+
+  if ($("#builderPageSize") && resumeBuilderState.pageSize) $("#builderPageSize").value = resumeBuilderState.pageSize;
+  if ($("#builderMargins") && resumeBuilderState.margins) $("#builderMargins").value = resumeBuilderState.margins;
+  if ($("#builderLineHeight") && resumeBuilderState.lineHeight) $("#builderLineHeight").value = resumeBuilderState.lineHeight;
+  if ($("#builderContactSep") && resumeBuilderState.contactSeparator) $("#builderContactSep").value = resumeBuilderState.contactSeparator;
+  if ($("#builderBulletStyle") && resumeBuilderState.bulletStyle) $("#builderBulletStyle").value = resumeBuilderState.bulletStyle;
+  if ($("#builderDateFormat") && resumeBuilderState.dateFormat) $("#builderDateFormat").value = resumeBuilderState.dateFormat;
+  if ($("#builderDateAlign") && resumeBuilderState.dateAlignment) $("#builderDateAlign").value = resumeBuilderState.dateAlignment;
 
   renderBuilderEditorFromState();
   renderResumePreviewCanvas();
@@ -3319,14 +3819,31 @@ function renderResumePreviewCanvas() {
 
   const tplId = resumeBuilderState.template || "classic_ats";
   const tplConfig = RESUME_BUILDER_TEMPLATES[tplId] || RESUME_BUILDER_TEMPLATES.classic_ats;
+  const layout = resumeBuilderState.layout || tplConfig.layout || "single";
+  const pageSize = resumeBuilderState.pageSize || "a4";
+  const margins = resumeBuilderState.margins || "standard";
+  const dateAlign = resumeBuilderState.dateAlignment || "right";
 
   const sheet = $("#builderLivePreviewSheet");
   if (sheet) {
-    sheet.className = `resume-preview-sheet tpl-${tplId} tpl-${tplId.replace(/_/g, "-")}`;
+    sheet.className = `resume-preview-sheet tpl-${tplId} tpl-${tplId.replace(/_/g, "-")} layout-${layout} size-${pageSize} margin-${margins} date-align-${dateAlign}`;
     sheet.dataset.template = tplId;
+    sheet.dataset.layout = layout;
   }
 
   applyCustomizerStylesToCanvas();
+
+  // Candidate Photo Container
+  const photoCont = $("#prevCanvasPhotoContainer");
+  if (photoCont) {
+    if (resumeBuilderState.photoEnabled && resumeBuilderState.photoUrl) {
+      photoCont.innerHTML = `<img src="${resumeBuilderState.photoUrl}" class="prev-photo-img ${resumeBuilderState.photoShape || "circle"} ${resumeBuilderState.photoSize || "md"}" alt="Candidate Photo" />`;
+      photoCont.classList.remove("hidden");
+    } else {
+      photoCont.innerHTML = "";
+      photoCont.classList.add("hidden");
+    }
+  }
 
   const h = resumeBuilderState.header || {};
   const nameEl = $("#prevCanvasName");
@@ -3357,9 +3874,10 @@ function renderResumePreviewCanvas() {
       parts.push({ text: clean, href: h.website.startsWith("http") ? h.website : `https://${h.website}` });
     }
 
-    const sepChar = tplConfig.contactSeparator || "|";
+    const rawSep = resumeBuilderState.contactSeparator || tplConfig.contactSeparator || "|";
+    const sepChar = rawSep === "none" ? " " : rawSep;
     parts.forEach((p, idx) => {
-      if (idx > 0) {
+      if (idx > 0 && rawSep !== "none") {
         const sep = document.createElement("span");
         sep.className = "prev-contact-sep";
         sep.textContent = sepChar;
@@ -3384,6 +3902,67 @@ function renderResumePreviewCanvas() {
   if (!container) return;
   container.innerHTML = "";
 
+  const isTwoCol = layout === "two_column";
+  let mainCol = null;
+  let sideCol = null;
+  if (isTwoCol) {
+    mainCol = document.createElement("div");
+    mainCol.className = "prev-main-col";
+    sideCol = document.createElement("div");
+    sideCol.className = "prev-side-col";
+    container.appendChild(mainCol);
+    container.appendChild(sideCol);
+  }
+
+  const SECONDARY_SECTIONS = ["skills", "education", "certifications", "achievements", "awards", "languages", "courses"];
+
+  function applySectionStyling(secNode, key) {
+    const allStyles = (resumeBuilderState.sectionStyles || {}).all || {};
+    const specificStyles = (resumeBuilderState.sectionStyles || {})[key] || {};
+    const s = { ...allStyles, ...specificStyles };
+
+    const titleEl = secNode.querySelector(".preview-section-title");
+    if (titleEl) {
+      if (s.titleColor) titleEl.style.color = s.titleColor;
+      if (s.alignment) titleEl.style.textAlign = s.alignment;
+      if (s.dividerStyle === "none") {
+        titleEl.style.borderBottom = "none";
+        titleEl.style.borderLeft = "none";
+      } else if (s.dividerStyle === "accent_bar") {
+        titleEl.style.borderBottom = "none";
+        titleEl.style.borderLeft = `4px solid ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
+        titleEl.style.paddingLeft = "8px";
+      } else if (s.dividerStyle === "hairline") {
+        titleEl.style.borderBottom = `1px solid ${s.dividerColor || "#e2e8f0"}`;
+      } else if (s.dividerStyle === "double") {
+        titleEl.style.borderBottom = `3px double ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
+      } else if (s.dividerStyle === "solid") {
+        titleEl.style.borderBottom = `2px solid ${s.dividerColor || "var(--resume-accent, #1e3a8a)"}`;
+      } else if (s.dividerColor) {
+        titleEl.style.borderColor = s.dividerColor;
+      }
+    }
+
+    if (s.spacing === "compact") {
+      secNode.style.marginBottom = "calc(var(--resume-spacing) * 0.5)";
+    } else if (s.spacing === "relaxed") {
+      secNode.style.marginBottom = "calc(var(--resume-spacing) * 1.5)";
+    }
+  }
+
+  function appendSection(secNode, key) {
+    applySectionStyling(secNode, key);
+    if (isTwoCol) {
+      if (SECONDARY_SECTIONS.includes(key)) {
+        sideCol.appendChild(secNode);
+      } else {
+        mainCol.appendChild(secNode);
+      }
+    } else {
+      container.appendChild(secNode);
+    }
+  }
+
   const sectionOrder = resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
   const titles = resumeBuilderState.sectionTitles || {};
   const fmt = resumeBuilderState.dateFormat || "MMM YYYY";
@@ -3401,7 +3980,7 @@ function renderResumePreviewCanvas() {
           <h3 class="preview-section-title">${escapeHtml(secTitle)}</h3>
           <div class="resume-summary-text text-xs" style="line-height: var(--resume-line-height); margin: 0; color: #374151;">${sanitizeHtmlForPreview(sum)}</div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "skills") {
       const isGrouped = resumeBuilderState.skillsLayout === "grouped";
@@ -3421,7 +4000,7 @@ function renderResumePreviewCanvas() {
             `).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       } else if (skills.length > 0) {
         const sec = document.createElement("div");
         sec.className = "prev-section";
@@ -3433,7 +4012,7 @@ function renderResumePreviewCanvas() {
             </p>
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "experiences") {
       const exps = (resumeBuilderState.experiences || []).filter(e => !e.is_hidden && (e.company || e.title));
@@ -3462,7 +4041,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "projects") {
       const projs = (resumeBuilderState.projects || []).filter(p => !p.is_hidden && p.title);
@@ -3491,7 +4070,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "education") {
       const edus = (resumeBuilderState.education || []).filter(ed => !ed.is_hidden && (ed.institution || ed.degree));
@@ -3519,7 +4098,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "certifications") {
       const certs = (resumeBuilderState.certifications || []).filter(c => !c.is_hidden && (c.name && c.name.trim()));
@@ -3542,7 +4121,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "achievements") {
       const achs = (resumeBuilderState.achievements || []).filter(a => {
@@ -3558,7 +4137,7 @@ function renderResumePreviewCanvas() {
             ${achs.map(a => `<li>${sanitizeHtmlForPreview(typeof a === "string" ? a : a.text)}</li>`).join("")}
           </ul>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "awards") {
       const awds = (resumeBuilderState.awards || []).filter(a => {
@@ -3574,7 +4153,7 @@ function renderResumePreviewCanvas() {
             ${awds.map(a => `<li>${sanitizeHtmlForPreview(typeof a === "string" ? a : a.text)}</li>`).join("")}
           </ul>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "languages") {
       const langs = (resumeBuilderState.languages || []).filter(l => !l.is_hidden && (l.language && l.language.trim()));
@@ -3587,7 +4166,7 @@ function renderResumePreviewCanvas() {
             ${langs.map(l => `<strong>${escapeHtml(l.language)}</strong>${l.proficiency ? ` (${escapeHtml(l.proficiency)})` : ""}`).join(" • ")}
           </p>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "volunteer") {
       const vols = (resumeBuilderState.volunteer || []).filter(v => !v.is_hidden && (v.organization || v.role));
@@ -3616,7 +4195,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "leadership") {
       const leads = (resumeBuilderState.leadership || []).filter(l => !l.is_hidden && (l.organization || l.role));
@@ -3644,7 +4223,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "publications") {
       const pubs = (resumeBuilderState.publications || []).filter(pb => !pb.is_hidden && pb.title);
@@ -3668,7 +4247,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey === "courses") {
       const crss = (resumeBuilderState.courses || []).filter(cs => !cs.is_hidden && cs.name);
@@ -3681,7 +4260,7 @@ function renderResumePreviewCanvas() {
             ${crss.map(cs => `${escapeHtml(cs.name)}${cs.institution ? ` (${escapeHtml(cs.institution)})` : ""}`).join(" • ")}
           </p>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     } else if (secKey.startsWith("custom_")) {
       const csObj = (resumeBuilderState.customSections || []).find(c => c.id === secKey);
@@ -3710,7 +4289,7 @@ function renderResumePreviewCanvas() {
             }).join("")}
           </div>
         `;
-        container.appendChild(sec);
+        appendSection(sec, secKey);
       }
     }
   });
@@ -3723,19 +4302,73 @@ function applyCustomizerStylesToCanvas() {
   const font = resumeBuilderState.fontSize || "medium";
   const spacing = resumeBuilderState.spacing || "standard";
   const accent = resumeBuilderState.accentColor || "#1e3a8a";
+  const lineHeight = resumeBuilderState.lineHeight || "standard";
+  const bulletStyle = resumeBuilderState.bulletStyle || "disc";
+  const dateAlign = resumeBuilderState.dateAlignment || "right";
 
   const fontSizes = { small: "11.5px", medium: "13px", large: "14.5px" };
-  const lineHeights = { compact: "1.25", standard: "1.4", relaxed: "1.55" };
+  const lineHeights = { compact: "1.25", standard: "1.4", comfortable: "1.6", relaxed: "1.55" };
   const spacings = { compact: "8px", standard: "12px", relaxed: "18px" };
 
+  // Font family resolution
+  const fontFam = resumeBuilderState.fontFamily;
+  if (fontFam) {
+    const fontMap = {
+      inter: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      arial: 'Arial, Helvetica, sans-serif',
+      calibri: 'Calibri, Candara, Segoe, "Segoe UI", Optima, Arial, sans-serif',
+      georgia: 'Georgia, "Times New Roman", Times, serif',
+      times: '"Times New Roman", Times, Georgia, serif',
+      roboto: '"Roboto", -apple-system, BlinkMacSystemFont, sans-serif',
+      helvetica: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+    };
+    canvas.style.fontFamily = fontMap[fontFam.toLowerCase()] || fontFam;
+  } else {
+    canvas.style.fontFamily = "";
+  }
+
   canvas.style.setProperty("--resume-font-size", fontSizes[font] || "13px");
-  canvas.style.setProperty("--resume-line-height", lineHeights[spacing] || "1.4");
+  canvas.style.setProperty("--resume-line-height", lineHeights[lineHeight] || lineHeights[spacing] || "1.4");
   canvas.style.setProperty("--resume-spacing", spacings[spacing] || "12px");
   canvas.style.setProperty("--resume-accent", accent);
 
+  // Element colors
+  const colors = resumeBuilderState.elementColors || {};
+  if (colors.name) canvas.style.setProperty("--resume-name-color", colors.name);
+  else canvas.style.removeProperty("--resume-name-color");
+
+  if (colors.headline) canvas.style.setProperty("--resume-headline-color", colors.headline);
+  else canvas.style.removeProperty("--resume-headline-color");
+
+  if (colors.body) canvas.style.setProperty("--resume-body-color", colors.body);
+  else canvas.style.removeProperty("--resume-body-color");
+
+  if (colors.links) canvas.style.setProperty("--resume-links-color", colors.links);
+  else canvas.style.removeProperty("--resume-links-color");
+
+  if (colors.dates) canvas.style.setProperty("--resume-dates-color", colors.dates);
+  else canvas.style.removeProperty("--resume-dates-color");
+
+  if (colors.dividers) canvas.style.setProperty("--resume-dividers-color", colors.dividers);
+  else canvas.style.removeProperty("--resume-dividers-color");
+
+  if (colors.bullets) canvas.style.setProperty("--resume-bullets-color", colors.bullets);
+  else canvas.style.removeProperty("--resume-bullets-color");
+
+  if (resumeBuilderState.secondaryColor) canvas.style.setProperty("--resume-secondary", resumeBuilderState.secondaryColor);
+  else canvas.style.removeProperty("--resume-secondary");
+
+  // Apply bullet style
+  canvas.style.setProperty("--resume-bullet-style", bulletStyle === "dash" ? "'- '" : bulletStyle === "none" ? "none" : "disc");
+
+  // Apply date alignment
+  canvas.style.setProperty("--resume-date-align", dateAlign);
+
   const divider = $("#prevCanvasDivider");
   if (divider) {
-    if (resumeBuilderState.template === "minimal_professional") {
+    if (colors.dividers) {
+      divider.style.background = colors.dividers;
+    } else if (resumeBuilderState.template === "minimal_professional") {
       divider.style.background = "#e2e8f0";
     } else {
       divider.style.background = accent;
