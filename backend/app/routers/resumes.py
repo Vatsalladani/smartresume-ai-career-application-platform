@@ -23,7 +23,7 @@ from app.schemas.resume import (
     ResumeVersionOut,
 )
 from app.services.audit_service import write_audit_log
-from app.services.export_service import generate_resume_docx, generate_resume_pdf
+from app.services.export_service import generate_professional_filename, generate_resume_docx, generate_resume_pdf
 from app.services.profile_service import get_or_create_profile
 from app.services.scoring_service import calculate_evidence_based_score
 
@@ -66,6 +66,9 @@ async def create_resume_endpoint(
             target_role=payload.target_role,
             target_company=payload.target_company,
             target_location=payload.target_location,
+            target_market=payload.target_market or "Global",
+            document_purpose=payload.document_purpose or "Professional Resume",
+            ats_mode=payload.ats_mode or "ATS-Safe",
             target_job_id=payload.target_job_id,
             changelog="Created new resume",
         )
@@ -399,6 +402,9 @@ def patch_resume(
         target_role=payload.target_role,
         target_company=payload.target_company,
         target_location=payload.target_location,
+        target_market=payload.target_market,
+        document_purpose=payload.document_purpose,
+        ats_mode=payload.ats_mode,
         target_job_id=payload.target_job_id,
         is_archived=payload.is_archived,
     )
@@ -521,14 +527,23 @@ def export_resume(
         )
         analysis = analysis_row.enhanced_content if analysis_row else None
 
+    user_name = current_user.full_name or (resume.parsed_content.get("header", {}).get("full_name") if isinstance(resume.parsed_content, dict) else None)
+    target_role = resume.target_role or (resume.parsed_content.get("header", {}).get("headline") if isinstance(resume.parsed_content, dict) else None)
+    doc_purpose = getattr(resume, "document_purpose", "Professional Resume")
+    filename = generate_professional_filename(
+        user_name=user_name,
+        resume_title=resume.title,
+        target_role=target_role,
+        document_purpose=doc_purpose,
+        file_format=file_format,
+    )
+
     if file_format == "pdf":
         content = export_resume_pdf(resume, analysis)
         media_type = "application/pdf"
-        filename = f"resume-{resume.id}.pdf"
     else:
         content = export_resume_docx(resume, analysis)
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        filename = f"resume-{resume.id}.docx"
 
     write_audit_log(db, action=f"resume.export.{file_format}", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
     db.commit()

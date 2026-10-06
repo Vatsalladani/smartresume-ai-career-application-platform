@@ -6571,3 +6571,95 @@ svg {
   margin-top: 6px;
 }
 
+/* ==========================================================================
+   INTERNATIONAL MARKET GUIDANCE & ATS SAFETY STYLES
+   ========================================================================== */
+.builder-market-select,
+.builder-purpose-select,
+.builder-ats-select {
+  font-weight: 600;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 6px;
+  font-size: 0.75rem;
+  max-width: 175px;
+}
+
+.location-recommend-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--primary-subtle);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: var(--radius);
+  gap: 12px;
+}
+
+.market-guidance-drawer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.market-guidance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.market-guide-item {
+  background: var(--surface-2);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.market-guide-item h5 {
+  margin: 0 0 4px 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.market-guide-item p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.badge-ats {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.badge-ats.ats-safe {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-ats.balanced {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.badge-ats.visual {
+  background: rgba(147, 51, 234, 0.12);
+  color: #7c3aed;
+  border: 1px solid rgba(147, 51, 234, 0.25);
+}
+

@@ -14,6 +14,7 @@ from app.routers import (
     career_insights,
     company,
     evidence_vault,
+    international,
     interview,
     job_radar,
     jobs,
@@ -67,6 +68,7 @@ app.include_router(application_pack.router, prefix=settings.api_prefix)
 app.include_router(applications.router, prefix=settings.api_prefix)
 app.include_router(smartapply.router, prefix=settings.api_prefix)
 app.include_router(interview.router, prefix=settings.api_prefix)
+app.include_router(international.router, prefix=settings.api_prefix)
 app.include_router(career_insights.router, prefix=settings.api_prefix)
 app.include_router(notifications.router, prefix=settings.api_prefix)
 app.include_router(payments.router, prefix=settings.api_prefix)

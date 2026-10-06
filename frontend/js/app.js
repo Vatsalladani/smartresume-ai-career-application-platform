@@ -1296,6 +1296,17 @@ function computeAndRenderNextBestAction(hasProfileData, score) {
 
   if (!titleEl || !btnEl) return;
 
+  // Post-hire career maintenance mode (Requirement 30, 52, 53)
+  if (state.profile?.career_status === "Employed") {
+    if (iconEl) iconEl.setAttribute("data-lucide", "trending-up");
+    titleEl.textContent = "Maintain your Career Vault & growth evidence";
+    if (descEl) descEl.textContent = "Keep recent achievements and certifications logged in your Career Vault so you are always primed for promotion reviews or internal transfers.";
+    if (btnTextEl) btnTextEl.textContent = "Log Career Evidence";
+    btnEl.onclick = () => navigateToTab("evidence-vault");
+    drawIcons();
+    return;
+  }
+
   const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
   if (activeResumes.length === 0) {
     if (iconEl) iconEl.setAttribute("data-lucide", "file-plus");
@@ -1303,27 +1314,40 @@ function computeAndRenderNextBestAction(hasProfileData, score) {
     if (descEl) descEl.textContent = "Start with our guided builder to generate an ATS-ready resume in minutes.";
     if (btnTextEl) btnTextEl.textContent = "Create My Resume";
     btnEl.onclick = () => openCreateResumeModal();
-  } else if (!state.jobs || state.jobs.length === 0) {
-    if (iconEl) iconEl.setAttribute("data-lucide", "crosshair");
-    titleEl.textContent = "Match your resume to a target job";
-    if (descEl) descEl.textContent = "Paste any job posting to see how well you qualify and what keywords recruiters expect.";
-    if (btnTextEl) btnTextEl.textContent = "Match a Target Job";
-    btnEl.onclick = () => navigateToTab("fit");
-  } else if (!state.applications || state.applications.length === 0) {
-    const topJob = state.jobs[0];
-    if (iconEl) iconEl.setAttribute("data-lucide", "sparkles");
-    titleEl.textContent = `Prepare application for ${topJob.title}`;
-    if (descEl) descEl.textContent = `Tailor your resume bullets specifically for ${topJob.company} to maximize your interview chances.`;
-    if (btnTextEl) btnTextEl.textContent = "Prepare Job Application";
-    btnEl.onclick = () => navigateToTab("tailor");
   } else {
-    const topApp = state.applications[0];
-    if (iconEl) iconEl.setAttribute("data-lucide", "messages-square");
-    titleEl.textContent = `Prepare for your interview at ${topApp.company}`;
-    if (descEl) descEl.textContent = `Practice realistic mock interview questions tailored to the ${topApp.job_title} role.`;
-    if (btnTextEl) btnTextEl.textContent = "Practice Interview";
-    btnEl.onclick = () => navigateToTab("interview");
+    const draft = activeResumes.find(r => r.status === "Draft");
+    if (draft && (!state.jobs || state.jobs.length === 0)) {
+      if (iconEl) iconEl.setAttribute("data-lucide", "edit-3");
+      titleEl.textContent = `Finish your draft resume: ${draft.title}`;
+      if (descEl) descEl.textContent = "Your resume draft is safely saved. Review section content, verify ATS formatting, and mark it Ready.";
+      if (btnTextEl) btnTextEl.textContent = "Continue Editing";
+      btnEl.onclick = async () => {
+        await switchActiveResume(draft.id);
+        navigateToTab("resume-builder");
+      };
+    } else if (!state.jobs || state.jobs.length === 0) {
+      if (iconEl) iconEl.setAttribute("data-lucide", "crosshair");
+      titleEl.textContent = "Match your resume to a target job";
+      if (descEl) descEl.textContent = "Paste any job posting to see how well you qualify and what keywords recruiters expect.";
+      if (btnTextEl) btnTextEl.textContent = "Match a Target Job";
+      btnEl.onclick = () => navigateToTab("fit");
+    } else if (!state.applications || state.applications.length === 0) {
+      const topJob = state.jobs[0];
+      if (iconEl) iconEl.setAttribute("data-lucide", "sparkles");
+      titleEl.textContent = `Prepare application for ${topJob.title}`;
+      if (descEl) descEl.textContent = `Tailor your resume bullets specifically for ${topJob.company} to maximize your interview chances.`;
+      if (btnTextEl) btnTextEl.textContent = "Prepare Job Application";
+      btnEl.onclick = () => navigateToTab("tailor");
+    } else {
+      const topApp = state.applications[0];
+      if (iconEl) iconEl.setAttribute("data-lucide", "messages-square");
+      titleEl.textContent = `Prepare for your interview at ${topApp.company}`;
+      if (descEl) descEl.textContent = `Practice realistic mock interview questions tailored to the ${topApp.job_title} role.`;
+      if (btnTextEl) btnTextEl.textContent = "Practice Interview";
+      btnEl.onclick = () => navigateToTab("interview");
+    }
   }
+  drawIcons();
 }
 
 // Resume preview helper alias
@@ -2004,6 +2028,114 @@ function updateBuilderHeaderUI(resume) {
   if (metaEl) {
     metaEl.textContent = `Independent document · Status: ${resume.status || "Draft"} · Automatically saved as Draft`;
   }
+
+  // Market, Document Purpose, and ATS Safety Mode
+  const marketSel = $("#builderMarketSelect");
+  if (marketSel) marketSel.value = resume.target_market || "GLOBAL";
+
+  const purposeSel = $("#builderPurposeSelect");
+  if (purposeSel) purposeSel.value = resume.document_purpose || "Professional Resume";
+
+  const atsModeSel = $("#builderAtsModeSelect");
+  if (atsModeSel) atsModeSel.value = resume.ats_mode || "ATS-Safe";
+
+  renderMarketGuidanceDrawer(resume.target_market || "GLOBAL", resume.document_purpose, resume.ats_mode);
+  checkAndRenderMarketRecommendation(resume);
+}
+
+function renderMarketGuidanceDrawer(marketCode = "GLOBAL", documentPurpose = "Professional Resume", atsMode = "ATS-Safe") {
+  const drawer = $("#builderMarketGuidanceDrawer");
+  if (!drawer) return;
+
+  const rulesMap = {
+    GLOBAL: { name: "Global / International", term: "Resume / CV", photo: "Photo optional. Clean text-first layout ensures universal enterprise compatibility.", length: "1–2 pages concise", date: "Month Year (e.g. May 2025)", grade: "List Degree & GPA / Honors where applicable. No forced conversions." },
+    US: { name: "United States", term: "Resume", photo: "No photo. Resumes with photos are often rejected to comply with anti-bias laws.", length: "1 page (<5 yrs) or max 2 pages for senior", date: "Month Year or MM/YYYY", grade: "GPA on 4.0 scale (if 3.5+), Latin honors (cum laude)" },
+    CA: { name: "Canada", term: "Resume", photo: "Strictly no photos or demographic details (Human Rights Code compliance).", length: "1–2 pages concise", date: "Month Year (e.g. May 2025)", grade: "Degree, Major, Institution, Province" },
+    UK: { name: "United Kingdom", term: "CV", photo: "No photo. Standard UK CVs omit photos and personal demographic info (Equality Act 2010).", length: "2 pages standard UK CV length", date: "Month Year (e.g. May 2025)", grade: "UK Degree Classification (e.g. First-Class, 2:1)" },
+    AU: { name: "Australia", term: "Resume / CV", photo: "No photo usually needed. Australian employers focus on verified work achievements.", length: "2–3 pages standard in Australia", date: "Month Year", grade: "Degree, Institution, State, Honours/WAM" },
+    NZ: { name: "New Zealand", term: "CV", photo: "No photo recommended to avoid unconscious bias.", length: "2 pages standard in NZ", date: "Month Year", grade: "Qualification, Institution, Completion Year" },
+    DE: { name: "Germany (DACH)", term: "Lebenslauf / CV", photo: "Professional headshot (Bewerbungsfoto) is traditional in DACH, but optional.", length: "1–2 pages structured chronological Lebenslauf", date: "MM/YYYY (e.g. 05/2025)", grade: "Degree, Final Grade (1.0 best - 4.0 pass), Thesis title" },
+    EU: { name: "Europe / EU", term: "CV", photo: "Photo optional across EU. Accepted in Central/Southern Europe; omitted in Northern Europe.", length: "1–2 pages Europass-aligned", date: "Month Year or MM/YYYY", grade: "Degree (BSc, MSc, PhD), CEFR language levels" },
+    SG: { name: "Singapore", term: "Resume / CV", photo: "Photo optional. Tripartite Guidelines (TAFEP) recommend omitting photo, age, and race.", length: "1–2 pages concise & skills-forward", date: "Month Year", grade: "Degree, Institution, Honours / CAP" },
+    AE: { name: "United Arab Emirates", term: "Resume / CV", photo: "Professional photo customary in UAE/GCC corporate applications.", length: "2 pages standard", date: "Month Year", grade: "Degree, University, Country, Visa status note" },
+    SA: { name: "Saudi Arabia / GCC", term: "Resume / CV", photo: "Professional photo customary for GCC corporate roles; optional for global tech.", length: "2 pages standard", date: "Month Year", grade: "Degree, Institution, Regional certifications" },
+    IN: { name: "India", term: "Resume / CV", photo: "Photo optional. Headshots accepted for corporate/consulting, optional for tech roles.", length: "1–2 pages (1 page campus freshers; 2 pages experienced)", date: "Month Year", grade: "College, University, CGPA or Percentage (e.g. 8.5/10 CGPA, 78%)" }
+  };
+
+  const r = rulesMap[marketCode] || rulesMap.GLOBAL;
+
+  drawer.innerHTML = `
+    <div class="flex-between align-center mb-2">
+      <div class="flex-row align-center gap-2">
+        <i data-lucide="globe" style="width: 16px; height: 16px; color: var(--primary);"></i>
+        <strong class="text-xs uppercase tracking-wider">${r.name} Guidance · Terminology: ${r.term} · Purpose: ${documentPurpose || "Professional Resume"}</strong>
+      </div>
+      <button class="icon-btn xs" type="button" onclick="$('#builderMarketGuidanceDrawer').classList.add('hidden')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="market-guidance-grid">
+      <div class="market-guide-item">
+        <h5>Photo & Demographics</h5>
+        <p>${r.photo}</p>
+      </div>
+      <div class="market-guide-item">
+        <h5>Recommended Length</h5>
+        <p>${r.length}</p>
+      </div>
+      <div class="market-guide-item">
+        <h5>Education & Grading</h5>
+        <p>${r.grade}</p>
+      </div>
+      <div class="market-guide-item">
+        <h5>ATS Safety & Dates (${atsMode || "ATS-Safe"})</h5>
+        <p>Dates formatted as ${r.date}. Never include sensitive IDs (SSN, Aadhaar, PAN) or religion.</p>
+      </div>
+    </div>
+  `;
+  drawIcons();
+}
+
+function checkAndRenderMarketRecommendation(resume) {
+  const toastEl = $("#builderLocationRecommendToast");
+  const textEl = $("#builderLocationRecommendText");
+  if (!toastEl || !textEl) return;
+
+  const loc = (resume.target_location || "").trim();
+  if (!loc) {
+    toastEl.classList.add("hidden");
+    return;
+  }
+
+  const patterns = [
+    [/\b(canada|toronto|vancouver|montreal|ottawa|ontario|bc|quebec)\b/i, "CA", "Canada"],
+    [/\b(united states|usa|\bus\b|new york|nyc|san francisco|seattle|austin|california|texas)\b/i, "US", "United States"],
+    [/\b(united kingdom|\buk\b|london|manchester|edinburgh|birmingham|england|scotland)\b/i, "UK", "United Kingdom"],
+    [/\b(germany|deutschland|berlin|munich|frankfurt|hamburg)\b/i, "DE", "Germany"],
+    [/\b(australia|sydney|melbourne|brisbane|perth)\b/i, "AU", "Australia"],
+    [/\b(new zealand|\bnz\b|auckland|wellington)\b/i, "NZ", "New Zealand"],
+    [/\b(singapore|\bsg\b)\b/i, "SG", "Singapore"],
+    [/\b(united arab emirates|uae|dubai|abu dhabi)\b/i, "AE", "United Arab Emirates"],
+    [/\b(saudi arabia|saudi|riyadh|jeddah|qatar|kuwait|gcc)\b/i, "SA", "Saudi Arabia / GCC"],
+    [/\b(india|bengaluru|bangalore|hyderabad|mumbai|delhi|gurugram|pune|chennai)\b/i, "IN", "India"],
+    [/\b(europe|\beu\b|amsterdam|netherlands|paris|france|dublin|ireland)\b/i, "EU", "Europe / EU"],
+  ];
+
+  let detectedCode = null;
+  let detectedName = null;
+  for (const [regex, code, name] of patterns) {
+    if (regex.test(loc)) {
+      detectedCode = code;
+      detectedName = name;
+      break;
+    }
+  }
+
+  if (detectedCode && detectedCode !== (resume.target_market || "GLOBAL")) {
+    textEl.textContent = `Target location '${loc}' suggests ${detectedName} guidance.`;
+    toastEl.classList.remove("hidden");
+    toastEl.dataset.recommendedMarket = detectedCode;
+  } else {
+    toastEl.classList.add("hidden");
+  }
 }
 
 async function switchActiveResume(newResumeId) {
@@ -2112,6 +2244,8 @@ async function submitCreateResume() {
   const targetRole = $("#newResumeTargetRoleInput")?.value.trim() || null;
   const targetCompany = $("#newResumeTargetCompanyInput")?.value.trim() || null;
   const targetLocation = $("#newResumeTargetLocationInput")?.value.trim() || null;
+  const targetMarket = $("#newResumeTargetMarketInput")?.value || "GLOBAL";
+  const documentPurpose = $("#newResumeDocumentPurposeInput")?.value || "Professional Resume";
   const activeCard = $(".source-card.active");
   const source = activeCard?.dataset.source || "profile";
 
@@ -2168,6 +2302,8 @@ async function submitCreateResume() {
         target_role: targetRole,
         target_company: targetCompany,
         target_location: targetLocation,
+        target_market: targetMarket,
+        document_purpose: documentPurpose,
         parsed_content: initialParsedContent,
       },
     });
@@ -2463,6 +2599,85 @@ function wireMultiResumeWorkspace() {
         toast(`Failed to update status: ${err.message}`, "error");
       }
     }
+  });
+
+  // Builder Market select change
+  $("#builderMarketSelect")?.addEventListener("change", async (e) => {
+    const val = e.target.value;
+    if (state.activeResumeId) {
+      try {
+        await API.request(`/resumes/${state.activeResumeId}`, {
+          method: "PATCH",
+          body: { target_market: val },
+        });
+        const current = (state.resumes || []).find(r => r.id === state.activeResumeId);
+        if (current) current.target_market = val;
+        renderMarketGuidanceDrawer(val, current?.document_purpose, current?.ats_mode);
+        checkAndRenderMarketRecommendation(current || { target_market: val });
+        toast(`Market guidance set to ${val}.`);
+      } catch (err) {
+        toast(`Failed to update market: ${err.message}`, "error");
+      }
+    }
+  });
+
+  // Builder Purpose select change
+  $("#builderPurposeSelect")?.addEventListener("change", async (e) => {
+    const val = e.target.value;
+    if (state.activeResumeId) {
+      try {
+        await API.request(`/resumes/${state.activeResumeId}`, {
+          method: "PATCH",
+          body: { document_purpose: val },
+        });
+        const current = (state.resumes || []).find(r => r.id === state.activeResumeId);
+        if (current) current.document_purpose = val;
+        renderMarketGuidanceDrawer(current?.target_market, val, current?.ats_mode);
+        toast(`Document purpose set to ${val}.`);
+      } catch (err) {
+        toast(`Failed to update purpose: ${err.message}`, "error");
+      }
+    }
+  });
+
+  // Builder ATS Safety Mode select change
+  $("#builderAtsModeSelect")?.addEventListener("change", async (e) => {
+    const val = e.target.value;
+    if (state.activeResumeId) {
+      try {
+        await API.request(`/resumes/${state.activeResumeId}`, {
+          method: "PATCH",
+          body: { ats_mode: val },
+        });
+        const current = (state.resumes || []).find(r => r.id === state.activeResumeId);
+        if (current) current.ats_mode = val;
+        renderMarketGuidanceDrawer(current?.target_market, current?.document_purpose, val);
+        toast(`ATS Safety mode set to ${val}.`);
+      } catch (err) {
+        toast(`Failed to update ATS mode: ${err.message}`, "error");
+      }
+    }
+  });
+
+  // Builder Market guidance toggle
+  $("#builderToggleMarketGuideBtn")?.addEventListener("click", () => {
+    const drawer = $("#builderMarketGuidanceDrawer");
+    if (drawer) drawer.classList.toggle("hidden");
+  });
+
+  // Builder Location Recommendation triggers
+  $("#builderApplyLocationMarketBtn")?.addEventListener("click", () => {
+    const toastEl = $("#builderLocationRecommendToast");
+    const rec = toastEl?.dataset.recommendedMarket;
+    const sel = $("#builderMarketSelect");
+    if (rec && sel) {
+      sel.value = rec;
+      sel.dispatchEvent(new Event("change"));
+      toastEl.classList.add("hidden");
+    }
+  });
+  $("#builderDismissLocationMarketBtn")?.addEventListener("click", () => {
+    $("#builderLocationRecommendToast")?.classList.add("hidden");
   });
 
   // Create Resume Modal
@@ -5059,6 +5274,25 @@ function wireMasterProfile() {
       toast(err.message, "error");
     }
   });
+  $("#profCareerStatus")?.addEventListener("change", async (e) => {
+    try {
+      await API.request("/profile", { method: "PUT", body: { career_status: e.target.value } });
+      if (state.profile) state.profile.career_status = e.target.value;
+      toast(`Career status updated: ${e.target.value}`);
+      renderDashboard();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+  $("#profTargetMarket")?.addEventListener("change", async (e) => {
+    try {
+      await API.request("/profile", { method: "PUT", body: { target_market: e.target.value } });
+      if (state.profile) state.profile.target_market = e.target.value;
+      toast(`Default target market set: ${e.target.value}`);
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
 }
 
 async function loadMasterProfile() {
@@ -5084,6 +5318,8 @@ function renderMasterProfile() {
   $("#profWebsite").value = p.portfolio_url || "";
   if (p.target_domain && $("#profDomain")) $("#profDomain").value = p.target_domain;
   if (p.career_level && $("#profCareerLevel")) $("#profCareerLevel").value = p.career_level;
+  if (p.career_status && $("#profCareerStatus")) $("#profCareerStatus").value = p.career_status;
+  if (p.target_market && $("#profTargetMarket")) $("#profTargetMarket").value = p.target_market;
 
   // Completeness Meter
   const score = p.completeness_score || 0;
@@ -5139,6 +5375,8 @@ async function saveMasterProfileDetails() {
       portfolio_url: $("#profWebsite").value || null,
       target_domain: $("#profDomain") ? $("#profDomain").value : undefined,
       career_level: $("#profCareerLevel") ? $("#profCareerLevel").value : undefined,
+      career_status: $("#profCareerStatus") ? $("#profCareerStatus").value : undefined,
+      target_market: $("#profTargetMarket") ? $("#profTargetMarket").value : undefined,
     };
     state.profile = await API.request("/profile", { method: "PUT", body: payload });
     toast("Master Profile details saved.");

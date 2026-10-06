@@ -1587,3 +1587,36 @@ def generate_resume_docx(
     buffer = BytesIO()
     doc.save(buffer)
     return buffer.getvalue()
+
+
+def generate_professional_filename(
+    user_name: str | None = None,
+    resume_title: str | None = None,
+    target_role: str | None = None,
+    document_purpose: str | None = None,
+    file_format: str = "pdf",
+) -> str:
+    """Generates professional, human-readable file name for resume/CV export (e.g., Firstname_Lastname_Role.pdf)."""
+    raw_name = (user_name or "Candidate").strip()
+    clean_name = re.sub(r"[^\w\s-]", "", raw_name)
+    name_part = re.sub(r"[\s-]+", "_", clean_name).strip("_") or "Candidate"
+
+    role_part = None
+    if target_role and target_role.strip():
+        role_part = re.sub(r"[^\w\s-]", "", target_role.strip())
+        role_part = re.sub(r"[\s-]+", "_", role_part).strip("_")
+    elif document_purpose and "Academic" in document_purpose:
+        role_part = "Academic_CV"
+    elif document_purpose and "CV" in document_purpose:
+        role_part = "CV"
+    elif resume_title and resume_title.strip() and resume_title.strip() not in ("My Resume", "Resume", "General", "General Resume"):
+        clean_title = re.sub(r"[^\w\s-]", "", resume_title.strip())
+        clean_title = re.sub(r"[\s-]+", "_", clean_title).strip("_")
+        role_part = clean_title if clean_title else "Resume"
+    else:
+        role_part = "Resume"
+
+    fmt = (file_format or "pdf").lower().lstrip(".")
+    if not role_part:
+        role_part = "Resume"
+    return f"{name_part}_{role_part}.{fmt}"

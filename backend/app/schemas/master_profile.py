@@ -252,6 +252,8 @@ class ProfileUpdate(BaseModel):
     target_role: Optional[str] = Field(None, max_length=150)
     target_domain: Optional[str] = Field(None, max_length=100)
     career_level: Optional[str] = Field(None, max_length=50)
+    career_status: Optional[str] = Field(None, max_length=50)
+    target_market: Optional[str] = Field(None, max_length=50)
     target_geography: Optional[str] = Field(None, max_length=100)
     preferred_industries: Optional[list[str]] = None
     summary: Optional[str] = None
@@ -279,6 +281,8 @@ class ProfileOut(BaseModel):
     headline: str
     target_domain: str = "Software Engineering"
     career_level: str = "DEVELOPING_PROFESSIONAL"
+    career_status: str = "Job Searching"
+    target_market: str = "Global"
     target_geography: str = ""
     preferred_industries: list[str] = Field(default_factory=list)
     summary: str

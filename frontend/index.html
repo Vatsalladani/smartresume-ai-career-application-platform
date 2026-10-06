@@ -616,6 +616,32 @@
                     <option value="EXPERIENCED_PROFESSIONAL">Experienced Professional (Senior / Lead / 5+ yrs)</option>
                   </select>
                 </label>
+                <label>Career Status (Retention & Growth)
+                  <select id="profCareerStatus">
+                    <option value="Job Searching" selected>Job Searching (Active)</option>
+                    <option value="Employed">Employed (Career Growth & Promotion Mode)</option>
+                    <option value="Open to Opportunities">Open to Opportunities</option>
+                    <option value="Career Break">Career Break</option>
+                    <option value="Student">Student / Fresher</option>
+                    <option value="Freelance / Self-employed">Freelance / Self-employed</option>
+                  </select>
+                </label>
+                <label>Primary Target Market
+                  <select id="profTargetMarket">
+                    <option value="GLOBAL" selected>Global / International</option>
+                    <option value="US">United States (US)</option>
+                    <option value="CA">Canada (CA)</option>
+                    <option value="UK">United Kingdom (UK)</option>
+                    <option value="AU">Australia (AU)</option>
+                    <option value="NZ">New Zealand (NZ)</option>
+                    <option value="DE">Germany (DE / DACH)</option>
+                    <option value="EU">European Union (EU)</option>
+                    <option value="SG">Singapore (SG)</option>
+                    <option value="AE">United Arab Emirates (UAE)</option>
+                    <option value="SA">Saudi Arabia / GCC</option>
+                    <option value="IN">India (IN)</option>
+                  </select>
+                </label>
                 <label>Phone
                   <input id="profPhone" type="tel" placeholder="+91 98765 43210">
                 </label>
@@ -746,6 +772,33 @@
                 <option value="Draft">Draft</option>
                 <option value="Ready">Ready</option>
               </select>
+              <select id="builderMarketSelect" class="form-select xs builder-market-select" title="Target Market Guidance">
+                <option value="GLOBAL">Market: Global</option>
+                <option value="US">Market: United States (US)</option>
+                <option value="CA">Market: Canada (CA)</option>
+                <option value="UK">Market: United Kingdom (UK)</option>
+                <option value="AU">Market: Australia (AU)</option>
+                <option value="NZ">Market: New Zealand (NZ)</option>
+                <option value="DE">Market: Germany (DE)</option>
+                <option value="EU">Market: Europe (EU)</option>
+                <option value="SG">Market: Singapore (SG)</option>
+                <option value="AE">Market: UAE</option>
+                <option value="SA">Market: Saudi Arabia / GCC</option>
+                <option value="IN">Market: India (IN)</option>
+              </select>
+              <select id="builderPurposeSelect" class="form-select xs builder-purpose-select" title="Document Purpose">
+                <option value="Professional Resume">Professional Resume</option>
+                <option value="Professional CV">Professional CV</option>
+                <option value="Academic CV">Academic CV</option>
+              </select>
+              <select id="builderAtsModeSelect" class="form-select xs builder-ats-select" title="ATS Safety Mode">
+                <option value="ATS-Safe">ATS-Safe</option>
+                <option value="Balanced">Balanced</option>
+                <option value="Visual">Visual</option>
+              </select>
+              <button id="builderToggleMarketGuideBtn" class="ghost-btn xs" type="button" title="View Market & ATS Guidance">
+                <i data-lucide="globe"></i><span>Market Guidance</span>
+              </button>
               <span id="builderResumeTargetChip" class="badge-sub">General</span>
               <div class="builder-save-status" id="builderSaveStatus">
                 <span class="status-dot"></span>
@@ -754,6 +807,23 @@
             </div>
             <p class="text-xs text-muted" id="builderResumeMetaInfo">Independent document · Automatically saved as Draft</p>
           </div>
+
+        <!-- Location Market Recommendation Toast -->
+        <div id="builderLocationRecommendToast" class="location-recommend-toast hidden mb-3">
+          <div class="flex-row align-center gap-2">
+            <i data-lucide="map-pin" style="width: 16px; height: 16px; color: var(--primary);"></i>
+            <span id="builderLocationRecommendText" class="text-xs font-semibold">Recommended Market: Canada</span>
+          </div>
+          <div class="flex-row align-center gap-2">
+            <button class="primary-btn xs" type="button" id="builderApplyLocationMarketBtn">Apply Market Guidance</button>
+            <button class="ghost-btn xs" type="button" id="builderDismissLocationMarketBtn">Dismiss</button>
+          </div>
+        </div>
+
+        <!-- Market & ATS Guidance Drawer -->
+        <div id="builderMarketGuidanceDrawer" class="market-guidance-drawer hidden mb-3">
+          <!-- Populated dynamically via renderMarketGuidance() -->
+        </div>
           <div class="view-header-actions flex-wrap">
             <button class="secondary-btn sm" type="button" id="builderOpenSwitcherBtn" title="Switch or manage resumes">
               <i data-lucide="folder-kanban"></i>
@@ -3676,7 +3746,30 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
               <input id="newResumeTargetCompanyInput" type="text" placeholder="e.g. Razorpay">
             </label>
             <label class="span-2">Target Location (optional)
-              <input id="newResumeTargetLocationInput" type="text" placeholder="e.g. Bengaluru, Remote">
+              <input id="newResumeTargetLocationInput" type="text" placeholder="e.g. Bengaluru, Remote or Toronto, Canada">
+            </label>
+            <label>Application Market
+              <select id="newResumeTargetMarketInput">
+                <option value="GLOBAL" selected>Global / International</option>
+                <option value="US">United States (US)</option>
+                <option value="CA">Canada (CA)</option>
+                <option value="UK">United Kingdom (UK)</option>
+                <option value="AU">Australia (AU)</option>
+                <option value="NZ">New Zealand (NZ)</option>
+                <option value="DE">Germany (DE / DACH)</option>
+                <option value="EU">European Union (EU)</option>
+                <option value="SG">Singapore (SG)</option>
+                <option value="AE">United Arab Emirates (UAE)</option>
+                <option value="SA">Saudi Arabia / GCC</option>
+                <option value="IN">India (IN)</option>
+              </select>
+            </label>
+            <label>Document Purpose
+              <select id="newResumeDocumentPurposeInput">
+                <option value="Professional Resume" selected>Professional Resume</option>
+                <option value="Professional CV">Professional CV</option>
+                <option value="Academic CV">Academic CV</option>
+              </select>
             </label>
           </div>
 

@@ -10,6 +10,9 @@ class ResumeCreate(BaseModel):
     target_role: str | None = Field(default=None, max_length=150)
     target_company: str | None = Field(default=None, max_length=150)
     target_location: str | None = Field(default=None, max_length=150)
+    target_market: str = Field(default="Global", max_length=50)
+    document_purpose: str = Field(default="Professional Resume", max_length=50)
+    ats_mode: str = Field(default="ATS-Safe", max_length=30)
     target_job_id: int | None = None
     raw_text: str | None = None
     parsed_content: dict[str, Any] | None = None
@@ -21,6 +24,9 @@ class ResumeUpdate(BaseModel):
     target_role: str | None = Field(default=None, max_length=150)
     target_company: str | None = Field(default=None, max_length=150)
     target_location: str | None = Field(default=None, max_length=150)
+    target_market: str | None = Field(default=None, max_length=50)
+    document_purpose: str | None = Field(default=None, max_length=50)
+    ats_mode: str | None = Field(default=None, max_length=30)
     target_job_id: int | None = None
     is_archived: bool | None = None
     raw_text: str | None = None
@@ -34,6 +40,9 @@ class ResumeOut(BaseModel):
     target_role: str | None = None
     target_company: str | None = None
     target_location: str | None = None
+    target_market: str = "Global"
+    document_purpose: str = "Professional Resume"
+    ats_mode: str = "ATS-Safe"
     target_job_id: int | None = None
     is_archived: bool = False
     ats_score: int

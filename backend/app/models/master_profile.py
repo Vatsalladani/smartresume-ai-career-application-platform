@@ -22,6 +22,8 @@ class Profile(Base):
     completeness_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     target_domain: Mapped[str] = mapped_column(String(100), nullable=False, default="Software Engineering")
     career_level: Mapped[str] = mapped_column(String(50), nullable=False, default="DEVELOPING_PROFESSIONAL")
+    career_status: Mapped[str] = mapped_column(String(50), nullable=False, default="Job Searching")
+    target_market: Mapped[str] = mapped_column(String(50), nullable=False, default="Global")
     target_geography: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     preferred_industries: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     health_report: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

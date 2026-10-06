@@ -81,6 +81,9 @@ def create_resume(
     target_role: str | None = None,
     target_company: str | None = None,
     target_location: str | None = None,
+    target_market: str = "Global",
+    document_purpose: str = "Professional Resume",
+    ats_mode: str = "ATS-Safe",
     target_job_id: int | None = None,
     changelog: str = "Initial import",
 ) -> Resume:
@@ -110,6 +113,9 @@ def create_resume(
         target_role=target_role,
         target_company=target_company,
         target_location=target_location,
+        target_market=target_market or "Global",
+        document_purpose=document_purpose or "Professional Resume",
+        ats_mode=ats_mode or "ATS-Safe",
         target_job_id=target_job_id,
         is_archived=False,
         raw_text=cleaned_raw,
@@ -158,6 +164,9 @@ def update_resume(
     target_role: str | None = None,
     target_company: str | None = None,
     target_location: str | None = None,
+    target_market: str | None = None,
+    document_purpose: str | None = None,
+    ats_mode: str | None = None,
     target_job_id: int | None = None,
     is_archived: bool | None = None,
     record_version: bool = True,
@@ -173,6 +182,12 @@ def update_resume(
         resume.target_company = target_company
     if target_location is not None:
         resume.target_location = target_location
+    if target_market is not None:
+        resume.target_market = target_market
+    if document_purpose is not None:
+        resume.document_purpose = document_purpose
+    if ats_mode is not None:
+        resume.ats_mode = ats_mode
     if target_job_id is not None:
         resume.target_job_id = target_job_id
     if is_archived is not None:
@@ -193,6 +208,7 @@ def update_resume(
         if record_version:
             add_version(db, resume, changelog=changelog)
 
+    db.flush()
     return resume
 
 
@@ -208,6 +224,9 @@ def duplicate_resume(db: Session, resume: Resume, user_id: int, new_title: str |
         target_role=resume.target_role,
         target_company=resume.target_company,
         target_location=resume.target_location,
+        target_market=getattr(resume, "target_market", "Global"),
+        document_purpose=getattr(resume, "document_purpose", "Professional Resume"),
+        ats_mode=getattr(resume, "ats_mode", "ATS-Safe"),
         target_job_id=resume.target_job_id,
         raw_text=resume.raw_text,
         parsed_content=copied_content,
