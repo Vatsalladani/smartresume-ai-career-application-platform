@@ -381,6 +381,64 @@
           </button>
         </div>
 
+        <!-- 1B. CAREER WORKSPACE VALUE & POST-HIRE GROWTH CARDS -->
+        <div class="dash-workspace-value-grid mb-4" id="dashWorkspaceValueSection">
+          <!-- Left: Accumulated Workspace Value -->
+          <div class="panel p-4" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <i data-lucide="layers" style="color: var(--primary); width: 20px; height: 20px;"></i>
+                <h4 style="margin: 0; font-size: 1rem;">Your Career Workspace Assets</h4>
+              </div>
+              <span class="badge-sub">PERMANENT ASSETS</span>
+            </div>
+            <p class="text-xs text-muted mb-3">One master career profile powering multiple targeted resumes, interview practice, and verified achievements. Never start from scratch again.</p>
+            <div class="grid four gap-2 mb-2">
+              <div class="p-2 text-center" style="background: var(--surface-2); border-radius: var(--radius-md);">
+                <span class="text-xs text-muted block">Resumes</span>
+                <strong id="dashValResumes" class="text-base text-primary">0</strong>
+              </div>
+              <div class="p-2 text-center" style="background: var(--surface-2); border-radius: var(--radius-md);">
+                <span class="text-xs text-muted block">Saved Jobs</span>
+                <strong id="dashValJobs" class="text-base text-primary">0</strong>
+              </div>
+              <div class="p-2 text-center" style="background: var(--surface-2); border-radius: var(--radius-md);">
+                <span class="text-xs text-muted block">Interviews</span>
+                <strong id="dashValInterviews" class="text-base text-primary">0</strong>
+              </div>
+              <div class="p-2 text-center" style="background: var(--surface-2); border-radius: var(--radius-md);">
+                <span class="text-xs text-muted block">Achievements</span>
+                <strong id="dashValEvidence" class="text-base text-primary">0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Post-Hire Career Growth Mode (Active when Employed or toggleable) -->
+          <div id="dashCareerGrowthPanel" class="panel p-4" style="background: linear-gradient(135deg, rgba(37,99,235,0.04), rgba(16,185,129,0.04)); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <i data-lucide="award" style="color: var(--success); width: 20px; height: 20px;"></i>
+                <h4 style="margin: 0; font-size: 1rem;" id="dashGrowthTitle">Career Growth Mode</h4>
+              </div>
+              <span class="badge-status active" style="font-size: 10px;" id="dashGrowthBadge">CAREER READY</span>
+            </div>
+            <p class="text-xs text-muted mb-3" id="dashGrowthDesc">
+              SmartResume helps you grow in your current role, not just get your next one. Keep your ongoing achievements and skills logged for performance reviews and promotions.
+            </p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button class="secondary-btn xs" type="button" onclick="navigateToTab('evidence-vault')">
+                <i data-lucide="plus-circle"></i><span>Log Achievement</span>
+              </button>
+              <button class="secondary-btn xs" type="button" onclick="navigateToTab('profile')">
+                <i data-lucide="sparkles"></i><span>Update Skills</span>
+              </button>
+              <button class="ghost-btn xs" type="button" onclick="openHealthReportModal()">
+                <i data-lucide="trending-up"></i><span>Audit Readiness</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 2. MY RESUMES & PROFILE READINESS (2-COLUMN CARDS) -->
         <div class="dash-primary-grid">
           <!-- Left: My Resumes Card Section -->
@@ -1786,6 +1844,49 @@
           </div>
         </div>
 
+        <!-- Trial Progress / Milestone Value Card -->
+        <div id="trialProgressCard" class="panel p-4 mb-4 hidden" style="background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(16,185,129,0.06)); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="plan-badge" style="background: var(--primary); color: white;">PRO TRIAL PROGRESS</span>
+              <span class="text-sm font-semibold">Your Career Workspace Milestones</span>
+            </div>
+            <span class="text-xs text-muted" id="trialDaysRemainingText">-- days remaining</span>
+          </div>
+          <div class="grid four gap-3 mb-3">
+            <div class="metric-card p-3 text-center" style="background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <span class="text-xs text-muted block">Resumes</span>
+              <strong id="trialMetricResumes" class="text-lg text-primary block mt-1">0</strong>
+              <span class="text-xs text-muted block mt-1">Targeted versions</span>
+            </div>
+            <div class="metric-card p-3 text-center" style="background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <span class="text-xs text-muted block">Job Matches</span>
+              <strong id="trialMetricJobs" class="text-lg text-primary block mt-1">0</strong>
+              <span class="text-xs text-muted block mt-1">Jobs analyzed</span>
+            </div>
+            <div class="metric-card p-3 text-center" style="background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <span class="text-xs text-muted block">Interviews</span>
+              <strong id="trialMetricInterviews" class="text-lg text-primary block mt-1">0</strong>
+              <span class="text-xs text-muted block mt-1">Sessions practiced</span>
+            </div>
+            <div class="metric-card p-3 text-center" style="background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <span class="text-xs text-muted block">Profile Strength</span>
+              <strong id="trialMetricProfile" class="text-lg text-primary block mt-1">0%</strong>
+              <span class="text-xs text-muted block mt-1">Career profile</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between p-3 flex-wrap gap-2" style="background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <div class="flex items-center gap-2">
+              <i data-lucide="compass" style="color: var(--primary);"></i>
+              <div>
+                <span class="text-xs text-muted block">Next Useful Action:</span>
+                <strong id="trialNextActionText" class="text-sm">Practice your target interview with AI Copilot</strong>
+              </div>
+            </div>
+            <button id="trialNextActionBtn" class="primary-btn xs" type="button"><span>Take Action</span><i data-lucide="arrow-right"></i></button>
+          </div>
+        </div>
+
         <!-- 1. YOUR PLAN -->
         <div class="panel mb-4">
           <div class="panel-head">
@@ -1797,6 +1898,19 @@
           </div>
 
           <!-- Subscription Status Banners -->
+          <div id="subPausedAlert" class="alert-info mt-3 hidden" style="background: var(--surface-2); border-left: 3px solid var(--accent); padding: 12px; border-radius: var(--radius-md);">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <i data-lucide="pause-circle" style="color: var(--accent); width: 20px; height: 20px;"></i>
+                <div>
+                  <strong>Subscription Paused</strong>
+                  <p class="text-sm text-muted mb-0">Renewal billing is paused until <span id="subPausedUntilDate">--</span>. All your resumes and workspace data are safely preserved.</p>
+                </div>
+              </div>
+              <button id="resumeFromBannerBtn" class="primary-btn sm" type="button"><i data-lucide="play"></i><span>Resume Subscription</span></button>
+            </div>
+          </div>
+
           <div id="subEndingAlert" class="alert-warning mt-3 hidden">
             <i data-lucide="alert-triangle"></i>
             <div>
@@ -1815,6 +1929,7 @@
               </div>
             </div>
           </div>
+
 
           <div class="sub-details-grid mt-3">
             <div class="sub-detail-item">
@@ -1989,50 +2104,67 @@
           </div>
         </div>
 
-        <!-- 5. MANAGE SUBSCRIPTION (Payment-Method-Aware) -->
+        <!-- 5. MANAGE SUBSCRIPTION (Ethical Self-Serve Controls) -->
         <div class="panel mb-4" id="manageSubscriptionSection">
           <div class="panel-head">
             <div>
-              <h3><i data-lucide="sliders"></i> Manage Subscription</h3>
-              <p class="text-sm">Manage recurring billing, payment mandate, or cancel renewals.</p>
+              <h3><i data-lucide="sliders"></i> Subscription Management</h3>
+              <p class="text-sm">Full self-serve control over your plan, billing renewal, or temporary pause. Zero dark patterns, all data safe.</p>
             </div>
           </div>
 
           <div class="manage-sub-body mt-3">
-            <!-- UPI AutoPay Card -->
-            <div id="manageUpiCard" class="sub-manage-box hidden">
-              <div class="flex items-center justify-between">
+            <!-- Active Pro / Paid Plan Controls -->
+            <div id="manageActivePaidControls" class="sub-manage-box hidden">
+              <div class="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="method-badge upi">UPI AutoPay</span>
-                    <strong id="upiAppLabel">Authorized in UPI App</strong>
+                    <span id="activePlanMethodBadge" class="method-badge card">Card</span>
+                    <strong id="activePlanMethodLabel">Standard Billing</strong>
                   </div>
-                  <p class="text-sm text-muted mt-1">Your recurring payment mandate was authorized through your UPI app. You can manage or cancel that mandate directly from the UPI app where it was authorized.</p>
+                  <p class="text-sm text-muted mt-1 mb-0">Renewal is handled automatically. All career data, resumes, and interview records remain safe regardless of plan status.</p>
                 </div>
-                <button id="manageAutoPayBtn" class="secondary-btn sm" type="button"><i data-lucide="external-link"></i><span>Manage AutoPay</span></button>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button id="btnPauseSub" class="secondary-btn sm" type="button" title="Pause billing for 1-3 months while keeping all data safe">
+                    <i data-lucide="pause"></i><span>Pause Subscription</span>
+                  </button>
+                  <button id="btnResumeSub" class="primary-btn sm hidden" type="button" title="Resume active Pro subscription">
+                    <i data-lucide="play"></i><span>Resume Subscription</span>
+                  </button>
+                  <button id="btnDowngradeSub" class="secondary-btn sm" type="button" title="Schedule switch to Free tier at billing cycle end">
+                    <i data-lucide="arrow-down-circle"></i><span>Downgrade to Free</span>
+                  </button>
+                  <button id="btnCancelSub" class="danger-btn sm" type="button" title="Cancel renewal without losing access until billing period ends">
+                    <i data-lucide="x-circle"></i><span>Cancel Subscription</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- Card Recurring Card -->
-            <div id="manageCardBox" class="sub-manage-box hidden">
-              <div class="flex items-center justify-between">
+            <!-- Cancelled / Ending State Controls -->
+            <div id="manageEndingControls" class="sub-manage-box hidden">
+              <div class="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <div class="flex items-center gap-2">
-                    <span class="method-badge card">Card</span>
-                    <strong id="cardDetailsLabel">Card ending ****4242</strong>
-                  </div>
-                  <p class="text-sm text-muted mt-1">Managed securely through our payment provider. Cancellation turns off renewal at the end of the billing cycle.</p>
+                  <strong class="text-warning">Renewal Cancelled</strong>
+                  <p class="text-sm text-muted mt-1 mb-0">Your Pro access remains active until <span id="endingExpiryDateLabel">--</span>. All your resumes and workspace data are 100% preserved.</p>
                 </div>
-                <button id="cancelCardRenewalBtn" class="danger-btn sm" type="button"><i data-lucide="x-circle"></i><span>Cancel Renewal</span></button>
+                <button id="btnReactivateSub" class="primary-btn sm" type="button"><i data-lucide="zap"></i><span>Reactivate Pro</span></button>
               </div>
             </div>
 
-            <!-- Free / No Active Recurring Sub -->
+            <!-- Free Plan Box -->
             <div id="manageFreeBox" class="sub-manage-box">
-              <p class="text-sm text-muted">You are currently on the Free plan. No recurring payment mandates or cards are linked.</p>
+              <div class="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <strong>You are currently on the Free plan</strong>
+                  <p class="text-sm text-muted mt-1 mb-0">All your resumes, target jobs, and Career Vault items are safely stored. Upgrade anytime when you need active tailoring or export quotas.</p>
+                </div>
+                <button id="manageUpgradeFreeBtn" class="primary-btn sm" type="button"><i data-lucide="zap"></i><span>Explore Pro</span></button>
+              </div>
             </div>
           </div>
         </div>
+
 
         <!-- 6. PAYMENT HISTORY -->
         <div class="panel mb-4">
@@ -4000,6 +4132,159 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
         <button class="secondary-btn sm" type="button" id="wsCloseFooterBtn">Close</button>
         <button class="primary-btn sm" type="button" id="wsFooterLaunchBtn">
           <i data-lucide="messages-square"></i><span>Practice Interview</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANCEL SUBSCRIPTION MODAL (Ethical Flow, No Dark Patterns) -->
+  <div id="cancelSubscriptionModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="cancelSubModalTitle">
+    <div class="modal-dialog" style="max-width: 560px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="cancelSubModalTitle"><i data-lucide="x-circle" style="color: var(--danger);"></i> Cancel Renewal</h3>
+          <p class="text-xs text-muted mb-0">Cancel automatic subscription renewals anytime with zero friction.</p>
+        </div>
+        <button class="modal-close" type="button" id="closeCancelModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Transparent terms -->
+        <div class="panel p-3 mb-3" style="background: var(--surface-2); border-left: 3px solid var(--primary); border-radius: var(--radius-md);">
+          <strong class="text-sm block mb-1">Your Pro access remains active</strong>
+          <p class="text-xs text-muted mb-1">
+            You will retain full Pro access until <strong id="cancelModalExpiresDate">the end of your current period</strong>. No further charges will ever be made.
+          </p>
+          <span class="text-xs text-success flex items-center gap-1 font-semibold">
+            <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i> All your resumes, job matches, and Evidence Vault data will stay 100% safe.
+          </span>
+        </div>
+
+        <!-- Step 2: Optional feedback survey -->
+        <div class="mb-3">
+          <label class="form-label text-xs font-semibold mb-1" for="cancelReasonSelect">Why are you cancelling? (Optional):</label>
+          <select id="cancelReasonSelect" class="form-control text-sm">
+            <option value="">Select a reason (optional)</option>
+            <option value="got_job">🎉 I landed a job!</option>
+            <option value="taking_break">Taking a temporary break from applying</option>
+            <option value="too_expensive">Too expensive for my budget right now</option>
+            <option value="missing_features">Missing features I needed</option>
+            <option value="not_using_enough">Not using it enough</option>
+            <option value="other">Other reason</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Alternatives Card (Non-intrusive, helpful) -->
+        <div id="cancelAlternativeCard" class="panel p-3 mb-3 hidden" style="background: var(--surface-1); border: 1px solid var(--primary-light); border-radius: var(--radius-md);">
+          <div id="altBreakContent" class="hidden">
+            <strong class="text-xs text-primary block mb-1">Taking a break? Pause instead of cancelling</strong>
+            <p class="text-xs text-muted mb-2">You can pause your subscription for 1 to 3 months. No charges, and resume anytime with 1 click.</p>
+            <button class="secondary-btn xs" type="button" id="cancelAltPauseBtn"><i data-lucide="pause"></i><span>Pause Subscription Instead</span></button>
+          </div>
+          <div id="altExpensiveContent" class="hidden">
+            <strong class="text-xs text-primary block mb-1">Budget sensitive? Save 32% or downgrade</strong>
+            <p class="text-xs text-muted mb-2">Switch to our Annual Power Plan (₹33/mo) or schedule a transition to Free without losing any of your saved career assets.</p>
+            <button class="secondary-btn xs" type="button" id="cancelAltDowngradeBtn"><i data-lucide="arrow-down-circle"></i><span>Downgrade to Free Tier</span></button>
+          </div>
+          <div id="altJobContent" class="hidden">
+            <strong class="text-xs text-success block mb-1">🎉 Congratulations on your new role!</strong>
+            <p class="text-xs text-muted mb-0">SmartResume supports Career Growth Mode: keep logging your ongoing achievements and skills for performance reviews and promotions.</p>
+          </div>
+        </div>
+
+        <!-- Optional additional thoughts -->
+        <div class="mb-2">
+          <label class="form-label text-xs font-semibold mb-1" for="cancelFeedbackInput">Any feedback for the team? (Optional):</label>
+          <textarea id="cancelFeedbackInput" class="form-control text-xs" rows="2" placeholder="Let us know how we can improve..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer flex items-center justify-between gap-3">
+        <button class="secondary-btn sm" type="button" id="keepSubBtn">Keep My Subscription</button>
+        <button class="danger-btn sm" type="button" id="confirmCancelBtn">
+          <i data-lucide="check"></i><span>Confirm Cancellation</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAUSE SUBSCRIPTION MODAL -->
+  <div id="pauseSubscriptionModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pauseSubModalTitle">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="pauseSubModalTitle"><i data-lucide="pause-circle" style="color: var(--accent);"></i> Pause Subscription</h3>
+          <p class="text-xs text-muted mb-0">Suspend renewal charges while keeping all your career workspace data safe.</p>
+        </div>
+        <button class="modal-close" type="button" id="closePauseModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm mb-3">Taking a break while interviewing or settling into a new role? Pausing stops all future recurring charges while keeping your entire career portfolio intact.</p>
+
+        <label class="form-label text-xs font-semibold mb-2 block">Choose Pause Duration:</label>
+        <div class="grid three gap-2 mb-3">
+          <label class="option-card p-3 text-center pointer" style="border: 2px solid var(--border); border-radius: var(--radius-md); cursor: pointer;" id="pauseOpt1">
+            <input type="radio" name="pauseDuration" value="1" checked class="hidden">
+            <strong class="block text-base">1 Month</strong>
+            <span class="text-xs text-muted">Quick breather</span>
+          </label>
+          <label class="option-card p-3 text-center pointer" style="border: 2px solid var(--border); border-radius: var(--radius-md); cursor: pointer;" id="pauseOpt2">
+            <input type="radio" name="pauseDuration" value="2" class="hidden">
+            <strong class="block text-base">2 Months</strong>
+            <span class="text-xs text-muted">Standard break</span>
+          </label>
+          <label class="option-card p-3 text-center pointer" style="border: 2px solid var(--border); border-radius: var(--radius-md); cursor: pointer;" id="pauseOpt3">
+            <input type="radio" name="pauseDuration" value="3" class="hidden">
+            <strong class="block text-base">3 Months</strong>
+            <span class="text-xs text-muted">Extended hold</span>
+          </label>
+        </div>
+
+        <div class="panel p-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
+          <ul class="clean-list text-xs">
+            <li class="mb-1"><i data-lucide="check" style="color: var(--success); width: 14px; height: 14px;"></i> <strong>Zero billing</strong> during the pause period.</li>
+            <li class="mb-1"><i data-lucide="check" style="color: var(--success); width: 14px; height: 14px;"></i> All your resumes, job matches, and Evidence Vault records remain completely safe.</li>
+            <li class="mb-0"><i data-lucide="check" style="color: var(--success); width: 14px; height: 14px;"></i> <strong>Resume anytime with 1 click</strong> from your Billing page.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer flex items-center justify-between gap-3">
+        <button class="secondary-btn sm" type="button" id="cancelPauseModalBtn">Keep Active</button>
+        <button class="primary-btn sm" type="button" id="confirmPauseBtn">
+          <i data-lucide="pause"></i><span>Confirm Pause</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOWNGRADE TO FREE MODAL -->
+  <div id="downgradeSubscriptionModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="downgradeSubModalTitle">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="downgradeSubModalTitle"><i data-lucide="arrow-down-circle" style="color: var(--primary);"></i> Switch to Free Plan</h3>
+          <p class="text-xs text-muted mb-0">Transition to Free tier at current period end with complete data safety.</p>
+        </div>
+        <button class="modal-close" type="button" id="closeDowngradeModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="panel p-3 mb-3" style="background: var(--surface-2); border-left: 3px solid var(--primary); border-radius: var(--radius-md);">
+          <strong class="text-sm block mb-1">Your career data is completely safe</strong>
+          <p class="text-xs text-muted mb-0">
+            You will retain full Pro access until <strong id="downgradeModalExpiresDate">the end of your billing cycle</strong>. After that date, your account transitions to the Free tier.
+          </p>
+        </div>
+
+        <h4 class="text-xs font-semibold mb-2">What happens to your account:</h4>
+        <ul class="clean-list text-xs mb-3">
+          <li class="mb-1"><i data-lucide="check" style="color: var(--success); width: 14px; height: 14px;"></i> All your existing resumes, versions, and notes remain accessible.</li>
+          <li class="mb-1"><i data-lucide="check" style="color: var(--success); width: 14px; height: 14px;"></i> All your target jobs and interview transcripts remain intact.</li>
+          <li class="mb-1"><i data-lucide="check" style="color: var(--success); width: 14px; height: 14px;"></i> Your Evidence Vault items and master profile are 100% saved.</li>
+          <li class="mb-0"><i data-lucide="info" style="color: var(--text-muted); width: 14px; height: 14px;"></i> Standard Free monthly limits apply to future new analyses and exports.</li>
+        </ul>
+      </div>
+      <div class="modal-footer flex items-center justify-between gap-3">
+        <button class="secondary-btn sm" type="button" id="cancelDowngradeModalBtn">Keep Pro</button>
+        <button class="primary-btn sm" type="button" id="confirmDowngradeBtn">
+          <i data-lucide="check"></i><span>Schedule Free Switch</span>
         </button>
       </div>
     </div>

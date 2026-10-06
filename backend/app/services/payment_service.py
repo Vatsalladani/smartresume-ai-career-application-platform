@@ -384,12 +384,87 @@ def get_plan_consent_info(plan_key: str, currency: str = "INR") -> dict:
     }
 
 
-def compute_subscription_summary(sub: Subscription | None) -> dict:
+def compute_trial_and_workspace_progress(db: Session, user_id: int) -> dict:
     """
-    Computes a clean, user-friendly subscription summary adhering to the standard status model:
-    TRIAL, ACTIVE, CANCELLED, ENDING, PAST_DUE, PAYMENT_FAILED, EXPIRED.
+    Computes accumulated career workspace value and trial progress milestones.
+    No fake urgency, real tangible career asset metrics.
+    """
+    from app.models.resume import Resume
+    from app.models.job_fit import JobPosting
+    from app.models.interview import InterviewSession
+    from app.models.evidence_vault import EvidenceItem
+    from app.models.master_profile import Profile
+    from app.services.profile_service import calculate_completeness
+
+    resumes_count = db.query(Resume).filter(Resume.user_id == user_id).count()
+    jobs_count = db.query(JobPosting).filter(JobPosting.user_id == user_id).count()
+    interviews_count = db.query(InterviewSession).filter(InterviewSession.user_id == user_id).count()
+    evidence_count = db.query(EvidenceItem).filter(EvidenceItem.user_id == user_id).count()
+
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    completeness = calculate_completeness(profile) if profile else 0
+
+    is_employed = False
+    current_company = None
+    if profile and profile.experiences:
+        for exp in profile.experiences:
+            if getattr(exp, "is_current", False) or not exp.end_date:
+                is_employed = True
+                current_company = exp.company_name
+                break
+
+    if completeness < 75:
+        next_action = "Complete your Master Profile to unlock higher ATS match precision."
+        action_tab = "tabProfile"
+    elif resumes_count == 0:
+        next_action = "Create your first targeted resume using your Master Profile."
+        action_tab = "tabResume"
+    elif jobs_count == 0:
+        next_action = "Add a target job in Job Match to calculate ATS alignment."
+        action_tab = "tabFit"
+    elif interviews_count == 0:
+        next_action = "Practice your target interview with AI Copilot."
+        action_tab = "tabInterview"
+    elif evidence_count == 0:
+        next_action = "Log a recent achievement in Evidence Vault for future promotions."
+        action_tab = "tabEvidenceVault"
+    else:
+        next_action = "All set! Keep your Evidence Vault updated with ongoing accomplishments."
+        action_tab = "tabEvidenceVault"
+
+    return {
+        "resumes_count": resumes_count,
+        "jobs_analyzed_count": jobs_count,
+        "interviews_completed_count": interviews_count,
+        "evidence_items_count": evidence_count,
+        "profile_completeness": completeness,
+        "is_employed": is_employed,
+        "current_company": current_company,
+        "next_useful_action": next_action,
+        "action_tab": action_tab,
+    }
+
+
+def compute_subscription_summary(
+    sub: Subscription | None,
+    db: Session | None = None,
+    user_id: int | None = None,
+) -> dict:
+    """
+    Computes a clean, transparent, user-friendly subscription summary adhering to ethical retention principles:
+    TRIAL, ACTIVE, PAUSED, ENDING, CANCELLED, PAST_DUE, PAYMENT_FAILED, EXPIRED.
+    Zero hidden cancellation buttons, zero dark patterns.
     """
     now = datetime.utcnow()
+    target_user_id = user_id or (sub.user_id if sub else None)
+
+    workspace_value = None
+    if db and target_user_id:
+        try:
+            workspace_value = compute_trial_and_workspace_progress(db, target_user_id)
+        except Exception:
+            workspace_value = None
+
     if not sub or sub.plan_name == "FREE":
         return {
             "plan_name": "FREE",
@@ -405,17 +480,30 @@ def compute_subscription_summary(sub: Subscription | None) -> dict:
             "currency": "INR",
             "billing_frequency": "none",
             "cancellation_scheduled": False,
+            "cancellation_reason": None,
+            "cancellation_feedback": None,
             "next_renewal_date": None,
             "can_cancel_in_app": False,
+            "is_paused": False,
+            "paused_at": None,
+            "paused_until": None,
+            "pause_duration_months": 0,
+            "can_pause": False,
+            "trial_progress": None,
+            "workspace_value": workspace_value,
             "last_payment_error": None,
         }
 
     is_trial = bool(sub.is_trial)
+    is_paused = bool(getattr(sub, "is_paused", False))
     is_annual = "ANNUAL" in sub.plan_name.upper()
     freq = "annual" if is_annual else ("monthly" if not is_trial else "trial")
     amount = 399.0 if is_annual else (49.0 if not is_trial else 0.0)
 
-    if is_trial:
+    if is_paused:
+        status_str = "PAUSED"
+        days_rem = max(0, (sub.paused_until - now).days) if sub.paused_until else 0
+    elif is_trial:
         if sub.trial_expires_at and sub.trial_expires_at > now:
             status_str = "TRIAL"
             days_rem = max(0, (sub.trial_expires_at - now).days)
@@ -445,6 +533,8 @@ def compute_subscription_summary(sub: Subscription | None) -> dict:
     next_date_str = sub.expires_at.strftime("%d %B %Y") if sub.expires_at else None
     if is_trial and sub.trial_expires_at:
         next_date_str = sub.trial_expires_at.strftime("%d %B %Y")
+    elif is_paused and sub.paused_until:
+        next_date_str = sub.paused_until.strftime("%d %B %Y")
 
     method_type = getattr(sub, "payment_method_type", "none") or "none"
     method_detail = getattr(sub, "payment_method_detail", None)
@@ -454,11 +544,15 @@ def compute_subscription_summary(sub: Subscription | None) -> dict:
         elif method_type == "card":
             method_detail = "Card ending ****4242"
         elif is_trial:
-            method_detail = "No payment method required (Trial)"
+            method_detail = "No credit card required (Trial)"
         else:
             method_detail = "Standard Billing"
 
-    can_cancel_in_app = (method_type in {"card", "none"}) and not is_trial
+    # Friction-free cancellation: Any non-free plan can be cancelled in-app anytime
+    can_cancel_in_app = (sub.plan_name != "FREE") and not getattr(sub, "cancellation_scheduled", False) and status_str != "EXPIRED"
+    can_pause = (sub.plan_name != "FREE") and not is_trial and not is_paused and not getattr(sub, "cancellation_scheduled", False) and status_str == "ACTIVE"
+
+    trial_prog = workspace_value if is_trial else None
 
     return {
         "plan_name": sub.plan_name,
@@ -474,8 +568,129 @@ def compute_subscription_summary(sub: Subscription | None) -> dict:
         "currency": "INR",
         "billing_frequency": freq,
         "cancellation_scheduled": bool(getattr(sub, "cancellation_scheduled", False)),
+        "cancellation_reason": getattr(sub, "cancellation_reason", None),
+        "cancellation_feedback": getattr(sub, "cancellation_feedback", None),
         "next_renewal_date": next_date_str,
         "can_cancel_in_app": can_cancel_in_app,
+        "is_paused": is_paused,
+        "paused_at": getattr(sub, "paused_at", None),
+        "paused_until": getattr(sub, "paused_until", None),
+        "pause_duration_months": getattr(sub, "pause_duration_months", 0),
+        "can_pause": can_pause,
+        "trial_progress": trial_prog,
+        "workspace_value": workspace_value,
         "last_payment_error": getattr(sub, "last_payment_error", None),
     }
+
+
+def pause_subscription(db: Session, user_id: int, months: int = 1) -> dict:
+    sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+    if not sub or sub.plan_name == "FREE":
+        raise AppError("Only active paid subscriptions can be paused.", status.HTTP_400_BAD_REQUEST)
+    if sub.is_trial:
+        raise AppError("Trials cannot be paused. You can cancel or upgrade anytime.", status.HTTP_400_BAD_REQUEST)
+    if sub.is_paused:
+        raise AppError("Subscription is already paused.", status.HTTP_400_BAD_REQUEST)
+
+    now = datetime.utcnow()
+    sub.is_paused = True
+    sub.paused_at = now
+    sub.pause_duration_months = months
+    sub.paused_until = now + timedelta(days=30 * months)
+    sub.status = "PAUSED"
+    db.commit()
+    db.refresh(sub)
+
+    from app.services.audit_service import write_audit_log
+    write_audit_log(
+        db,
+        action="payment.pause_subscription",
+        user_id=user_id,
+        metadata={"months": months, "paused_until": sub.paused_until.isoformat() if sub.paused_until else None},
+    )
+
+    from app.services.notification_service import create_notification
+    create_notification(
+        db=db,
+        user_id=user_id,
+        title="Subscription Paused",
+        message=f"Your subscription is paused for {months} month(s). No renewal charges will occur. All your career data remains 100% safe and you can resume anytime.",
+        notif_type="BILLING",
+        action_url="#billing",
+    )
+
+    return compute_subscription_summary(sub, db=db, user_id=user_id)
+
+
+def resume_subscription(db: Session, user_id: int) -> dict:
+    sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+    if not sub or not sub.is_paused:
+        raise AppError("Subscription is not currently paused.", status.HTTP_400_BAD_REQUEST)
+
+    now = datetime.utcnow()
+    if sub.paused_at and sub.expires_at:
+        paused_duration = now - sub.paused_at
+        if paused_duration.total_seconds() > 0:
+            sub.expires_at = sub.expires_at + paused_duration
+
+    sub.is_paused = False
+    sub.paused_at = None
+    sub.paused_until = None
+    sub.pause_duration_months = 0
+    sub.status = "ACTIVE"
+    db.commit()
+    db.refresh(sub)
+
+    from app.services.audit_service import write_audit_log
+    write_audit_log(
+        db,
+        action="payment.resume_subscription",
+        user_id=user_id,
+        metadata={"resumed_at": now.isoformat()},
+    )
+
+    from app.services.notification_service import create_notification
+    create_notification(
+        db=db,
+        user_id=user_id,
+        title="Subscription Resumed",
+        message="Your Pro subscription has resumed! You have full access to all your career workspace features.",
+        notif_type="BILLING",
+        action_url="#billing",
+    )
+
+    return compute_subscription_summary(sub, db=db, user_id=user_id)
+
+
+def downgrade_subscription(db: Session, user_id: int, reason: str | None = None) -> dict:
+    sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+    if not sub or sub.plan_name == "FREE":
+        return compute_subscription_summary(sub, db=db, user_id=user_id)
+
+    sub.cancellation_scheduled = True
+    sub.cancellation_reason = reason or "downgrade_to_free"
+    sub.status = "ENDING"
+    db.commit()
+    db.refresh(sub)
+
+    from app.services.audit_service import write_audit_log
+    write_audit_log(
+        db,
+        action="payment.downgrade_subscription",
+        user_id=user_id,
+        metadata={"reason": reason},
+    )
+
+    from app.services.notification_service import create_notification
+    create_notification(
+        db=db,
+        user_id=user_id,
+        title="Downgrade Scheduled",
+        message="Your subscription will transition to Free at the end of your billing cycle. All your existing resumes, jobs, and career profile data remain completely safe.",
+        notif_type="BILLING",
+        action_url="#billing",
+    )
+
+    return compute_subscription_summary(sub, db=db, user_id=user_id)
+
 

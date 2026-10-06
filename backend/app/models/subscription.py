@@ -24,6 +24,11 @@ class Subscription(Base):
     upi_app: Mapped[str | None] = mapped_column(String(50), nullable=True)
     cancellation_scheduled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     cancellation_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cancellation_feedback: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paused_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    pause_duration_months: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_payment_error: Mapped[str | None] = mapped_column(String(255), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

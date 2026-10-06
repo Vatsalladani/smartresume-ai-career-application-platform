@@ -174,17 +174,17 @@ def test_upi_autopay_mandate_authorization():
     assert sub_data["recurring_amount"] == 49.0
 
 
-# 6. UPI AutoPay cancellation attempt via app
+# 6. UPI AutoPay in-app cancellation (friction-free, no dark patterns)
 def test_upi_cancel_requires_app():
     user, headers = create_user_with_token("upi_cancel@example.com", plan_name="PRO_MONTHLY", method="upi", upi_app="PhonePe")
     
     cancel_res = client.post("/api/v1/payments/cancel", headers=headers)
     assert cancel_res.status_code == 200
     data = cancel_res.json()["data"]
-    assert data["requires_upi_app"] is True
+    assert data["cancellation_scheduled"] is True
+    assert data["status"] in {"CANCELLED", "ENDING"}
     assert data["upi_app"] == "PhonePe"
-    assert "PhonePe" in data["instructions"]
-    assert data["status"] == "ACTIVE"
+
 
 
 # 7. Simulate UPI mandate revocation webhook

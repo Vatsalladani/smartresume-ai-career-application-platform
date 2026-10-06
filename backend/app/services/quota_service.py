@@ -102,7 +102,7 @@ def get_billing_summary(db: Session, user_id: int) -> dict:
     sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
 
     from app.services.payment_service import compute_subscription_summary
-    sub_summary = compute_subscription_summary(sub)
+    sub_summary = compute_subscription_summary(sub, db=db, user_id=user_id)
     sub_summary["is_pro"] = limits["is_pro"]
 
     return {

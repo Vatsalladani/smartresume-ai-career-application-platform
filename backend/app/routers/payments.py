@@ -11,7 +11,10 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import PaymentEvent, Subscription, User
 from app.schemas.payment import (
+    CancelSubscriptionRequest,
     CreateOrderRequest,
+    DowngradeSubscriptionRequest,
+    PauseSubscriptionRequest,
     PaymentOrderOut,
     SubscriptionOut,
     VerifyPaymentRequest,
@@ -21,8 +24,11 @@ from app.services.payment_service import (
     activate_subscription,
     compute_subscription_summary,
     create_payment_order,
+    downgrade_subscription,
     get_plan_consent_info,
+    pause_subscription,
     record_payment_event_if_new,
+    resume_subscription,
     verify_and_process_payment,
     verify_razorpay_signature,
 )
@@ -31,9 +37,10 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 @router.get("/subscription")
-def subscription(current_user: User = Depends(get_current_user)) -> dict:
-    summary = compute_subscription_summary(current_user.subscription)
+def subscription(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    summary = compute_subscription_summary(current_user.subscription, db=db, user_id=current_user.id)
     return success_response(SubscriptionOut(**summary).model_dump())
+
 
 
 @router.get("/pricing")
@@ -109,41 +116,97 @@ def get_payment_history(current_user: User = Depends(get_current_user), db: Sess
 
 
 @router.post("/cancel")
-def cancel_subscription(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+def cancel_subscription(
+    payload: CancelSubscriptionRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
     sub = current_user.subscription
     if not sub or sub.plan_name == "FREE":
-        return success_response({"plan_name": "FREE", "status": "ACTIVE"}, "Already on Free plan.")
+        summary = compute_subscription_summary(sub, db=db, user_id=current_user.id)
+        return success_response(SubscriptionOut(**summary).model_dump(), "Already on Free plan.")
 
-    method_type = getattr(sub, "payment_method_type", "card") or "card"
+    reason = payload.reason if payload else None
+    feedback = payload.feedback if payload else None
 
-    # If subscription authorized via UPI AutoPay, cancellation must occur in the UPI app
-    if method_type == "upi":
-        app_name = getattr(sub, "upi_app", None) or "your UPI app"
-        return success_response({
-            "plan_name": sub.plan_name,
-            "status": sub.status,
-            "payment_method_type": "upi",
-            "upi_app": getattr(sub, "upi_app", None),
-            "requires_upi_app": True,
-            "instructions": f"Your recurring payment mandate was authorized through {app_name}. You can manage or cancel that mandate from {app_name}.",
-        }, f"Please manage or cancel your mandate directly in {app_name}.")
-
-    # For Card or standard recurring, cancel renewal through backend provider
     sub.cancellation_scheduled = True
     sub.status = "CANCELLED"
+    if reason:
+        sub.cancellation_reason = reason
+    if feedback:
+        sub.cancellation_feedback = feedback
 
     write_audit_log(
         db,
         action="payment.cancel_renewal",
         user_id=current_user.id,
-        metadata={"plan": sub.plan_name, "status": sub.status, "expires_at": sub.expires_at.isoformat() if sub.expires_at else None},
+        metadata={
+            "plan": sub.plan_name,
+            "status": sub.status,
+            "reason": reason,
+            "feedback": feedback,
+            "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
+        },
     )
+
+    from app.services.notification_service import create_notification
+    create_notification(
+        db=db,
+        user_id=current_user.id,
+        title="Renewal Cancelled",
+        message=f"Your subscription renewal has been stopped. You retain full Pro access until {sub.expires_at.strftime('%d %b %Y') if sub.expires_at else 'the end of your period'}. All your career data remains completely safe.",
+        notif_type="BILLING",
+        action_url="#billing",
+    )
+
     db.commit()
-    summary = compute_subscription_summary(sub)
+    db.refresh(sub)
+    summary = compute_subscription_summary(sub, db=db, user_id=current_user.id)
     return success_response(
         SubscriptionOut(**summary).model_dump(),
         f"Renewal cancelled. Your Pro access remains active until {summary['next_renewal_date']}."
     )
+
+
+@router.post("/pause")
+def pause_subscription_route(
+    payload: PauseSubscriptionRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    months = payload.months if payload else 1
+    summary = pause_subscription(db, current_user.id, months=months)
+    return success_response(
+        SubscriptionOut(**summary).model_dump(),
+        f"Subscription paused for {months} month(s). Renewal billing is paused and your career data is fully preserved."
+    )
+
+
+@router.post("/resume")
+def resume_subscription_route(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    summary = resume_subscription(db, current_user.id)
+    return success_response(
+        SubscriptionOut(**summary).model_dump(),
+        "Subscription resumed successfully! Welcome back to Pro."
+    )
+
+
+@router.post("/downgrade")
+def downgrade_subscription_route(
+    payload: DowngradeSubscriptionRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    reason = payload.reason if payload else None
+    summary = downgrade_subscription(db, current_user.id, reason=reason)
+    return success_response(
+        SubscriptionOut(**summary).model_dump(),
+        "Downgrade scheduled. You retain full Pro access until your current period ends, after which your account switches to Free. All your career data remains completely safe."
+    )
+
 
 
 @router.post("/start-trial")

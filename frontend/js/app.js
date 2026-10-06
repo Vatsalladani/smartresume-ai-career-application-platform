@@ -1170,9 +1170,55 @@ function renderDashboard() {
   const q4 = $("#dashQ4Answer");
   if (q4) q4.textContent = state.applications?.length ? `${state.applications.length} applications tracked` : "";
 
+  // 5. Career Workspace Assets & Post-Hire Growth Mode
+  const valResumes = $("#dashValResumes");
+  if (valResumes) {
+    const rCount = (state.resumes || []).length || (state.resume ? 1 : 0);
+    valResumes.textContent = rCount;
+  }
+  const valJobs = $("#dashValJobs");
+  if (valJobs) {
+    valJobs.textContent = (state.jobs || []).length || 0;
+  }
+  const valInterviews = $("#dashValInterviews");
+  if (valInterviews) {
+    valInterviews.textContent = (state.interviewSessions || state.interviews || []).length || 0;
+  }
+  const valEvidence = $("#dashValEvidence");
+  if (valEvidence) {
+    valEvidence.textContent = (state.evidenceVault || state.evidenceItems || []).length || 0;
+  }
+
+  // Detect employment status for Post-Hire Retention Mode
+  let isEmployed = false;
+  let currentCompany = "";
+  if (p.experiences && p.experiences.length > 0) {
+    const curExp = p.experiences.find(e => e.is_current || !e.end_date || e.is_current === true);
+    if (curExp) {
+      isEmployed = true;
+      currentCompany = curExp.company_name || curExp.company || "";
+    }
+  }
+
+  const growthTitle = $("#dashGrowthTitle");
+  const growthDesc = $("#dashGrowthDesc");
+  const growthBadge = $("#dashGrowthBadge");
+  if (growthTitle && growthDesc) {
+    if (isEmployed) {
+      growthTitle.textContent = currentCompany ? `Career Growth at ${currentCompany}` : "Career Growth Mode";
+      growthDesc.textContent = `SmartResume helps you grow in your current role, not just get your next one. Keep your achievements logged for performance reviews and promotion discussions.`;
+      if (growthBadge) growthBadge.textContent = "EMPLOYED & GROWING";
+    } else {
+      growthTitle.textContent = "Career Readiness Mode";
+      growthDesc.textContent = "SmartResume is your permanent career workspace. All your resumes, target jobs, and verified achievements are saved forever.";
+      if (growthBadge) growthBadge.textContent = "JOB SEEKER OS";
+    }
+  }
+
   // Quotas in Dashboard (if present)
   if (state.quotas) {
     const q = state.quotas.quotas || {};
+
     const fits = q.fit_analyses || { used: 0, limit: 2 };
     const tailors = q.tailored_versions || { used: 0, limit: 2 };
     const exports_ = q.exports || { used: 0, limit: 2 };
@@ -6950,13 +6996,93 @@ function wireBilling() {
     if (planKey) handleUpgrade(planKey);
   });
 
-  // Manage Subscription: UPI AutoPay Modal
+  // Manage Subscription: Ethical Cancellation Flow
+  $("#btnCancelSub")?.addEventListener("click", openCancelSubscriptionModal);
+  $("#cancelCardRenewalBtn")?.addEventListener("click", openCancelSubscriptionModal);
+  $("#closeCancelModalBtn")?.addEventListener("click", closeCancelSubscriptionModal);
+  $("#keepSubBtn")?.addEventListener("click", closeCancelSubscriptionModal);
+  $("#confirmCancelBtn")?.addEventListener("click", handleConfirmCancellation);
+
+  $("#cancelReasonSelect")?.addEventListener("change", (e) => {
+    const val = e.target.value;
+    const altCard = $("#cancelAlternativeCard");
+    const bBreak = $("#altBreakContent");
+    const bExp = $("#altExpensiveContent");
+    const bJob = $("#altJobContent");
+
+    if (bBreak) bBreak.classList.add("hidden");
+    if (bExp) bExp.classList.add("hidden");
+    if (bJob) bJob.classList.add("hidden");
+
+    if (val === "taking_break" || val === "not_using_enough") {
+      altCard?.classList.remove("hidden");
+      bBreak?.classList.remove("hidden");
+    } else if (val === "too_expensive") {
+      altCard?.classList.remove("hidden");
+      bExp?.classList.remove("hidden");
+    } else if (val === "got_job") {
+      altCard?.classList.remove("hidden");
+      bJob?.classList.remove("hidden");
+    } else {
+      altCard?.classList.add("hidden");
+    }
+  });
+
+  $("#cancelAltPauseBtn")?.addEventListener("click", () => {
+    closeCancelSubscriptionModal();
+    openPauseSubscriptionModal();
+  });
+
+  $("#cancelAltDowngradeBtn")?.addEventListener("click", () => {
+    closeCancelSubscriptionModal();
+    openDowngradeSubscriptionModal();
+  });
+
+  // Manage Subscription: Pause Flow
+  $("#btnPauseSub")?.addEventListener("click", openPauseSubscriptionModal);
+  $("#closePauseModalBtn")?.addEventListener("click", closePauseSubscriptionModal);
+  $("#cancelPauseModalBtn")?.addEventListener("click", closePauseSubscriptionModal);
+  $("#confirmPauseBtn")?.addEventListener("click", handleConfirmPause);
+
+  // Pause duration option cards
+  ["pauseOpt1", "pauseOpt2", "pauseOpt3"].forEach((id) => {
+    $(`#${id}`)?.addEventListener("click", () => {
+      const radio = $(`#${id} input`);
+      if (radio) radio.checked = true;
+      ["pauseOpt1", "pauseOpt2", "pauseOpt3"].forEach((optId) => $(`#${optId}`)?.classList.remove("selected"));
+      $(`#${id}`)?.classList.add("selected");
+    });
+  });
+
+  // Manage Subscription: Resume Flow
+  $("#btnResumeSub")?.addEventListener("click", handleResumeSubscription);
+  $("#resumeFromBannerBtn")?.addEventListener("click", handleResumeSubscription);
+
+  // Manage Subscription: Downgrade Flow
+  $("#btnDowngradeSub")?.addEventListener("click", openDowngradeSubscriptionModal);
+  $("#closeDowngradeModalBtn")?.addEventListener("click", closeDowngradeSubscriptionModal);
+  $("#cancelDowngradeModalBtn")?.addEventListener("click", closeDowngradeSubscriptionModal);
+  $("#confirmDowngradeBtn")?.addEventListener("click", handleConfirmDowngrade);
+
+  // Reactivate / Explore links
+  $("#btnReactivateSub")?.addEventListener("click", () => {
+    $("#upgradeProBtn")?.scrollIntoView({ behavior: "smooth" });
+  });
+  $("#manageUpgradeFreeBtn")?.addEventListener("click", () => {
+    $("#upgradeProBtn")?.scrollIntoView({ behavior: "smooth" });
+  });
+
+  // Trial Next Action button
+  $("#trialNextActionBtn")?.addEventListener("click", () => {
+    const tab = state.trialActionTab || "interview";
+    const tabName = tab.startsWith("tab") ? tab.slice(3).toLowerCase() : tab;
+    navigateToTab(tabName);
+  });
+
+  // Legacy UPI AutoPay Modal
   $("#manageAutoPayBtn")?.addEventListener("click", openUpiAutoPayModal);
   $("#closeUpiModalBtn")?.addEventListener("click", closeUpiAutoPayModal);
   $("#closeUpiModalFooterBtn")?.addEventListener("click", closeUpiAutoPayModal);
-
-  // Manage Subscription: Card Renewal Cancellation
-  $("#cancelCardRenewalBtn")?.addEventListener("click", handleCancelCardRenewal);
 
   // Payment Failure: Retry Payment
   $("#retryPaymentBtn")?.addEventListener("click", handleRetryPayment);
@@ -6964,6 +7090,7 @@ function wireBilling() {
   // Payment History Refresh
   $("#refreshPaymentHistoryBtn")?.addEventListener("click", loadPaymentHistory);
 }
+
 
 async function loadPricingData() {
   try {
@@ -7233,9 +7360,10 @@ function renderBillingSummary(data) {
 
   // Status Badge
   if ($("#billingStatusBadge")) {
-    $("#billingStatusBadge").textContent = subStatus;
+    const displayStatus = sub.is_paused ? "PAUSED" : subStatus;
+    $("#billingStatusBadge").textContent = displayStatus;
     $("#billingStatusBadge").className = "badge-status";
-    const statusClass = subStatus.toLowerCase().replace(/_/g, "-");
+    const statusClass = displayStatus.toLowerCase().replace(/_/g, "-");
     $("#billingStatusBadge").classList.add(statusClass);
   }
 
@@ -7243,8 +7371,8 @@ function renderBillingSummary(data) {
   if ($("#billingRecurringAmountText")) {
     const amt = sub.recurring_amount || 0;
     const curr = sub.currency === "USD" ? "$" : "₹";
-    if (amt <= 0 || planName === "FREE" || sub.is_trial) {
-      $("#billingRecurringAmountText").textContent = "₹0 / month";
+    if (amt <= 0 || planName === "FREE" || sub.is_trial || sub.is_paused) {
+      $("#billingRecurringAmountText").textContent = sub.is_paused ? "₹0 (Paused)" : "₹0 / month";
     } else {
       const freq = sub.billing_frequency === "annual" ? "year" : "month";
       $("#billingRecurringAmountText").textContent = `${curr}${amt} / ${freq}`;
@@ -7253,7 +7381,9 @@ function renderBillingSummary(data) {
 
   // Next Renewal / Expiry
   if ($("#billingNextRenewalText")) {
-    if (subStatus === "ENDING" || subStatus === "CANCELLED") {
+    if (sub.is_paused) {
+      $("#billingNextRenewalText").textContent = sub.next_renewal_date ? `Paused until ${sub.next_renewal_date}` : "Paused";
+    } else if (subStatus === "ENDING" || subStatus === "CANCELLED") {
       $("#billingNextRenewalText").textContent = sub.next_renewal_date ? `Access ends ${sub.next_renewal_date}` : "None (Cancelled)";
     } else if (subStatus === "EXPIRED") {
       $("#billingNextRenewalText").textContent = "Expired";
@@ -7269,10 +7399,21 @@ function renderBillingSummary(data) {
     $("#billingPaymentMethodText").textContent = sub.payment_method_detail || (sub.payment_method_type === "upi" ? "UPI AutoPay" : sub.payment_method_type === "card" ? "Card" : "None");
   }
 
+  // Paused Alert
+  const pausedAlert = $("#subPausedAlert");
+  if (pausedAlert) {
+    if (sub.is_paused || subStatus === "PAUSED") {
+      pausedAlert.classList.remove("hidden");
+      if ($("#subPausedUntilDate")) $("#subPausedUntilDate").textContent = sub.next_renewal_date || "end of pause period";
+    } else {
+      pausedAlert.classList.add("hidden");
+    }
+  }
+
   // Subscription Alerts
   const endingAlert = $("#subEndingAlert");
   if (endingAlert) {
-    if (subStatus === "ENDING" || (sub.cancellation_scheduled && subStatus !== "EXPIRED")) {
+    if ((subStatus === "ENDING" || sub.cancellation_scheduled) && !sub.is_paused && subStatus !== "EXPIRED") {
       endingAlert.classList.remove("hidden");
       if ($("#subEndingDate")) $("#subEndingDate").textContent = sub.next_renewal_date || "end of billing cycle";
     } else {
@@ -7289,55 +7430,65 @@ function renderBillingSummary(data) {
     }
   }
 
-  // Section 5: Payment-Method-Aware Subscription Management
-  const upiCard = $("#manageUpiCard");
-  const cardBox = $("#manageCardBox");
+  // Trial Progress / Milestone Value Card
+  const trialCard = $("#trialProgressCard");
+  const prog = sub.trial_progress || sub.workspace_value;
+  if (trialCard) {
+    if (sub.is_trial && subStatus === "TRIAL" && prog) {
+      trialCard.classList.remove("hidden");
+      if ($("#trialDaysRemainingText")) $("#trialDaysRemainingText").textContent = `${sub.days_remaining !== undefined ? sub.days_remaining : 7} days remaining (Zero Auto-Billing)`;
+      if ($("#trialMetricResumes")) $("#trialMetricResumes").textContent = prog.resumes_count || 0;
+      if ($("#trialMetricJobs")) $("#trialMetricJobs").textContent = prog.jobs_analyzed_count || 0;
+      if ($("#trialMetricInterviews")) $("#trialMetricInterviews").textContent = prog.interviews_completed_count || 0;
+      if ($("#trialMetricProfile")) $("#trialMetricProfile").textContent = `${prog.profile_completeness || 0}%`;
+      if ($("#trialNextActionText")) $("#trialNextActionText").textContent = prog.next_useful_action || "Practice your target interview with AI Copilot";
+      state.trialActionTab = prog.action_tab || "tabInterview";
+    } else {
+      trialCard.classList.add("hidden");
+    }
+  }
+
+  // Section 5: Ethical Self-Serve Subscription Management Controls
+  const activePaidBox = $("#manageActivePaidControls");
+  const endingBox = $("#manageEndingControls");
   const freeBox = $("#manageFreeBox");
 
-  const methodType = sub.payment_method_type || "none";
-  const isPaidActive = (planName !== "FREE" && !sub.is_trial && subStatus !== "EXPIRED");
-
-  if (upiCard) upiCard.classList.add("hidden");
-  if (cardBox) cardBox.classList.add("hidden");
+  if (activePaidBox) activePaidBox.classList.add("hidden");
+  if (endingBox) endingBox.classList.add("hidden");
   if (freeBox) freeBox.classList.add("hidden");
 
-  if (isPaidActive && methodType === "upi") {
-    if (upiCard) {
-      upiCard.classList.remove("hidden");
-      if ($("#upiAppLabel")) {
-        $("#upiAppLabel").textContent = sub.upi_app ? `Authorized in ${sub.upi_app}` : (sub.payment_method_detail || "Authorized in UPI App");
-      }
+  const isEnding = (sub.cancellation_scheduled || subStatus === "ENDING" || subStatus === "CANCELLED");
+  const isPaidOrTrial = (planName !== "FREE" || sub.is_trial) && subStatus !== "EXPIRED";
+
+  if (isEnding && subStatus !== "EXPIRED") {
+    if (endingBox) {
+      endingBox.classList.remove("hidden");
+      if ($("#endingExpiryDateLabel")) $("#endingExpiryDateLabel").textContent = sub.next_renewal_date || "end of billing cycle";
     }
-  } else if (isPaidActive && methodType === "card") {
-    if (cardBox) {
-      cardBox.classList.remove("hidden");
-      if ($("#cardDetailsLabel")) {
-        $("#cardDetailsLabel").textContent = sub.payment_method_detail || "Card ending ****4242";
+  } else if (isPaidOrTrial) {
+    if (activePaidBox) {
+      activePaidBox.classList.remove("hidden");
+      if ($("#activePlanMethodBadge")) {
+        $("#activePlanMethodBadge").textContent = sub.is_trial ? "Trial" : (sub.payment_method_type === "upi" ? "UPI AutoPay" : "Card");
       }
-      const cancelBtn = $("#cancelCardRenewalBtn");
-      if (cancelBtn) {
-        if (sub.cancellation_scheduled || subStatus === "ENDING" || subStatus === "CANCELLED") {
-          cancelBtn.disabled = true;
-          cancelBtn.innerHTML = `<i data-lucide="check-circle"></i><span>Renewal Cancelled</span>`;
-        } else {
-          cancelBtn.disabled = false;
-          cancelBtn.innerHTML = `<i data-lucide="x-circle"></i><span>Cancel Renewal</span>`;
-        }
+      if ($("#activePlanMethodLabel")) {
+        $("#activePlanMethodLabel").textContent = sub.payment_method_detail || (sub.is_trial ? "No card required (Trial)" : "Standard Billing");
       }
+      // Toggle Pause vs Resume
+      const pauseBtn = $("#btnPauseSub");
+      const resumeBtn = $("#btnResumeSub");
+      if (pauseBtn) pauseBtn.classList.toggle("hidden", !!sub.is_paused || sub.is_trial);
+      if (resumeBtn) resumeBtn.classList.toggle("hidden", !sub.is_paused);
+
+      const downgradeBtn = $("#btnDowngradeSub");
+      if (downgradeBtn) downgradeBtn.classList.toggle("hidden", sub.is_trial || planName === "FREE");
+
+      const cancelBtn = $("#btnCancelSub");
+      if (cancelBtn) cancelBtn.classList.toggle("hidden", sub.cancellation_scheduled);
     }
   } else {
     if (freeBox) {
       freeBox.classList.remove("hidden");
-      const p = freeBox.querySelector("p");
-      if (p) {
-        if (sub.is_trial && subStatus === "TRIAL") {
-          p.textContent = `You are on the 7-Day Pro Trial (access until ${sub.next_renewal_date || "trial end"}). No recurring charges or payment mandates exist.`;
-        } else if (subStatus === "EXPIRED") {
-          p.textContent = "Your previous plan has expired. You are currently on the Free tier with standard quotas.";
-        } else {
-          p.textContent = "You are currently on the Free plan. No recurring payment mandates or cards are linked.";
-        }
-      }
     }
   }
 
@@ -7413,13 +7564,41 @@ function renderPaymentHistory(history) {
   });
 }
 
-async function handleCancelCardRenewal() {
-  if (!confirm("Cancel recurring renewal? You will retain Pro access until the end of your current billing period, after which no further charges will occur.")) return;
-  const btn = $("#cancelCardRenewalBtn");
-  setButtonLoading(btn, true, "Cancelling...");
+// -------------------------------------------------------------
+// Ethical Retention & Subscription Modal Handlers
+// -------------------------------------------------------------
+function openCancelSubscriptionModal() {
+  const sub = state.quotas?.subscription || {};
+  const expiresEl = $("#cancelModalExpiresDate");
+  if (expiresEl) {
+    expiresEl.textContent = sub.next_renewal_date ? sub.next_renewal_date : "the end of your billing cycle";
+  }
+  const select = $("#cancelReasonSelect");
+  if (select) select.value = "";
+  const feedback = $("#cancelFeedbackInput");
+  if (feedback) feedback.value = "";
+  const altCard = $("#cancelAlternativeCard");
+  if (altCard) altCard.classList.add("hidden");
+  $("#cancelSubscriptionModal")?.classList.remove("hidden");
+  drawIcons();
+}
+
+function closeCancelSubscriptionModal() {
+  $("#cancelSubscriptionModal")?.classList.add("hidden");
+}
+
+async function handleConfirmCancellation() {
+  const reason = $("#cancelReasonSelect")?.value || null;
+  const feedback = $("#cancelFeedbackInput")?.value || null;
+  const btn = $("#confirmCancelBtn");
+  setButtonLoading(btn, true, "Processing...");
   try {
-    const res = await API.request("/payments/cancel", { method: "POST" });
-    toast(res.message || "Renewal cancelled. Your Pro access remains active until the end of your billing cycle.", "success");
+    const res = await API.request("/payments/cancel", {
+      method: "POST",
+      body: { reason, feedback }
+    });
+    toast(res.message || "Renewal cancelled. Your Pro access remains active until the end of your billing period.", "success");
+    closeCancelSubscriptionModal();
     state.user = await API.request("/users/profile");
     renderUserBar();
     await loadBillingSummary();
@@ -7428,9 +7607,88 @@ async function handleCancelCardRenewal() {
   } catch (error) {
     toast(error.message, "error");
   } finally {
-    setButtonLoading(btn, false, "Cancel Renewal");
+    setButtonLoading(btn, false, "Confirm Cancellation");
   }
 }
+
+function openPauseSubscriptionModal() {
+  $("#pauseSubscriptionModal")?.classList.remove("hidden");
+  $("#pauseOpt1")?.classList.add("selected");
+  drawIcons();
+}
+
+function closePauseSubscriptionModal() {
+  $("#pauseSubscriptionModal")?.classList.add("hidden");
+}
+
+async function handleConfirmPause() {
+  const checked = $('input[name="pauseDuration"]:checked');
+  const months = checked ? parseInt(checked.value, 10) : 1;
+  const btn = $("#confirmPauseBtn");
+  setButtonLoading(btn, true, "Pausing...");
+  try {
+    const res = await API.request("/payments/pause", {
+      method: "POST",
+      body: { months }
+    });
+    toast(res.message || `Subscription paused for ${months} month(s). No renewal billing will occur.`, "success");
+    closePauseSubscriptionModal();
+    await loadBillingSummary();
+    await loadPaymentHistory();
+    renderDashboard();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    setButtonLoading(btn, false, "Confirm Pause");
+  }
+}
+
+async function handleResumeSubscription() {
+  try {
+    const res = await API.request("/payments/resume", { method: "POST" });
+    toast(res.message || "Subscription resumed successfully! Welcome back to Pro.", "success");
+    await loadBillingSummary();
+    await loadPaymentHistory();
+    renderDashboard();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function openDowngradeSubscriptionModal() {
+  const sub = state.quotas?.subscription || {};
+  const expiresEl = $("#downgradeModalExpiresDate");
+  if (expiresEl) {
+    expiresEl.textContent = sub.next_renewal_date ? sub.next_renewal_date : "the end of your billing period";
+  }
+  $("#downgradeSubscriptionModal")?.classList.remove("hidden");
+  drawIcons();
+}
+
+function closeDowngradeSubscriptionModal() {
+  $("#downgradeSubscriptionModal")?.classList.add("hidden");
+}
+
+async function handleConfirmDowngrade() {
+  const btn = $("#confirmDowngradeBtn");
+  setButtonLoading(btn, true, "Scheduling...");
+  try {
+    const res = await API.request("/payments/downgrade", {
+      method: "POST",
+      body: { reason: "user_selected_downgrade" }
+    });
+    toast(res.message || "Downgrade scheduled. You retain full Pro access until your current period ends.", "success");
+    closeDowngradeSubscriptionModal();
+    await loadBillingSummary();
+    await loadPaymentHistory();
+    renderDashboard();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    setButtonLoading(btn, false, "Schedule Free Switch");
+  }
+}
+
 
 async function handleRetryPayment() {
   const btn = $("#retryPaymentBtn");

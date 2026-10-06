@@ -17,9 +17,32 @@ class SubscriptionOut(BaseModel):
     currency: str = "INR"
     billing_frequency: str = "none"
     cancellation_scheduled: bool = False
+    cancellation_reason: Optional[str] = None
+    cancellation_feedback: Optional[str] = None
     next_renewal_date: Optional[str] = None
     can_cancel_in_app: bool = False
+    is_paused: bool = False
+    paused_at: Optional[datetime] = None
+    paused_until: Optional[datetime] = None
+    pause_duration_months: int = 0
+    can_pause: bool = False
+    trial_progress: Optional[dict] = None
+    workspace_value: Optional[dict] = None
     last_payment_error: Optional[str] = None
+
+
+class CancelSubscriptionRequest(BaseModel):
+    reason: Optional[str] = None
+    feedback: Optional[str] = None
+
+
+class PauseSubscriptionRequest(BaseModel):
+    months: int = Field(default=1, ge=1, le=3)
+
+
+class DowngradeSubscriptionRequest(BaseModel):
+    reason: Optional[str] = None
+
 
 
 class CreateOrderRequest(BaseModel):

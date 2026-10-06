@@ -6663,3 +6663,30 @@ svg {
   border: 1px solid rgba(147, 51, 234, 0.25);
 }
 
+/* Ethical Retention & Career Workspace Value Styles */
+.dash-workspace-value-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .dash-workspace-value-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.option-card {
+  transition: all 0.2s ease;
+  background: var(--surface-1, #ffffff);
+}
+.option-card:hover {
+  border-color: var(--primary, #2563eb) !important;
+  background: var(--surface-2, #f8fafc);
+}
+.option-card.selected {
+  border-color: var(--primary, #2563eb) !important;
+  background: rgba(37, 99, 235, 0.05);
+}
+
+
