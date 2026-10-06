@@ -2,7 +2,7 @@ import io
 import re
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.models import ATSAnalysis, Resume, User
 from app.repositories.resume_repository import get_resume_version, get_user_resume
 from app.schemas.resume import (
     ResumeCompareOut,
+    ResumeCreate,
     ResumeDetail,
     ResumeOut,
     ResumeScoreOut,
@@ -43,18 +44,44 @@ router = APIRouter(prefix="/resumes", tags=["resumes"])
 
 @router.post("")
 async def create_resume_endpoint(
-    title: str = Form("My Resume"),
-    resume_text: str = Form(""),
+    request: Request,
+    title: str = Form(None),
+    resume_text: str = Form(None),
     file: UploadFile | None = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    file_text = await extract_upload_text(file) if file else ""
-    final_text = clean_text(file_text or resume_text)
-    if len(final_text) < 20:
-        raise AppError("Resume text is too short.")
+    ct = request.headers.get("content-type", "")
+    if "application/json" in ct:
+        body = await request.json()
+        payload = ResumeCreate(**body)
+        raw = payload.raw_text or ""
+        resume = create_resume(
+            db,
+            user_id=current_user.id,
+            title=payload.title or "My Resume",
+            raw_text=raw,
+            parsed_content=payload.parsed_content or {},
+            status=payload.status or "Draft",
+            target_role=payload.target_role,
+            target_company=payload.target_company,
+            target_location=payload.target_location,
+            target_job_id=payload.target_job_id,
+            changelog="Created new resume",
+        )
+    else:
+        file_text = await extract_upload_text(file) if file else ""
+        final_text = clean_text(file_text or (resume_text or ""))
+        if len(final_text) < 20:
+            raise AppError("Resume text is too short.")
+        resume = create_resume(
+            db,
+            user_id=current_user.id,
+            title=title or "My Resume",
+            raw_text=final_text,
+            status="Draft",
+        )
 
-    resume = create_resume(db, user_id=current_user.id, title=title, raw_text=final_text)
     write_audit_log(db, action="resume.create", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
     db.commit()
     db.refresh(resume)
@@ -62,13 +89,15 @@ async def create_resume_endpoint(
 
 
 @router.get("")
-def list_resumes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
-    resumes = (
-        db.query(Resume)
-        .filter(Resume.user_id == current_user.id)
-        .order_by(Resume.updated_at.desc())
-        .all()
-    )
+def list_resumes(
+    include_archived: bool = Query(default=False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    query = db.query(Resume).filter(Resume.user_id == current_user.id)
+    if not include_archived:
+        query = query.filter(Resume.is_archived.is_(False))
+    resumes = query.order_by(Resume.updated_at.desc()).all()
     return success_response([ResumeOut.model_validate(resume).model_dump() for resume in resumes])
 
 
@@ -360,7 +389,19 @@ def patch_resume(
     db: Session = Depends(get_db),
 ) -> dict:
     resume = get_user_resume(db, resume_id, current_user.id)
-    update_resume(db, resume, title=payload.title, raw_text=payload.raw_text)
+    update_resume(
+        db,
+        resume,
+        title=payload.title,
+        raw_text=payload.raw_text,
+        parsed_content=payload.parsed_content,
+        status=payload.status,
+        target_role=payload.target_role,
+        target_company=payload.target_company,
+        target_location=payload.target_location,
+        target_job_id=payload.target_job_id,
+        is_archived=payload.is_archived,
+    )
     write_audit_log(db, action="resume.update", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
     db.commit()
     db.refresh(resume)
@@ -377,17 +418,55 @@ def delete_resume(resume_id: int, current_user: User = Depends(get_current_user)
 
 
 @router.post("/{resume_id}/duplicate")
-def duplicate_resume_endpoint(
+async def duplicate_resume_endpoint(
+    resume_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    resume = get_user_resume(db, resume_id, current_user.id)
+    new_title = None
+    try:
+        body = await request.json()
+        if body and isinstance(body, dict):
+            new_title = body.get("title")
+    except Exception:
+        pass
+    copy = duplicate_resume(db, resume, current_user.id, new_title=new_title)
+    write_audit_log(db, action="resume.duplicate", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
+    db.commit()
+    db.refresh(copy)
+    return success_response(ResumeDetail.model_validate(copy).model_dump(), "Resume duplicated.")
+
+
+@router.post("/{resume_id}/archive")
+def archive_resume_endpoint(
     resume_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     resume = get_user_resume(db, resume_id, current_user.id)
-    copy = duplicate_resume(db, resume, current_user.id)
-    write_audit_log(db, action="resume.duplicate", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
+    resume.is_archived = True
+    resume.status = "Archived"
+    write_audit_log(db, action="resume.archive", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
     db.commit()
-    db.refresh(copy)
-    return success_response(ResumeDetail.model_validate(copy).model_dump(), "Resume duplicated.")
+    db.refresh(resume)
+    return success_response(ResumeDetail.model_validate(resume).model_dump(), "Resume archived.")
+
+
+@router.post("/{resume_id}/unarchive")
+def unarchive_resume_endpoint(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    resume = get_user_resume(db, resume_id, current_user.id)
+    resume.is_archived = False
+    resume.status = "Draft"
+    write_audit_log(db, action="resume.unarchive", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
+    db.commit()
+    db.refresh(resume)
+    return success_response(ResumeDetail.model_validate(resume).model_dump(), "Resume restored from archive.")
 
 
 @router.get("/{resume_id}/versions")

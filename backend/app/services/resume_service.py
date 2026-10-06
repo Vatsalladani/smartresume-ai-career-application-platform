@@ -70,14 +70,51 @@ def calculate_completeness(parsed: dict[str, Any], text: str) -> int:
     return min(score, 100)
 
 
-def create_resume(db: Session, *, user_id: int, title: str, raw_text: str, changelog: str = "Initial import") -> Resume:
-    parsed = parse_resume_text(raw_text)
+def create_resume(
+    db: Session,
+    *,
+    user_id: int,
+    title: str,
+    raw_text: str = "",
+    parsed_content: dict[str, Any] | None = None,
+    status: str = "Draft",
+    target_role: str | None = None,
+    target_company: str | None = None,
+    target_location: str | None = None,
+    target_job_id: int | None = None,
+    changelog: str = "Initial import",
+) -> Resume:
+    if parsed_content is not None:
+        parsed = parsed_content
+    elif raw_text:
+        parsed = parse_resume_text(raw_text)
+    else:
+        parsed = {}
+
+    cleaned_raw = clean_text(raw_text) if raw_text else ""
+    comp_score = calculate_completeness(parsed, cleaned_raw) if cleaned_raw else 50
+    if parsed and isinstance(parsed, dict) and (parsed.get("experiences") or parsed.get("skills")):
+        c_score = 0
+        hdr = parsed.get("header") or {}
+        if hdr.get("email") or parsed.get("email"): c_score += 20
+        if parsed.get("summary"): c_score += 20
+        if parsed.get("skills"): c_score += 20
+        if parsed.get("experiences"): c_score += 25
+        if parsed.get("education"): c_score += 15
+        comp_score = max(comp_score, min(c_score, 100))
+
     resume = Resume(
         user_id=user_id,
         title=title.strip() or "My Resume",
-        raw_text=clean_text(raw_text),
+        status=status or "Draft",
+        target_role=target_role,
+        target_company=target_company,
+        target_location=target_location,
+        target_job_id=target_job_id,
+        is_archived=False,
+        raw_text=cleaned_raw,
         parsed_content=parsed,
-        completeness_score=calculate_completeness(parsed, raw_text),
+        completeness_score=comp_score,
     )
     db.add(resume)
     db.flush()
@@ -86,42 +123,95 @@ def create_resume(db: Session, *, user_id: int, title: str, raw_text: str, chang
 
 
 def add_version(db: Session, resume: Resume, changelog: str, analysis_snapshot: dict | None = None) -> ResumeVersion:
-    latest = (
-        db.query(ResumeVersion)
-        .filter(ResumeVersion.resume_id == resume.id)
-        .order_by(ResumeVersion.version_number.desc())
-        .first()
-    )
+    rows = db.query(ResumeVersion.version_number).filter(ResumeVersion.resume_id == resume.id).all()
+    existing_nums = [r[0] for r in rows if r[0] is not None]
+
+    for obj in db.new:
+        if isinstance(obj, ResumeVersion) and getattr(obj, "resume_id", None) == resume.id:
+            num = getattr(obj, "version_number", None)
+            if num is not None:
+                existing_nums.append(num)
+
+    next_num = (max(existing_nums) + 1) if existing_nums else 1
+
     version = ResumeVersion(
         resume_id=resume.id,
-        version_number=(latest.version_number + 1 if latest else 1),
+        version_number=next_num,
         source_text=resume.raw_text,
         content=resume.parsed_content,
         analysis_snapshot=analysis_snapshot,
         changelog=changelog,
     )
     db.add(version)
+    db.flush()
     return version
 
 
-def update_resume(db: Session, resume: Resume, *, title: str | None = None, raw_text: str | None = None) -> Resume:
+def update_resume(
+    db: Session,
+    resume: Resume,
+    *,
+    title: str | None = None,
+    raw_text: str | None = None,
+    parsed_content: dict[str, Any] | None = None,
+    status: str | None = None,
+    target_role: str | None = None,
+    target_company: str | None = None,
+    target_location: str | None = None,
+    target_job_id: int | None = None,
+    is_archived: bool | None = None,
+    record_version: bool = True,
+    changelog: str = "Manual edit",
+) -> Resume:
     if title is not None:
-        resume.title = title.strip()
+        resume.title = title.strip() or resume.title
+    if status is not None:
+        resume.status = status
+    if target_role is not None:
+        resume.target_role = target_role
+    if target_company is not None:
+        resume.target_company = target_company
+    if target_location is not None:
+        resume.target_location = target_location
+    if target_job_id is not None:
+        resume.target_job_id = target_job_id
+    if is_archived is not None:
+        resume.is_archived = is_archived
+
+    content_changed = False
     if raw_text is not None:
         resume.raw_text = clean_text(raw_text)
-        resume.parsed_content = parse_resume_text(raw_text)
-        resume.completeness_score = calculate_completeness(resume.parsed_content, raw_text)
-        add_version(db, resume, changelog="Manual edit")
+        if parsed_content is None:
+            resume.parsed_content = parse_resume_text(raw_text)
+        content_changed = True
+    if parsed_content is not None:
+        resume.parsed_content = parsed_content
+        content_changed = True
+
+    if content_changed:
+        resume.completeness_score = calculate_completeness(resume.parsed_content, resume.raw_text)
+        if record_version:
+            add_version(db, resume, changelog=changelog)
+
     return resume
 
 
-def duplicate_resume(db: Session, resume: Resume, user_id: int) -> Resume:
+def duplicate_resume(db: Session, resume: Resume, user_id: int, new_title: str | None = None) -> Resume:
+    import copy
+    title = new_title.strip() if new_title and new_title.strip() else f"{resume.title} — Copy"
+    copied_content = copy.deepcopy(resume.parsed_content) if isinstance(resume.parsed_content, dict) else {}
     return create_resume(
         db,
         user_id=user_id,
-        title=f"{resume.title} Copy",
+        title=title,
+        status="Draft",
+        target_role=resume.target_role,
+        target_company=resume.target_company,
+        target_location=resume.target_location,
+        target_job_id=resume.target_job_id,
         raw_text=resume.raw_text,
-        changelog=f"Duplicated from resume {resume.id}",
+        parsed_content=copied_content,
+        changelog=f"Duplicated from {resume.title}",
     )
 
 

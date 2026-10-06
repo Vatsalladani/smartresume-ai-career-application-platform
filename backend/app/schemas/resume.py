@@ -4,14 +4,38 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class ResumeCreate(BaseModel):
+    title: str = Field(default="My Resume", max_length=150)
+    status: str = Field(default="Draft", max_length=30)
+    target_role: str | None = Field(default=None, max_length=150)
+    target_company: str | None = Field(default=None, max_length=150)
+    target_location: str | None = Field(default=None, max_length=150)
+    target_job_id: int | None = None
+    raw_text: str | None = None
+    parsed_content: dict[str, Any] | None = None
+
+
 class ResumeUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=150)
-    raw_text: str | None = Field(default=None, min_length=20, max_length=120_000)
+    status: str | None = Field(default=None, max_length=30)
+    target_role: str | None = Field(default=None, max_length=150)
+    target_company: str | None = Field(default=None, max_length=150)
+    target_location: str | None = Field(default=None, max_length=150)
+    target_job_id: int | None = None
+    is_archived: bool | None = None
+    raw_text: str | None = None
+    parsed_content: dict[str, Any] | None = None
 
 
 class ResumeOut(BaseModel):
     id: int
     title: str
+    status: str = "Draft"
+    target_role: str | None = None
+    target_company: str | None = None
+    target_location: str | None = None
+    target_job_id: int | None = None
+    is_archived: bool = False
     ats_score: int
     completeness_score: int
     created_at: datetime

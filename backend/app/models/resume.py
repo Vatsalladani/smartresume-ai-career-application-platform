@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -12,7 +12,13 @@ class Resume(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(150), nullable=False, default="My Resume")
-    raw_text: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="Draft")  # Draft, Ready, Archived
+    target_role: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    target_company: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    target_location: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    target_job_id: Mapped[int | None] = mapped_column(ForeignKey("job_postings.id", ondelete="SET NULL"), nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     parsed_content: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     ats_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completeness_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -23,6 +29,7 @@ class Resume(Base):
     user = relationship("User", back_populates="resumes")
     versions = relationship("ResumeVersion", back_populates="resume", cascade="all, delete-orphan", order_by="ResumeVersion.version_number")
     analyses = relationship("ATSAnalysis", back_populates="resume", cascade="all, delete-orphan")
+    target_job = relationship("JobPosting", foreign_keys=[target_job_id])
 
 
 class ResumeVersion(Base):
