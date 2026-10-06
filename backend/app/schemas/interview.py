@@ -20,17 +20,22 @@ class InterviewSessionCreate(BaseModel):
 class PreparationGuideOut(BaseModel):
     target_role: str
     target_company: str
+    resume_id: Optional[int] = None
     resume_title: Optional[str] = None
     most_relevant_topics: list[str] = Field(default_factory=list)
     likely_interview_areas: list[dict[str, str]] = Field(default_factory=list)
     weak_areas_to_revise: list[str] = Field(default_factory=list)
     eligibility_gap: Optional[dict[str, str]] = None
     practice_questions: list[dict[str, str]] = Field(default_factory=list)
+    claims_to_defend: list[dict[str, Any]] = Field(default_factory=list)
+    role_expectations: Optional[dict[str, Any]] = None
+    preparation_checklist: list[dict[str, str]] = Field(default_factory=list)
     company_context_note: str = ""
     disclaimer: str = (
-        "Likely areas to prepare based on your selected resume and job description. "
+        "Likely interview areas based on public role patterns and company profile. "
         "Questions are designed for realistic practice and preparation. Actual employer interview questions may vary."
     )
+
 
 
 class ClaimsToDefendOut(BaseModel):

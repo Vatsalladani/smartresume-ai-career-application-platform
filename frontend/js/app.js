@@ -5919,6 +5919,7 @@ function wireJobFit() {
   });
   $("#deleteJobBtn").addEventListener("click", handleDeleteJob);
   $("#proceedToTailorBtn").addEventListener("click", () => navigateToTab("tailor"));
+  $("#fitPrepareWorkspaceBtn")?.addEventListener("click", handleFitPrepareWorkspace);
 
   // Evidence Map filter pills
   $$("#evidenceFilterPills button").forEach((btn) => {
@@ -5929,6 +5930,52 @@ function wireJobFit() {
     });
   });
 }
+
+async function handleFitPrepareWorkspace() {
+  const title = $("#targetJobTitle").value.trim() || state.activeJob?.title || "Software Engineer";
+  const company = $("#targetCompany").value.trim() || state.activeJob?.company || "Target Company";
+  const desc = $("#targetJobDesc").value.trim() || state.activeJob?.raw_description || state.activeJob?.description || "";
+  const jobUrl = $("#targetJobUrl")?.value.trim() || state.activeJob?.job_url || null;
+  const jobId = state.activeJob?.id || null;
+
+  let matchedApp = (state.applications || []).find((a) => (jobId && a.job_posting_id === jobId) || (a.company && a.company.toLowerCase() === company.toLowerCase() && a.job_title && a.job_title.toLowerCase() === title.toLowerCase()));
+
+  if (!matchedApp) {
+    try {
+      matchedApp = await API.request("/applications", {
+        method: "POST",
+        body: {
+          company,
+          job_title: title,
+          job_url: jobUrl,
+          job_description: desc,
+          job_posting_id: jobId,
+          resume_id: state.activeResumeId || null,
+          status: "SAVED",
+        },
+      });
+      await loadApplications();
+    } catch (e) {
+      console.warn("Could not auto-save application:", e);
+    }
+  }
+
+  if (matchedApp && matchedApp.id) {
+    openJobWorkspaceModal(matchedApp.id);
+  } else {
+    state.activeJobContext = {
+      role: title,
+      company: company,
+      companyUrl: "",
+      jobUrl: jobUrl || "",
+      jobId: jobId,
+      resumeId: state.activeResumeId || null,
+    };
+    syncInterviewContextUI();
+    navigateToTab("interview");
+  }
+}
+
 
 async function loadJobs() {
   try {
@@ -5994,6 +6041,7 @@ async function selectJob(id) {
     $("#fitScoreEmptyState").classList.remove("hidden");
     $("#fitScoreResults").classList.add("hidden");
     $("#proceedToTailorBtn").classList.add("hidden");
+    $("#fitPrepareWorkspaceBtn")?.classList.add("hidden");
     renderEvidenceMap("all");
   }
   await loadJobVersions(job.id);
@@ -6038,6 +6086,7 @@ function renderFitResults(result) {
   $("#fitScoreEmptyState").classList.add("hidden");
   $("#fitScoreResults").classList.remove("hidden");
   $("#proceedToTailorBtn").classList.remove("hidden");
+  $("#fitPrepareWorkspaceBtn")?.classList.remove("hidden");
 
   // Populate Application Readiness Report V2
   const r = result.readiness_report || {};
@@ -6506,10 +6555,105 @@ async function exportActiveVersion(format) {
   }
 }
 
-// TAB 4: APPLICATIONS TRACKER
+// TAB 4: APPLICATIONS TRACKER & CONNECTED JOB WORKSPACE
+let currentWsAppId = null;
+
 function wireApplications() {
-  $("#applicationForm").addEventListener("submit", handleSaveApplication);
-  $("#refreshApplicationsBtn").addEventListener("click", loadApplications);
+  $("#applicationForm")?.addEventListener("submit", handleSaveApplication);
+  $("#refreshApplicationsBtn")?.addEventListener("click", loadApplications);
+
+  // Job Workspace Modal Listeners
+  $("#closeJobWorkspaceModalBtn")?.addEventListener("click", closeJobWorkspaceModal);
+  $("#wsCloseFooterBtn")?.addEventListener("click", closeJobWorkspaceModal);
+  $("#wsLaunchInterviewBtn")?.addEventListener("click", launchInterviewFromWorkspace);
+  $("#wsStartPracticeNowBtn")?.addEventListener("click", launchInterviewFromWorkspace);
+  $("#wsFooterLaunchBtn")?.addEventListener("click", launchInterviewFromWorkspace);
+
+  // Workspace subnav tabs
+  $("#wsTabOverviewBtn")?.addEventListener("click", () => switchWorkspaceTab("overview"));
+  $("#wsTabCompanyPatternsBtn")?.addEventListener("click", () => switchWorkspaceTab("patterns"));
+  $("#wsTabClaimsBtn")?.addEventListener("click", () => switchWorkspaceTab("claims"));
+  $("#wsTabChecklistBtn")?.addEventListener("click", () => switchWorkspaceTab("checklist"));
+
+  // Workspace quick actions
+  $("#wsEditResumeBtn")?.addEventListener("click", () => {
+    closeJobWorkspaceModal();
+    const app = (state.applications || []).find((a) => a.id === currentWsAppId);
+    if (app && app.resume_id && app.resume_id !== state.activeResumeId) {
+      selectResume(app.resume_id);
+    }
+    navigateToTab("builder");
+  });
+
+  $("#wsSwitchResumeBtn")?.addEventListener("click", () => {
+    $("#wsResumePickerRow")?.classList.toggle("hidden");
+  });
+
+  $("#wsResumeSelectDropdown")?.addEventListener("change", async (e) => {
+    const newResumeId = e.target.value ? Number(e.target.value) : null;
+    if (!currentWsAppId) return;
+    try {
+      await API.request(`/applications/${currentWsAppId}`, {
+        method: "PATCH",
+        body: { resume_id: newResumeId },
+      });
+      toast("Linked resume updated.");
+      await loadApplications();
+      openJobWorkspaceModal(currentWsAppId);
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
+  $("#wsQuickStatusSelect")?.addEventListener("change", async (e) => {
+    if (!currentWsAppId) return;
+    await updateAppStatus(currentWsAppId, e.target.value);
+    $("#wsAppStatusBadge").textContent = e.target.value;
+  });
+
+  $("#wsGoToTailorBtn")?.addEventListener("click", () => {
+    closeJobWorkspaceModal();
+    navigateToTab("tailor");
+  });
+
+  $("#wsGoToFitBtn")?.addEventListener("click", () => {
+    closeJobWorkspaceModal();
+    navigateToTab("fit");
+  });
+}
+
+function switchWorkspaceTab(tab) {
+  const tabs = {
+    overview: { btn: "#wsTabOverviewBtn", section: "#wsSectionOverview" },
+    patterns: { btn: "#wsTabCompanyPatternsBtn", section: "#wsSectionCompanyPatterns" },
+    claims: { btn: "#wsTabClaimsBtn", section: "#wsSectionClaims" },
+    checklist: { btn: "#wsTabChecklistBtn", section: "#wsSectionChecklist" },
+  };
+
+  Object.values(tabs).forEach(({ btn, section }) => {
+    $(btn)?.classList.remove("active");
+    $(section)?.classList.add("hidden");
+  });
+
+  if (tabs[tab]) {
+    $(tabs[tab].btn)?.classList.add("active");
+    $(tabs[tab].section)?.classList.remove("hidden");
+    drawIcons();
+  }
+}
+
+function populateAppResumeSelect() {
+  const sel = $("#appResumeSelect");
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = `<option value="">Current Active Resume (${escapeHtml(state.currentResumeTitle || "Active")})</option>`;
+  (state.allResumes || []).forEach((r) => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.title} (${r.status || "Draft"})`;
+    if (r.id === state.activeResumeId) opt.selected = true;
+    sel.appendChild(opt);
+  });
 }
 
 async function loadApplications() {
@@ -6517,6 +6661,7 @@ async function loadApplications() {
     const apps = await API.request("/applications");
     state.applications = apps;
     renderApplicationsList(apps);
+    populateAppResumeSelect();
   } catch (error) {
     // Graceful error handling
   }
@@ -6539,17 +6684,22 @@ function renderApplicationsList(apps) {
   apps.forEach((app) => {
     const card = document.createElement("div");
     card.className = "card-item";
+    const resumeLabel = app.resume_title || (state.allResumes?.find((r) => r.id === app.resume_id)?.title) || "Active Resume";
     card.innerHTML = `
       <div class="card-item-header">
         <div>
           <h4>${escapeHtml(app.job_title)} <span class="text-muted">at</span> ${escapeHtml(app.company)}</h4>
-          <span class="badge-musthave">${escapeHtml(app.status)}</span>
-          ${app.job_url ? `<a href="${escapeHtml(app.job_url)}" target="_blank" class="text-xs text-primary ml-2">Job Link &nearr;</a>` : ""}
+          <div class="flex-row align-center gap-2 mt-1">
+            <span class="badge-musthave">${escapeHtml(app.status)}</span>
+            <span class="badge-sub text-xs"><i data-lucide="file-text"></i> ${escapeHtml(resumeLabel)}</span>
+            ${app.job_url ? `<a href="${escapeHtml(app.job_url)}" target="_blank" class="text-xs text-primary ml-1">Job Link &nearr;</a>` : ""}
+          </div>
         </div>
         <div class="card-actions">
-          <button class="secondary-btn xs" type="button" data-prep-app="${app.id}" title="Practice interview for this job"><i data-lucide="messages-square"></i> Interview</button>
+          <button class="primary-btn xs" type="button" data-ws-app="${app.id}" title="Open Connected Job Workspace & Preparation Hub"><i data-lucide="briefcase"></i> Prepare for this Job</button>
           <select class="text-xs" data-status-app="${app.id}">
             <option value="SAVED" ${app.status === "SAVED" ? "selected" : ""}>SAVED</option>
+            <option value="READY" ${app.status === "READY" ? "selected" : ""}>READY</option>
             <option value="APPLIED" ${app.status === "APPLIED" ? "selected" : ""}>APPLIED</option>
             <option value="INTERVIEW" ${app.status === "INTERVIEW" ? "selected" : ""}>INTERVIEW</option>
             <option value="OFFER" ${app.status === "OFFER" ? "selected" : ""}>OFFER</option>
@@ -6560,18 +6710,9 @@ function renderApplicationsList(apps) {
       </div>
       ${app.notes ? `<p class="text-xs text-muted mt-1">${escapeHtml(app.notes)}</p>` : ""}
     `;
-    card.querySelector(`[data-prep-app="${app.id}"]`)?.addEventListener("click", () => {
-      state.activeJobContext = {
-        role: app.job_title,
-        company: app.company,
-        companyUrl: "",
-        jobUrl: app.job_url || "",
-        jobId: app.job_posting_id || null,
-        versionId: app.application_version_id || null,
-        verification: null,
-      };
-      syncInterviewContextUI();
-      navigateToTab("interview");
+
+    card.querySelector(`[data-ws-app="${app.id}"]`)?.addEventListener("click", () => {
+      openJobWorkspaceModal(app.id);
     });
     card.querySelector(`[data-status-app="${app.id}"]`).addEventListener("change", (e) => updateAppStatus(app.id, e.target.value));
     card.querySelector(`[data-del-app="${app.id}"]`).addEventListener("click", () => deleteApplication(app.id));
@@ -6582,20 +6723,25 @@ function renderApplicationsList(apps) {
 
 async function handleSaveApplication(e) {
   e.preventDefault();
+  const resumeSelectVal = $("#appResumeSelect")?.value;
   const payload = {
     company: $("#appCompany").value,
     job_title: $("#appJobTitle").value,
     job_url: $("#appJobUrl").value || null,
     status: $("#appStatus").value,
     notes: $("#appNotes").value || null,
+    resume_id: resumeSelectVal ? Number(resumeSelectVal) : (state.activeResumeId || null),
     job_posting_id: $("#appJobPostingSelect").value ? Number($("#appJobPostingSelect").value) : null,
   };
   try {
-    await API.request("/applications", { method: "POST", body: payload });
+    const res = await API.request("/applications", { method: "POST", body: payload });
     $("#applicationForm").reset();
     toast("Application saved.");
     await loadApplications();
     renderDashboard();
+    if (res && res.id) {
+      openJobWorkspaceModal(res.id);
+    }
   } catch (error) {
     toast(error.message, "error");
   }
@@ -6623,6 +6769,156 @@ async function deleteApplication(id) {
     toast(error.message, "error");
   }
 }
+
+async function openJobWorkspaceModal(applicationId) {
+  currentWsAppId = applicationId;
+  const modal = $("#jobWorkspaceModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  switchWorkspaceTab("overview");
+
+  // Loading state
+  $("#wsCompanyRoleSubtitle").textContent = "Loading workspace...";
+  $("#wsArchetypeTitle").textContent = "Loading company patterns...";
+  $("#wsArchetypeSummary").textContent = "Analyzing domain and interview structure...";
+  $("#wsFocalAreasList").innerHTML = "<li>Loading known focal areas...</li>";
+  $("#wsClaimsList").innerHTML = "<div class='text-xs text-muted p-2'>Extracting claims from linked resume...</div>";
+  $("#wsChecklistContainer").innerHTML = "<div class='text-xs text-muted p-2'>Loading readiness checklist...</div>";
+
+  try {
+    const ws = await API.request(`/applications/${applicationId}/workspace`);
+    const app = ws.application;
+    const resume = ws.resume;
+    const guide = ws.preparation_guide || {};
+    const claims = ws.claims_to_defend || guide.claims_to_defend || [];
+    const expectations = guide.role_expectations || {};
+    const checklist = guide.preparation_checklist || [];
+
+    // Header info
+    $("#wsCompanyRoleSubtitle").textContent = `${app.job_title} at ${app.company}`;
+    $("#wsAppStatusBadge").textContent = app.status;
+    $("#wsQuickStatusSelect").value = app.status;
+
+    // Resume overview
+    if (resume) {
+      $("#wsResumeTitleDisplay").textContent = resume.title;
+      $("#wsResumeStatusBadge").textContent = resume.status || "Draft";
+    } else {
+      $("#wsResumeTitleDisplay").textContent = state.currentResumeTitle || "Active Resume";
+      $("#wsResumeStatusBadge").textContent = "Active";
+    }
+
+    // Populate resume switch dropdown
+    const resSel = $("#wsResumeSelectDropdown");
+    if (resSel) {
+      resSel.innerHTML = "<option value=''>-- Select Resume --</option>";
+      (state.allResumes || []).forEach((r) => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = `${r.title} (${r.status || "Draft"})`;
+        if (resume && r.id === resume.id) opt.selected = true;
+        resSel.appendChild(opt);
+      });
+    }
+
+    // Job desc snippet
+    const jdText = app.job_description || ws.job_posting?.description || "No job description text provided.";
+    $("#wsJobDescSnippet").textContent = jdText;
+
+    // Company & Role Expectations
+    $("#wsArchetypeTitle").textContent = expectations.archetype || "Role Expectations";
+    $("#wsArchetypeSummary").textContent = expectations.summary || "Public interview patterns calibrated against this industry domain.";
+    const focalUl = $("#wsFocalAreasList");
+    focalUl.innerHTML = "";
+    (expectations.focal_areas || []).forEach((fa) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<i data-lucide="check" style="width:12px;height:12px;display:inline-block;margin-right:6px;color:var(--primary);"></i>${escapeHtml(fa)}`;
+      focalUl.appendChild(li);
+    });
+
+    // Claims to Defend
+    const claimsContainer = $("#wsClaimsList");
+    claimsContainer.innerHTML = "";
+    if (!claims.length) {
+      claimsContainer.innerHTML = `
+        <div class="empty-state-card mini">
+          <i data-lucide="shield-check"></i>
+          <p>No high-risk bullet claims identified on this resume. Standard technical and behavioral questions will apply.</p>
+        </div>`;
+    } else {
+      claims.forEach((c, idx) => {
+        const cCard = document.createElement("div");
+        cCard.className = "card-item p-2";
+        cCard.style.borderLeft = "3px solid var(--primary)";
+        cCard.innerHTML = `
+          <div class="flex-between align-center mb-1">
+            <strong class="text-xs text-primary">${escapeHtml(c.category || "Claim Defense")}</strong>
+            <span class="text-xs text-muted">Probe #${idx + 1}</span>
+          </div>
+          <p class="text-xs font-bold mb-1">${escapeHtml(c.claim)}</p>
+          <p class="text-xs text-muted mb-2"><strong>Interviewer Motivation:</strong> ${escapeHtml(c.why_asked)}</p>
+          <div class="p-2" style="background:var(--surface-2);border-radius:var(--radius-sm);">
+            <span class="text-xs font-bold text-muted block mb-1"><i data-lucide="help-circle" style="width:12px;height:12px;display:inline-block;margin-right:4px;"></i> Question to Rehearse:</span>
+            <p class="text-xs mb-0">${escapeHtml(c.suggested_question)}</p>
+          </div>
+        `;
+        claimsContainer.appendChild(cCard);
+      });
+    }
+
+    // Checklist
+    const chkContainer = $("#wsChecklistContainer");
+    chkContainer.innerHTML = "";
+    checklist.forEach((chk, i) => {
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "flex-row align-center gap-2 p-2";
+      itemDiv.style.background = "var(--surface-2)";
+      itemDiv.style.borderRadius = "var(--radius-sm)";
+      itemDiv.style.marginBottom = "6px";
+      itemDiv.innerHTML = `
+        <input type="checkbox" id="chkItem_${i}" style="width:16px;height:16px;cursor:pointer;">
+        <label for="chkItem_${i}" class="text-xs mb-0" style="cursor:pointer;flex:1;">${escapeHtml(chk.item)}</label>
+      `;
+      chkContainer.appendChild(itemDiv);
+    });
+
+    drawIcons();
+  } catch (error) {
+    toast("Could not load full workspace: " + error.message, "error");
+  }
+}
+
+function closeJobWorkspaceModal() {
+  $("#jobWorkspaceModal")?.classList.add("hidden");
+  $("#wsResumePickerRow")?.classList.add("hidden");
+}
+
+function launchInterviewFromWorkspace() {
+  if (!currentWsAppId) return;
+  const app = (state.applications || []).find((a) => a.id === currentWsAppId);
+  const role = app ? app.job_title : ($("#wsCompanyRoleSubtitle").textContent.split(" at ")[0] || "Software Engineer");
+  const company = app ? app.company : ($("#wsCompanyRoleSubtitle").textContent.split(" at ")[1] || "Target Company");
+  const resumeId = app?.resume_id || state.activeResumeId || null;
+  const jobId = app?.job_posting_id || null;
+  const jobDesc = app?.job_description || null;
+
+  closeJobWorkspaceModal();
+
+  state.activeJobContext = {
+    role,
+    company,
+    companyUrl: "",
+    jobUrl: app?.job_url || "",
+    jobId,
+    resumeId,
+    jobDescription: jobDesc,
+    verification: null,
+  };
+
+  syncInterviewContextUI();
+  navigateToTab("interview");
+}
+
 
 // TAB 5: BILLING, PRICING & PAYMENT ORCHESTRATION
 function wireBilling() {
@@ -8106,7 +8402,11 @@ async function loadClaimsToDefend() {
   if (!container) return;
   try {
     const jobId = state.activeJobContext?.jobId || "";
-    const claims = await API.request(`/interview/claims-to-defend?job_id=${jobId}`);
+    const resumeId = state.activeResumeId || state.activeJobContext?.resumeId || "";
+    const params = new URLSearchParams();
+    if (jobId) params.append("job_id", jobId);
+    if (resumeId) params.append("resume_id", resumeId);
+    const claims = await API.request(`/interview/claims-to-defend?${params.toString()}`);
     if (!claims || claims.length === 0) {
       container.innerHTML = `<p class="text-xs text-muted">Complete your career profile to generate grounded claims to defend.</p>`;
       return;

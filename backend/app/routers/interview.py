@@ -43,12 +43,14 @@ def get_live_config(current_user: User = Depends(get_current_user)) -> dict:
 @router.get("/claims-to-defend")
 def get_claims_to_defend_endpoint(
     job_id: Optional[int] = Query(default=None),
+    resume_id: Optional[int] = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Returns candidate's resume claims with targeted preparation questions."""
-    claims = interview_service.get_claims_to_defend(db, current_user.id, job_id=job_id)
+    claims = interview_service.get_claims_to_defend(db, current_user.id, resume_id=resume_id, job_id=job_id)
     return success_response(claims)
+
 
 
 @router.get("/preparation-guide")

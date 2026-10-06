@@ -130,61 +130,232 @@ def get_preparation_guide(
         {"category": "Behavioral", "question": "Describe a scenario where requirements changed late in a delivery sprint. How did you adapt your architecture and communicate tradeoffs?"}
     ]
 
+    # Company Archetype & Public Interview Patterns (Zero fabrication)
+    comp_lower = (company or "").lower()
+    if any(k in comp_lower for k in ["razorpay", "stripe", "square", "paypal", "adyen", "plaid", "paytm", "phonepe", "cred", "bank", "financial", "fintech", "payment"]):
+        role_expectations = {
+            "archetype": "Fintech & High-Integrity Transaction Systems",
+            "summary": "Fintech interviewers heavily scrutinize transactional integrity, data consistency, idempotency, and failure modes.",
+            "focal_areas": [
+                "Idempotency keys and distributed transaction rollback patterns",
+                "ACID compliance, isolation levels, and zero-data-loss event queues",
+                "API rate limiting, webhook reliability, and mutual TLS / token security",
+                "Handling partial network partitions and reconciliation ledger jobs",
+            ],
+            "disclaimer": "Likely interview areas based on public role patterns and company profile. Questions are for practice; actual employer interview questions may vary."
+        }
+    elif any(k in comp_lower for k in ["google", "meta", "amazon", "microsoft", "apple", "netflix", "uber", "airbnb", "salesforce", "linkedin", "nvidia"]):
+        role_expectations = {
+            "archetype": "Big Tech & Large-Scale Distributed Systems",
+            "summary": "Big tech interviewers prioritize algorithmic efficiency, distributed scalability, and rigorous behavioral principles.",
+            "focal_areas": [
+                "Scalable system design (caching tiers, data partitioning, replication)",
+                "Latency, throughput, and bottleneck profiling under high QPS",
+                "Behavioral STAR questions probing ownership, disagreement, and customer focus",
+                "Production observability (telemetry, distributed tracing, alerting)",
+            ],
+            "disclaimer": "Likely interview areas based on public role patterns and company profile. Questions are for practice; actual employer interview questions may vary."
+        }
+    elif any(k in comp_lower for k in ["tcs", "infosys", "wipro", "accenture", "ibm", "oracle", "cisco", "cognizant", "capgemini"]):
+        role_expectations = {
+            "archetype": "Enterprise Architecture & Scalable Platforms",
+            "summary": "Enterprise interviewers emphasize modular design, maintainability, backward compatibility, and reliable testing.",
+            "focal_areas": [
+                "Modular software architecture and design patterns",
+                "Clean code, comprehensive unit and integration testing",
+                "Enterprise authentication, RBAC, and data governance",
+                "Cross-functional stakeholder collaboration and requirement alignment",
+            ],
+            "disclaimer": "Likely interview areas based on public role patterns and company profile. Questions are for practice; actual employer interview questions may vary."
+        }
+    else:
+        role_expectations = {
+            "archetype": "High-Growth Product Engineering & Systems",
+            "summary": "Startup and high-growth interviewers evaluate rapid execution, end-to-end full stack ownership, and pragmatic engineering trade-offs.",
+            "focal_areas": [
+                "End-to-end feature delivery speed without sacrificing maintainability",
+                "Hands-on debugging across the entire stack under ambiguity",
+                "Product sense and understanding business user impact",
+                "Pragmatic architectural choices over over-engineered abstractions",
+            ],
+            "disclaimer": "Likely interview areas based on public role patterns and company profile. Questions are for practice; actual employer interview questions may vary."
+        }
+
+    prep_checklist = [
+        {"item": "Review and defend key resume claims with STAR framework", "status": "PENDING"},
+        {"item": f"Refresh fundamentals of primary stack ({', '.join(cand_skills[:2]) if cand_skills else role})", "status": "PENDING"},
+        {"item": f"Understand {company} business model and public product architecture", "status": "PENDING"},
+        {"item": "Rehearse high-load production incident triage and debugging workflow", "status": "PENDING"},
+        {"item": "Prepare 2-3 thoughtful questions about engineering culture and tech debt", "status": "PENDING"},
+    ]
+
+    claims = get_claims_to_defend(db, user_id, resume_id=resume.id if resume else None, job_id=job_id)
+
     return {
         "target_role": role,
         "target_company": company,
+        "resume_id": resume.id if resume else None,
         "resume_title": resume.title if resume else "Active Resume",
         "most_relevant_topics": relevant_topics[:5],
         "likely_interview_areas": likely_areas,
         "weak_areas_to_revise": [f"Review {s} syntax and best practices (mentioned in job description)" for s in missing_skills[:4]],
         "eligibility_gap": eligibility_gap,
         "practice_questions": practice_qs,
+        "claims_to_defend": claims[:5],
+        "role_expectations": role_expectations,
+        "preparation_checklist": prep_checklist,
         "company_context_note": comp_note,
-        "disclaimer": "Likely areas to prepare based on your selected resume and job description. These questions are for preparation practice; actual employer interview questions may vary."
+        "disclaimer": "Likely interview areas based on public role patterns and company profile. Questions are for preparation practice; actual employer interview questions may vary."
     }
 
 
-def get_claims_to_defend(db: Session, user_id: int, job_id: Optional[int] = None) -> list[dict]:
-    """Extracts candidate's verified skills and project claims from their actual profile
-    to prepare targeted defense questions.
+def _extract_bullet_claims(resume: Optional[Resume]) -> list[dict]:
+    """Inspects all bullet points from experiences and projects on a resume
+    and creates targeted defense questions probing 'Led', 'Built', 'Managed', 'Optimized' claims.
     """
-    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if not resume or not resume.parsed_content:
+        return []
+
+    pc = resume.parsed_content
     claims: list[dict] = []
 
+    # Experiences bullets
+    exps = pc.get("experiences") or []
+    for exp in exps:
+        comp = exp.get("company") or "Past Employer"
+        role = exp.get("role_title") or exp.get("title") or "Engineering Role"
+        raw_bullets = exp.get("bullet_points") or exp.get("bullets") or []
+        if isinstance(raw_bullets, str):
+            raw_bullets = [raw_bullets]
+
+        for b in raw_bullets:
+            bullet_text = b if isinstance(b, str) else b.get("text", "")
+            bullet_clean = bullet_text.strip()
+            if not bullet_clean or len(bullet_clean) < 15:
+                continue
+
+            b_lower = bullet_clean.lower()
+
+            # 1. Led / Architecture Migration
+            if any(b_lower.startswith(w) or f" {w} " in b_lower for w in ["led", "spearheaded", "directed", "championed"]):
+                claims.append({
+                    "claim": f"Leadership & Architecture at {comp}: \"{bullet_clean[:85]}...\"",
+                    "category": "Architecture & Leadership Defense",
+                    "why_asked": f"Technical interviewers probe whether you had real decision authority in '{role}' at {comp} and evaluate how you manage technical risk.",
+                    "evidence": f"Resume claim ({resume.title}): '{bullet_clean}'.",
+                    "suggested_question": f"In your work where you '{bullet_clean[:70]}...': Why was this specific architectural direction chosen over simpler alternatives? How did you split data ownership across boundaries, what was your rollback strategy if things failed, and what went wrong during the initial rollout?",
+                })
+            # 2. Built / Developed / Engineered
+            elif any(b_lower.startswith(w) or f" {w} " in b_lower for w in ["built", "architected", "designed", "developed", "engineered", "implemented", "created"]):
+                claims.append({
+                    "claim": f"Implementation & Resilience at {comp}: \"{bullet_clean[:85]}...\"",
+                    "category": "Technical Trade-Offs & Resilience",
+                    "why_asked": f"Interviewers test component depth and want to know why you chose this stack over alternatives and how the system behaves under failure.",
+                    "evidence": f"Resume claim ({resume.title}): '{bullet_clean}'.",
+                    "suggested_question": f"Regarding '{bullet_clean[:70]}...': Walk me through the exact technical trade-offs you evaluated. Why this technology stack instead of alternatives (e.g. Redis vs Kafka/RabbitMQ)? How did you handle backpressure, network timeouts, and partial state failures?",
+                })
+            # 3. Managed / Mentored
+            elif any(b_lower.startswith(w) or f" {w} " in b_lower for w in ["managed", "mentored", "coordinated", "oversaw"]):
+                claims.append({
+                    "claim": f"Team Execution & Ownership at {comp}: \"{bullet_clean[:85]}...\"",
+                    "category": "Team Ownership & Delivery",
+                    "why_asked": "Hiring managers probe how you divide architectural responsibility, resolve deadlocks, and elevate team performance.",
+                    "evidence": f"Resume claim ({resume.title}): '{bullet_clean}'.",
+                    "suggested_question": f"For your leadership experience where you '{bullet_clean[:70]}...': How did you divide architectural ownership across team members, how did you handle underperformance or shifting sprint priorities, and what measurable improvements in delivery velocity resulted?",
+                })
+            # 4. Optimized / Scaled / Reduced / Migrated
+            elif any(b_lower.startswith(w) or f" {w} " in b_lower for w in ["optimized", "scaled", "reduced", "increased", "migrated", "accelerated", "refactored"]):
+                claims.append({
+                    "claim": f"Quantitative Optimization at {comp}: \"{bullet_clean[:85]}...\"",
+                    "category": "Metric & Performance Verification",
+                    "why_asked": "Interviewers verify that performance claims reflect rigorous benchmarking and profiling rather than arbitrary estimates.",
+                    "evidence": f"Resume claim ({resume.title}): '{bullet_clean}'.",
+                    "suggested_question": f"You noted that you '{bullet_clean[:70]}...': What was the exact baseline metric before optimization, what profiling tools or execution plans did you inspect, and what trade-offs (memory, CPU, complexity) did you accept to achieve that result?",
+                })
+
+    # Projects bullets
+    projs = pc.get("projects") or []
+    for proj in projs:
+        p_title = proj.get("title") or proj.get("name") or "Key Project"
+        raw_bullets = proj.get("bullet_points") or proj.get("bullets") or []
+        if isinstance(raw_bullets, str):
+            raw_bullets = [raw_bullets]
+
+        for b in raw_bullets:
+            bullet_text = b if isinstance(b, str) else b.get("text", "")
+            bullet_clean = bullet_text.strip()
+            if not bullet_clean or len(bullet_clean) < 15:
+                continue
+            b_lower = bullet_clean.lower()
+            if any(b_lower.startswith(w) or f" {w} " in b_lower for w in ["built", "architected", "designed", "developed", "implemented", "created", "led", "optimized"]):
+                claims.append({
+                    "claim": f"Project Claim in '{p_title}': \"{bullet_clean[:85]}...\"",
+                    "category": "Project Defense & System Trade-Offs",
+                    "why_asked": f"Technical interviewers probe candidate personal contribution vs boilerplate code in '{p_title}'.",
+                    "evidence": f"Resume project ({resume.title}): '{bullet_clean}'.",
+                    "suggested_question": f"In '{p_title}', you stated: '{bullet_clean[:70]}...'. Walk me through your exact personal contribution, what happens when upstream dependencies fail, and what is the single hardest bug you had to diagnose in that code?",
+                })
+
+    return claims
+
+
+def get_claims_to_defend(
+    db: Session,
+    user_id: int,
+    resume_id: Optional[int] = None,
+    job_id: Optional[int] = None,
+) -> list[dict]:
+    """Extracts candidate's verified skills, project claims, and specific resume bullet points
+    to prepare targeted defense questions. Probes 'Led', 'Built', 'Managed', 'Optimized' claims.
+    """
+    resume = None
+    if resume_id:
+        resume = db.query(Resume).filter(Resume.id == resume_id, Resume.user_id == user_id).first()
+    if not resume:
+        resume = db.query(Resume).filter(Resume.user_id == user_id, Resume.is_archived.is_(False)).order_by(Resume.updated_at.desc()).first()
+
+    claims: list[dict] = []
+
+    # 1. First probe actual bullet points on the resume
+    bullet_claims = _extract_bullet_claims(resume)
+    claims.extend(bullet_claims)
+
+    # 2. If fewer than 3 claims or if fallback needed, inspect profile projects and skills
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     skills = [s.name for s in profile.skills] if profile and profile.skills else []
     experiences = profile.experiences if profile and profile.experiences else []
     projects = profile.projects if profile and profile.projects else []
 
-    # 1. Project delivery claims
-    for proj in projects[:3]:
-        tech_str = proj.technologies if isinstance(proj.technologies, str) else ", ".join(proj.technologies or ["Full Stack"])
-        claims.append({
-            "claim": f"Project Architecture in '{proj.title}'",
-            "category": "Project Defense",
-            "why_asked": f"Technical interviewers probe candidate ownership, component design, and performance tradeoffs in '{proj.title}'.",
-            "evidence": f"Technologies: {tech_str}. Description: {(proj.description or '')[:120]}...",
-            "suggested_question": f"In '{proj.title}', walk me through your exact personal contribution, why you selected {tech_str}, and what happens when the primary service experiences unexpected load?",
-        })
+    if len(claims) < 3:
+        for proj in projects[:2]:
+            tech_str = proj.technologies if isinstance(proj.technologies, str) else ", ".join(proj.technologies or ["Full Stack"])
+            claims.append({
+                "claim": f"Project Architecture in '{proj.title}'",
+                "category": "Project Defense",
+                "why_asked": f"Technical interviewers probe candidate ownership, component design, and performance tradeoffs in '{proj.title}'.",
+                "evidence": f"Technologies: {tech_str}. Description: {(proj.description or '')[:120]}...",
+                "suggested_question": f"In '{proj.title}', walk me through your exact personal contribution, why you selected {tech_str}, and what happens when the primary service experiences unexpected load?",
+            })
 
-    # 2. Primary technical skills claims
-    for skill in skills[:4]:
-        claims.append({
-            "claim": f"{skill} Core Depth & Practical Mastery",
-            "category": "Technical Core",
-            "why_asked": f"Interviewers will test whether you have hands-on debugging experience with {skill} or only superficial syntax knowledge.",
-            "evidence": f"Listed in candidate's verified technical skills.",
-            "suggested_question": f"Can you walk me through the most complex problem or edge-case you solved using {skill}, and what specific alternatives did you consider?",
-        })
+    if len(claims) < 4:
+        for skill in skills[:3]:
+            claims.append({
+                "claim": f"{skill} Core Depth & Practical Mastery",
+                "category": "Technical Core",
+                "why_asked": f"Interviewers will test whether you have hands-on debugging experience with {skill} or only superficial syntax knowledge.",
+                "evidence": f"Listed in candidate's verified technical skills.",
+                "suggested_question": f"Can you walk me through the most complex problem or edge-case you solved using {skill}, and what specific alternatives did you consider?",
+            })
 
-    # 3. Work experience claim (if present)
-    for exp in experiences[:2]:
-        claims.append({
-            "claim": f"Production Impact at {exp.company}",
-            "category": "Experience Defense",
-            "why_asked": "Hiring managers evaluate whether your contributions reflect personal ownership versus passive team presence.",
-            "evidence": f"Role: {exp.role_title} at {exp.company}.",
-            "suggested_question": f"At {exp.company}, what was your single most impactful technical contribution, and how did you measure its success?",
-        })
+    if len(claims) < 5:
+        for exp in experiences[:1]:
+            claims.append({
+                "claim": f"Production Impact at {exp.company}",
+                "category": "Experience Defense",
+                "why_asked": "Hiring managers evaluate whether your contributions reflect personal ownership versus passive team presence.",
+                "evidence": f"Role: {exp.role_title} at {exp.company}.",
+                "suggested_question": f"At {exp.company}, what was your single most impactful technical contribution, and how did you measure its success?",
+            })
 
     if not claims:
         claims = [
@@ -205,6 +376,7 @@ def get_claims_to_defend(db: Session, user_id: int, job_id: Optional[int] = None
         ]
 
     return claims
+
 
 
 def create_interview_session(db: Session, user_id: int, session_in: InterviewSessionCreate) -> InterviewSession:

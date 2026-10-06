@@ -78,6 +78,7 @@ class JobApplicationUpdate(BaseModel):
 class JobApplicationOut(BaseModel):
     id: int
     resume_id: int | None
+    resume_title: str | None = None
     job_posting_id: int | None = None
     version_id: int | None = None
     company: str
@@ -99,3 +100,13 @@ class JobApplicationOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class JobWorkspaceOut(BaseModel):
+    application: JobApplicationOut
+    resume: dict[str, Any] | None = None
+    job_posting: dict[str, Any] | None = None
+    preparation_guide: dict[str, Any] | None = None
+    claims_to_defend: list[dict[str, Any]] = Field(default_factory=list)
+    recent_sessions: list[dict[str, Any]] = Field(default_factory=list)
+
