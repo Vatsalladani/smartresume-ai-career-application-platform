@@ -1326,18 +1326,12 @@ function computeAndRenderNextBestAction(hasProfileData, score) {
   }
 }
 
-function openActiveResumePreview() {
-  const tplId = state.activeTemplateId || "classic_ats";
-  if (typeof openTemplatePreview === "function") {
-    openTemplatePreview(tplId);
-  } else if (typeof openTemplatePreviewModal === "function") {
-    openTemplatePreviewModal(tplId);
-  } else {
-    navigateToTab("resume-builder");
+// Resume preview helper alias
+window.openTemplatePreviewModal = function(tplId) {
+  if (typeof openActiveResumePreview === "function") {
+    openActiveResumePreview();
   }
-}
-window.openActiveResumePreview = openActiveResumePreview;
-window.openTemplatePreviewModal = openActiveResumePreview;
+};
 
 // ==========================================================================
 // RESUME BUILDER CONTROLLER (Two-column interactive editor + live canvas)
@@ -1393,6 +1387,24 @@ let resumeBuilderState = {
   publications: [],
   courses: [],
   customSections: []
+};
+
+// Stable UI expand/collapse state for resume builder sections (false = collapsed, true = expanded)
+// This is strictly UI state and is never saved as resume data
+const builderSectionUiState = {
+  summary: false,
+  skills: false,
+  experiences: false,
+  projects: false,
+  education: false,
+  certifications: false,
+  achievements: false,
+  awards: false,
+  languages: false,
+  volunteer: false,
+  leadership: false,
+  publications: false,
+  courses: false
 };
 
 let builderAutosaveTimeout = null;
@@ -1525,6 +1537,25 @@ function renderRichToolbar(editorId) {
       <button type="button" class="rich-toolbar-btn" data-command="insertUnorderedList" title="Bullet List">• list</button>
       <button type="button" class="rich-toolbar-btn" data-command="createLink" title="Insert Link">🔗</button>
       <button type="button" class="rich-toolbar-btn" data-command="removeFormat" title="Clear Formatting">Tx</button>
+    </div>
+  `;
+}
+
+function renderSharedRichTextField({
+  id,
+  value = "",
+  placeholder = "",
+  onInputExpr = "",
+  minHeight = "64px",
+  className = ""
+}) {
+  return `
+    <div class="rich-text-wrapper ${className}">
+      ${renderRichToolbar(id)}
+      <div class="rich-text-content" id="${id}" contenteditable="true"
+           data-placeholder="${escapeHtml(placeholder)}"
+           style="min-height: ${minHeight};"
+           oninput="${onInputExpr}">${value}</div>
     </div>
   `;
 }
@@ -1715,6 +1746,7 @@ function wireResumeBuilder() {
         const title = prompt("Enter title for Custom Section (e.g. Patents, Exhibitions, Client Engagements):", "Custom Section");
         if (title && title.trim()) {
           const customId = "custom_" + Date.now();
+          builderSectionUiState[customId] = true;
           if (!resumeBuilderState.customSections) resumeBuilderState.customSections = [];
           resumeBuilderState.customSections.push({
             id: customId,
@@ -1730,6 +1762,7 @@ function wireResumeBuilder() {
           toast(`Added custom section "${title.trim()}".`);
         }
       } else {
+        builderSectionUiState[val] = true;
         if (!resumeBuilderState.sectionOrder.includes(val)) {
           resumeBuilderState.sectionOrder.push(val);
         }
@@ -1796,7 +1829,7 @@ function wireResumeBuilder() {
   if (!window._richTextShortcutsWired) {
     window._richTextShortcutsWired = true;
     document.addEventListener("keydown", (e) => {
-      const editable = e.target.closest('.rich-text-content[contenteditable="true"]');
+      const editable = (e.target && typeof e.target.closest === "function") ? e.target.closest('.rich-text-content[contenteditable="true"]') : null;
       if (!editable) return;
       if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase();
@@ -1817,7 +1850,7 @@ function wireResumeBuilder() {
     });
 
     document.addEventListener("mousedown", (e) => {
-      const btn = e.target.closest(".rich-toolbar-btn");
+      const btn = (e.target && typeof e.target.closest === "function") ? e.target.closest(".rich-toolbar-btn") : null;
       if (!btn) return;
       e.preventDefault();
       const wrapper = btn.closest(".rich-text-wrapper");
@@ -2206,23 +2239,54 @@ async function executeResumeBuilderExport(format = "pdf") {
 function openActiveResumePreview() {
   const modal = $("#resumeFullscreenModal");
   const container = $("#fullscreenCanvasContainer");
-  const canvas = $("#builderPreviewCanvas");
-  if (!modal || !container || !canvas) return;
+  let canvas = $("#builderPreviewCanvas");
+
+  if (!canvas) {
+    navigateToTab("resume-builder");
+    setTimeout(openActiveResumePreview, 120);
+    return;
+  }
+  if (!modal || !container) return;
 
   container.innerHTML = "";
-  const clone = canvas.closest(".resume-preview-sheet").cloneNode(true);
+  const sheet = canvas.closest(".resume-preview-sheet") || canvas;
+  const clone = sheet.cloneNode(true);
   clone.id = "fullscreenSheetClone";
-  clone.style.boxShadow = "0 8px 30px rgba(0, 0, 0, 0.15)";
+  clone.style.transform = "none";
+  clone.style.margin = "0 auto";
   container.appendChild(clone);
 
-  const dlPdfBtn = $("#fullscreenDownloadPdfBtn");
-  if (dlPdfBtn) {
-    dlPdfBtn.onclick = () => executeResumeBuilderExport("pdf");
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  if (!window._fullscreenPreviewEscHandler) {
+    window._fullscreenPreviewEscHandler = (e) => {
+      if (e.key === "Escape") {
+        const m = $("#resumeFullscreenModal");
+        if (m && !m.classList.contains("hidden")) {
+          closeActiveResumePreview();
+        }
+      }
+    };
+    document.addEventListener("keydown", window._fullscreenPreviewEscHandler);
   }
 
-  modal.classList.remove("hidden");
   drawIcons();
 }
+
+function closeActiveResumePreview() {
+  const modal = $("#resumeFullscreenModal");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+  const container = $("#fullscreenCanvasContainer");
+  if (container) {
+    container.innerHTML = "";
+  }
+  document.body.style.overflow = "";
+}
+window.openActiveResumePreview = openActiveResumePreview;
+window.closeActiveResumePreview = closeActiveResumePreview;
 
 function loadResumeBuilderView() {
   loadResumeBuilderState();
@@ -2248,6 +2312,27 @@ function loadResumeBuilderView() {
 }
 
 // Section management helpers
+window.toggleBuilderSectionCollapse = function(secKey) {
+  const isExpanded = builderSectionUiState[secKey] === true;
+  builderSectionUiState[secKey] = !isExpanded;
+  const panel = $(`#secEditor-${secKey}`);
+  if (panel) {
+    const body = panel.querySelector(".panel-body");
+    const chev = panel.querySelector(".sec-toggle-btn i");
+    if (body) {
+      body.classList.toggle("hidden", isExpanded);
+    }
+    if (chev) {
+      chev.setAttribute("data-lucide", isExpanded ? "chevron-right" : "chevron-down");
+      drawIcons();
+    }
+    const btn = panel.querySelector(".sec-toggle-btn");
+    if (btn) {
+      btn.title = isExpanded ? "Expand section" : "Collapse section";
+    }
+  }
+};
+
 window.moveBuilderSection = function(secKey, dir) {
   const idx = resumeBuilderState.sectionOrder.indexOf(secKey);
   if (idx === -1) return;
@@ -2276,6 +2361,7 @@ window.removeBuilderSection = function(secKey) {
   const idx = resumeBuilderState.sectionOrder.indexOf(secKey);
   if (idx !== -1) {
     resumeBuilderState.sectionOrder.splice(idx, 1);
+    delete builderSectionUiState[secKey];
     triggerBuilderAutosave();
     renderBuilderEditorFromState();
     renderResumePreviewCanvas();
@@ -2286,36 +2372,48 @@ window.removeBuilderSection = function(secKey) {
 // Repeatable entry controls
 window.addBuilderEntry = function(collection, customId) {
   if (collection === "custom" && customId) {
+    builderSectionUiState[customId] = true;
     const cs = (resumeBuilderState.customSections || []).find(c => c.id === customId);
     if (cs) {
       if (!Array.isArray(cs.items)) cs.items = [];
       cs.items.push({ title: "", subtitle: "", date: "", description: "", bullets: [""], is_hidden: false });
     }
   } else if (collection === "experiences") {
+    builderSectionUiState["experiences"] = true;
     resumeBuilderState.experiences.push({ title: "", company: "", location: "", start_date: "", end_date: "", is_current: false, bullets: [""], is_hidden: false });
   } else if (collection === "projects") {
+    builderSectionUiState["projects"] = true;
     resumeBuilderState.projects.push({ title: "", technologies: "", url: "", start_date: "", end_date: "", description: "", bullets: [""], is_hidden: false });
   } else if (collection === "education") {
+    builderSectionUiState["education"] = true;
     resumeBuilderState.education.push({ institution: "", degree: "", field_of_study: "", start_date: "", end_date: "", grade: "", location: "", is_hidden: false });
   } else if (collection === "certifications") {
+    builderSectionUiState["certifications"] = true;
     resumeBuilderState.certifications.push({ name: "", issuer: "", date: "", is_hidden: false });
   } else if (collection === "achievements") {
+    builderSectionUiState["achievements"] = true;
     resumeBuilderState.achievements.push({ text: "", is_hidden: false });
   } else if (collection === "awards") {
+    builderSectionUiState["awards"] = true;
     if (!resumeBuilderState.awards) resumeBuilderState.awards = [];
     resumeBuilderState.awards.push({ text: "", is_hidden: false });
   } else if (collection === "languages") {
+    builderSectionUiState["languages"] = true;
     resumeBuilderState.languages.push({ language: "", proficiency: "Proficient", is_hidden: false });
   } else if (collection === "volunteer") {
+    builderSectionUiState["volunteer"] = true;
     if (!resumeBuilderState.volunteer) resumeBuilderState.volunteer = [];
     resumeBuilderState.volunteer.push({ role: "", organization: "", location: "", start_date: "", end_date: "", is_current: false, description: "", bullets: [""], is_hidden: false });
   } else if (collection === "leadership") {
+    builderSectionUiState["leadership"] = true;
     if (!resumeBuilderState.leadership) resumeBuilderState.leadership = [];
     resumeBuilderState.leadership.push({ role: "", organization: "", location: "", start_date: "", end_date: "", description: "", bullets: [""], is_hidden: false });
   } else if (collection === "publications") {
+    builderSectionUiState["publications"] = true;
     if (!resumeBuilderState.publications) resumeBuilderState.publications = [];
     resumeBuilderState.publications.push({ title: "", publisher: "", date: "", url: "", description: "", is_hidden: false });
   } else if (collection === "courses") {
+    builderSectionUiState["courses"] = true;
     if (!resumeBuilderState.courses) resumeBuilderState.courses = [];
     resumeBuilderState.courses.push({ name: "", institution: "", date: "", is_hidden: false });
   }
@@ -2459,6 +2557,7 @@ window.updateSkillsInline = function(val) {
 };
 
 window.addSkillCategory = function() {
+  builderSectionUiState["skills"] = true;
   if (!resumeBuilderState.skillCategories) resumeBuilderState.skillCategories = [];
   resumeBuilderState.skillCategories.push({ name: "Core Skills", skills: [] });
   triggerBuilderAutosave();
@@ -2520,12 +2619,23 @@ function renderBuilderEditorFromState() {
   const container = $("#builderDynamicSectionsList");
   if (!container) return;
 
+  // Preserve live DOM state of mounted sections before re-rendering
+  const existingPanels = container.querySelectorAll(".panel[id^='secEditor-']");
+  existingPanels.forEach(panel => {
+    const sKey = panel.id.replace("secEditor-", "");
+    const body = panel.querySelector(".panel-body");
+    if (body) {
+      builderSectionUiState[sKey] = !body.classList.contains("hidden");
+    }
+  });
+
   const sectionOrder = resumeBuilderState.sectionOrder || ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"];
 
   container.innerHTML = sectionOrder.map((secKey, secIdx) => {
     const isFirst = secIdx === 0;
     const isLast = secIdx === sectionOrder.length - 1;
     const secTitle = (resumeBuilderState.sectionTitles && resumeBuilderState.sectionTitles[secKey]) || DEFAULT_SECTION_TITLES[secKey] || "Section";
+    const isExpanded = builderSectionUiState[secKey] === true;
 
     let icon = "file-text";
     let addBtnHtml = "";
@@ -2535,12 +2645,14 @@ function renderBuilderEditorFromState() {
       icon = "align-left";
       const sumVal = resumeBuilderState.summary || "";
       bodyHtml = `
-        <div class="rich-text-wrapper mb-2">
-          ${renderRichToolbar("builderSummaryContent")}
-          <div class="rich-text-content" id="builderSummaryContent" contenteditable="true"
-               data-placeholder="Brief 2-4 sentence overview of your domain expertise, quantifiable achievements, and core specializations..."
-               oninput="resumeBuilderState.summary = this.innerHTML; $('#builderSummaryCharCount').textContent = (this.textContent || '').length + ' characters'; triggerBuilderAutosave(); renderResumePreviewCanvas();">${sanitizeHtmlForPreview(sumVal)}</div>
-        </div>
+        ${renderSharedRichTextField({
+          id: "builderSummaryContent",
+          value: sanitizeHtmlForPreview(sumVal),
+          placeholder: "Brief 2-4 sentence overview of your domain expertise, quantifiable achievements, and core specializations...",
+          onInputExpr: "resumeBuilderState.summary = this.innerHTML; const cc = $('#builderSummaryCharCount'); if (cc) cc.textContent = (this.textContent || '').length + ' characters'; triggerBuilderAutosave(); renderResumePreviewCanvas();",
+          minHeight: "80px",
+          className: "mb-2"
+        })}
         <div class="flex-row justify-end">
           <span class="text-xs text-muted" id="builderSummaryCharCount">${sumVal.replace(/<[^>]+>/g, "").length} characters</span>
         </div>
@@ -2641,12 +2753,13 @@ function renderBuilderEditorFromState() {
               </div>
               <div class="mt-2">
                 <div class="text-xs text-muted mb-1">Responsibilities & Achievements (Rich Text Bullet Points):</div>
-                <div class="rich-text-wrapper">
-                  ${renderRichToolbar(`exp-bullets-${idx}`)}
-                  <div class="rich-text-content" id="exp-bullets-${idx}" contenteditable="true"
-                       data-placeholder="Describe achievements, quantifiable results, or responsibilities..."
-                       oninput="updateBuilderItemBullets('experiences', ${idx}, this.innerHTML)">${(e.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
-                </div>
+                ${renderSharedRichTextField({
+                  id: `exp-bullets-${idx}`,
+                  value: (e.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
+                  placeholder: "Describe achievements, quantifiable results, or responsibilities...",
+                  onInputExpr: `updateBuilderItemBullets('experiences', ${idx}, this.innerHTML)`,
+                  minHeight: "70px"
+                })}
               </div>
             </div>
           `).join("")}</div>`;
@@ -2696,12 +2809,13 @@ function renderBuilderEditorFromState() {
               </label>
               <div class="mt-2">
                 <div class="text-xs text-muted mb-1">Key Outcomes & Bullets:</div>
-                <div class="rich-text-wrapper">
-                  ${renderRichToolbar(`proj-bullets-${idx}`)}
-                  <div class="rich-text-content" id="proj-bullets-${idx}" contenteditable="true"
-                       data-placeholder="Measurable results, accomplishments, or scope..."
-                       oninput="updateBuilderItemBullets('projects', ${idx}, this.innerHTML)">${(p.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
-                </div>
+                ${renderSharedRichTextField({
+                  id: `proj-bullets-${idx}`,
+                  value: (p.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
+                  placeholder: "Measurable results, accomplishments, or scope...",
+                  onInputExpr: `updateBuilderItemBullets('projects', ${idx}, this.innerHTML)`,
+                  minHeight: "70px"
+                })}
               </div>
             </div>
           `).join("")}</div>`;
@@ -2794,17 +2908,31 @@ function renderBuilderEditorFromState() {
       const achs = resumeBuilderState.achievements || [];
       bodyHtml = achs.length === 0
         ? '<p class="text-xs text-muted m-0">No achievements added yet.</p>'
-        : `<div class="column-stack gap-2">${achs.map((a, idx) => {
+        : `<div class="column-stack gap-3">${achs.map((a, idx) => {
             const val = typeof a === "string" ? a : (a.text || "");
             const isHid = typeof a === "object" ? !!a.is_hidden : false;
             return `
-              <div class="flex-row align-center gap-2 ${isHid ? "opacity-50" : ""}">
-                <input type="text" value="${escapeHtml(val)}" placeholder="e.g. Exceeded annual sales quota by 135% in FY2024" oninput="updateBuilderAchievement(${idx}, this.value)" style="flex: 1;">
-                <label class="text-xs flex-row align-center gap-1" style="cursor: pointer;">
-                  <input type="checkbox" ${!isHid ? "checked" : ""} onchange="toggleBuilderEntryVisibility('achievements', ${idx}, !this.checked)">
-                  <span>Visible</span>
-                </label>
-                <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('achievements', ${idx})"><i data-lucide="trash-2"></i></button>
+              <div class="builder-entry-card ${isHid ? "is-hidden-entry" : ""}">
+                <div class="builder-entry-toolbar">
+                  <div class="flex-row align-center gap-1">
+                    <strong class="text-xs">Achievement #${idx + 1}</strong>
+                    ${isHid ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                  </div>
+                  <div class="builder-entry-actions">
+                    <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                      <input type="checkbox" ${!isHid ? "checked" : ""} onchange="toggleBuilderEntryVisibility('achievements', ${idx}, !this.checked)">
+                      <span>Visible</span>
+                    </label>
+                    <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('achievements', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                  </div>
+                </div>
+                ${renderSharedRichTextField({
+                  id: `ach-item-${idx}`,
+                  value: sanitizeHtmlForPreview(val),
+                  placeholder: "e.g. Exceeded annual sales quota by 135% in FY2024",
+                  onInputExpr: `updateBuilderAchievement(${idx}, this.innerHTML)`,
+                  minHeight: "44px"
+                })}
               </div>
             `;
           }).join("")}</div>`;
@@ -2814,17 +2942,31 @@ function renderBuilderEditorFromState() {
       const awds = resumeBuilderState.awards || [];
       bodyHtml = awds.length === 0
         ? '<p class="text-xs text-muted m-0">No awards added yet.</p>'
-        : `<div class="column-stack gap-2">${awds.map((a, idx) => {
+        : `<div class="column-stack gap-3">${awds.map((a, idx) => {
             const val = typeof a === "string" ? a : (a.text || "");
             const isHid = typeof a === "object" ? !!a.is_hidden : false;
             return `
-              <div class="flex-row align-center gap-2 ${isHid ? "opacity-50" : ""}">
-                <input type="text" value="${escapeHtml(val)}" placeholder="e.g. Employee of the Year 2023" oninput="updateBuilderAward(${idx}, this.value)" style="flex: 1;">
-                <label class="text-xs flex-row align-center gap-1" style="cursor: pointer;">
-                  <input type="checkbox" ${!isHid ? "checked" : ""} onchange="toggleBuilderEntryVisibility('awards', ${idx}, !this.checked)">
-                  <span>Visible</span>
-                </label>
-                <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('awards', ${idx})"><i data-lucide="trash-2"></i></button>
+              <div class="builder-entry-card ${isHid ? "is-hidden-entry" : ""}">
+                <div class="builder-entry-toolbar">
+                  <div class="flex-row align-center gap-1">
+                    <strong class="text-xs">Award #${idx + 1}</strong>
+                    ${isHid ? '<span class="builder-badge-hidden">Hidden from resume</span>' : ''}
+                  </div>
+                  <div class="builder-entry-actions">
+                    <label class="flex-row align-center gap-1 text-xs" style="margin: 0 4px; cursor: pointer;">
+                      <input type="checkbox" ${!isHid ? "checked" : ""} onchange="toggleBuilderEntryVisibility('awards', ${idx}, !this.checked)">
+                      <span>Visible</span>
+                    </label>
+                    <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderItem('awards', ${idx})" title="Delete"><i data-lucide="trash-2"></i></button>
+                  </div>
+                </div>
+                ${renderSharedRichTextField({
+                  id: `awd-item-${idx}`,
+                  value: sanitizeHtmlForPreview(val),
+                  placeholder: "e.g. Employee of the Year 2023",
+                  onInputExpr: `updateBuilderAward(${idx}, this.innerHTML)`,
+                  minHeight: "44px"
+                })}
               </div>
             `;
           }).join("")}</div>`;
@@ -2892,12 +3034,13 @@ function renderBuilderEditorFromState() {
               </div>
               <div class="mt-2">
                 <div class="text-xs text-muted mb-1">Description & Bullet Points:</div>
-                <div class="rich-text-wrapper">
-                  ${renderRichToolbar(`vol-bullets-${idx}`)}
-                  <div class="rich-text-content" id="vol-bullets-${idx}" contenteditable="true"
-                       data-placeholder="Impact, responsibilities, or activities..."
-                       oninput="updateBuilderItemBullets('volunteer', ${idx}, this.innerHTML)">${(v.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
-                </div>
+                ${renderSharedRichTextField({
+                  id: `vol-bullets-${idx}`,
+                  value: (v.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
+                  placeholder: "Impact, responsibilities, or activities...",
+                  onInputExpr: `updateBuilderItemBullets('volunteer', ${idx}, this.innerHTML)`,
+                  minHeight: "70px"
+                })}
               </div>
             </div>
           `).join("")}</div>`;
@@ -2941,12 +3084,13 @@ function renderBuilderEditorFromState() {
               </div>
               <div class="mt-2">
                 <div class="text-xs text-muted mb-1">Impact & Details:</div>
-                <div class="rich-text-wrapper">
-                  ${renderRichToolbar(`lead-bullets-${idx}`)}
-                  <div class="rich-text-content" id="lead-bullets-${idx}" contenteditable="true"
-                       data-placeholder="Achievements, initiatives led, or responsibilities..."
-                       oninput="updateBuilderItemBullets('leadership', ${idx}, this.innerHTML)">${(l.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
-                </div>
+                ${renderSharedRichTextField({
+                  id: `lead-bullets-${idx}`,
+                  value: (l.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
+                  placeholder: "Achievements, initiatives led, or responsibilities...",
+                  onInputExpr: `updateBuilderItemBullets('leadership', ${idx}, this.innerHTML)`,
+                  minHeight: "70px"
+                })}
               </div>
             </div>
           `).join("")}</div>`;
@@ -3045,12 +3189,13 @@ function renderBuilderEditorFromState() {
               </div>
               <div class="mt-2">
                 <div class="text-xs text-muted mb-1">Details & Bullet Points:</div>
-                <div class="rich-text-wrapper">
-                  ${renderRichToolbar(`custom-bullets-${secKey}-${idx}`)}
-                  <div class="rich-text-content" id="custom-bullets-${secKey}-${idx}" contenteditable="true"
-                       data-placeholder="Description or bullet points..."
-                       oninput="updateBuilderItemBullets('custom', ${idx}, this.innerHTML, '${secKey}')">${(it.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join("")}</div>
-                </div>
+                ${renderSharedRichTextField({
+                  id: `custom-bullets-${secKey}-${idx}`,
+                  value: (it.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
+                  placeholder: "Description or bullet points...",
+                  onInputExpr: `updateBuilderItemBullets('custom', ${idx}, this.innerHTML, '${secKey}')`,
+                  minHeight: "70px"
+                })}
               </div>
             </div>
           `).join("")}</div>`;
@@ -3076,12 +3221,12 @@ function renderBuilderEditorFromState() {
             <button class="icon-btn xs text-danger" type="button" onclick="removeBuilderSection('${secKey}')" title="Remove section from resume">
               <i data-lucide="trash-2"></i>
             </button>
-            <button class="icon-btn xs" type="button" onclick="this.closest('.panel').querySelector('.panel-body').classList.toggle('hidden')" title="Toggle section">
-              <i data-lucide="chevron-down"></i>
+            <button class="icon-btn xs sec-toggle-btn" type="button" onclick="toggleBuilderSectionCollapse('${secKey}')" title="${isExpanded ? 'Collapse section' : 'Expand section'}">
+              <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}"></i>
             </button>
           </div>
         </div>
-        <div class="panel-body">
+        <div class="panel-body ${isExpanded ? '' : 'hidden'}">
           ${bodyHtml}
         </div>
       </div>

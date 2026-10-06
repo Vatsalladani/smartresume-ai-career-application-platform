@@ -926,22 +926,15 @@
           </div>
         </div>
 
-        <!-- Fullscreen Preview Modal -->
-        <div id="resumeFullscreenModal" class="modal-backdrop hidden" style="z-index: 10000;">
-          <div class="modal-content" style="max-width: 900px; max-height: 95vh; display: flex; flex-direction: column; padding: 0; background: var(--surface-2, #f8fafc); border-radius: var(--radius-lg, 12px); overflow: hidden;">
-            <div class="p-3 bg-surface flex-row justify-between align-center border-bottom">
-              <div class="flex-row align-center gap-2">
-                <i data-lucide="file-text" style="color: var(--primary);"></i>
-                <strong id="fullscreenModalTitle">Document Preview</strong>
-              </div>
-              <div class="flex-row align-center gap-2">
-                <button class="secondary-btn sm" type="button" onclick="window.print();"><i data-lucide="printer"></i><span>Print</span></button>
-                <button class="primary-btn sm" type="button" id="fullscreenDownloadPdfBtn"><i data-lucide="download"></i><span>Download PDF</span></button>
-                <button class="icon-btn sm" type="button" onclick="$('#resumeFullscreenModal').classList.add('hidden')"><i data-lucide="x"></i></button>
-              </div>
-            </div>
-            <div class="p-4" style="overflow-y: auto; flex: 1; display: flex; justify-content: center; background: #e2e8f0;">
-              <div id="fullscreenCanvasContainer" style="width: 100%; max-width: 794px;"></div>
+        <!-- Dedicated Fullscreen Resume Viewing Mode -->
+        <div id="resumeFullscreenModal" class="resume-fullscreen-overlay hidden">
+          <button id="fullscreenCloseBtn" class="fullscreen-close-pill" type="button" onclick="closeActiveResumePreview()" title="Close fullscreen preview (Esc)">
+            <i data-lucide="x"></i>
+            <span>Close</span>
+          </button>
+          <div class="resume-fullscreen-scroll-area" onclick="if (event.target === this) closeActiveResumePreview();">
+            <div id="fullscreenCanvasContainer" class="resume-fullscreen-sheet-wrapper">
+              <!-- Cloned live preview canvas sheet rendered here -->
             </div>
           </div>
         </div>
