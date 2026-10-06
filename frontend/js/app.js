@@ -1029,9 +1029,26 @@ function setButtonLoading(button, isLoading, text) {
 async function loadApp() {
   try {
     showApp();
-    state.user = await API.request("/users/profile");
+    try {
+      state.user = await API.request("/users/profile");
+    } catch (userErr) {
+      if (userErr.status === 401 || userErr.status === 403) {
+        API.clearSession();
+        toast(userErr.message || "Session expired. Please log in again.", "error");
+        showAuth("login");
+        return;
+      }
+      console.error("Failed to fetch user profile during bootstrap:", userErr);
+      try {
+        const stored = localStorage.getItem("user");
+        if (stored) state.user = JSON.parse(stored);
+      } catch (_) {}
+      toast(userErr.message || "Failed to sync profile. Running in offline/degraded mode.", "warning");
+    }
+
     renderUserBar();
-    await Promise.all([
+
+    const results = await Promise.allSettled([
       loadMasterProfile(),
       loadJobs(),
       loadApplications(),
@@ -1042,15 +1059,27 @@ async function loadApp() {
       loadTemplatesCatalogOnly(),
       loadResumes(),
     ]);
+
+    results.forEach((res, idx) => {
+      if (res.status === "rejected") {
+        console.warn(`Bootstrap resource #${idx} failed to load:`, res.reason);
+      }
+    });
+
     renderDashboard();
     drawIcons();
     const initialTab = ROUTES[window.location.hash] || "dashboard";
     navigateToTab(initialTab);
     checkAndShowOnboarding();
   } catch (error) {
-    API.clearSession();
-    toast(error.message, "error");
-    showAuth();
+    console.error("Critical error during loadApp bootstrap:", error);
+    if (error.status === 401 || error.status === 403) {
+      API.clearSession();
+      toast(error.message, "error");
+      showAuth("login");
+    } else {
+      toast("Some application data could not be loaded. Please refresh if needed.", "warning");
+    }
   }
 }
 
