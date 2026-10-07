@@ -2100,11 +2100,11 @@
           </div>
         </div>
 
-        <!-- 3. PLANS -->
-        <h3 class="section-heading mb-3"><i data-lucide="layers"></i> Plans</h3>
+        <!-- 3. AVAILABLE PLANS -->
+        <h3 class="section-heading mb-3"><i data-lucide="layers"></i> Available Plans</h3>
         <div class="pricing-grid mb-4">
           <!-- Free Plan -->
-          <div class="pricing-card">
+          <div class="pricing-card" id="pricingCardFree">
             <h4>Free Plan</h4>
             <div class="price-tag" id="priceFreePlan">₹0 <span>/ month</span></div>
             <p class="plan-desc">Essential tools to experience evidence-grounded resume matching.</p>
@@ -2118,7 +2118,7 @@
           </div>
 
           <!-- 7-Day Pro Trial (₹0) -->
-          <div class="pricing-card trial-card">
+          <div class="pricing-card trial-card" id="pricingCardTrial">
             <div class="featured-badge" style="background: var(--success); color: white;">ZERO RISK</div>
             <h4>7-Day Pro Trial</h4>
             <div class="price-tag">₹0 <span>/ 7 days</span></div>
@@ -2134,8 +2134,8 @@
           </div>
 
           <!-- Pro Monthly -->
-          <div class="pricing-card featured">
-            <div class="featured-badge">MOST POPULAR</div>
+          <div class="pricing-card" id="pricingCardMonthly">
+            <div class="featured-badge">FLEXIBLE</div>
             <h4>Pro Monthly</h4>
             <div class="price-tag" id="priceProMonthly">₹49 <span>/ month</span></div>
             <p class="plan-desc">For active job applicants who want tailored resumes and interview prep for every role.</p>
@@ -2150,60 +2150,47 @@
           </div>
 
           <!-- Pro Annual -->
-          <div class="pricing-card">
+          <div class="pricing-card" id="pricingCardAnnual">
+            <div class="featured-badge" style="background: var(--primary);">SAVE 32%</div>
             <h4>Pro Annual</h4>
             <div class="price-tag" id="priceProAnnual">₹399 <span>/ year</span></div>
-            <p class="plan-desc">Save ~32% with full-year career progression and maximum limits.</p>
+            <p class="plan-desc">Save ₹189/yr (effective ₹33.25/mo) with full-year career progression and maximum limits.</p>
             <ul class="plan-features">
               <li><i data-lucide="check"></i> <strong>1,000</strong> Job Fit Analyses</li>
               <li><i data-lucide="check"></i> <strong>500</strong> Tailored Versions</li>
               <li><i data-lucide="check"></i> <strong>500</strong> Exports</li>
               <li><i data-lucide="check"></i> Priority AI Processing</li>
             </ul>
-            <button id="upgradeAnnualBtn" class="secondary-btn w-full mt-auto" type="button">Get Pro Annual</button>
+            <button id="upgradeAnnualBtn" class="secondary-btn w-full mt-auto" type="button"><i data-lucide="crown"></i><span>Get Pro Annual</span></button>
           </div>
         </div>
 
-        <!-- 4. ONE-TIME OPTIONS -->
-        <h3 class="section-heading mb-3"><i data-lucide="file-check"></i> One-Time Options</h3>
-        <div class="grid two mb-4">
-          <!-- Standalone One-Time Export -->
-          <div class="panel one-time-panel">
-            <div class="one-time-header">
-              <div>
-                <h4>One-Time Resume Export</h4>
-                <p class="text-sm text-muted">Pay once for one export. Does not start a subscription. Does not create a recurring mandate.</p>
-              </div>
-              <div class="price-tag-sm" id="priceSingleExport">₹1</div>
+        <!-- 4. PAYMENT METHOD & PAYMENT HISTORY -->
+        <div class="panel mb-4">
+          <div class="panel-head flex-between align-center">
+            <div>
+              <h3><i data-lucide="receipt"></i> Payment History & Invoices</h3>
+              <p class="text-xs text-muted mb-0">Record of verified transactions, active subscriptions, and invoices.</p>
             </div>
-            <ul class="clean-list text-sm mt-3 mb-3">
-              <li><i data-lucide="check"></i> 1 High-Resolution Resume Export (PDF or Word DOCX)</li>
-              <li><i data-lucide="check"></i> Access to your chosen template formatting</li>
-              <li><i data-lucide="check"></i> <strong>No recurring charges</strong> ever</li>
-            </ul>
-            <button id="checkoutSingleExportBtn" class="primary-btn sm" type="button"><i data-lucide="download"></i><span>Purchase 1 Export (<span class="single-price-inline">₹1</span>)</span></button>
+            <button id="refreshPaymentHistoryBtn" class="icon-btn sm" type="button" title="Refresh transactions"><i data-lucide="refresh-cw"></i></button>
           </div>
-
-          <!-- Booster Packs -->
-          <div class="panel">
-            <h4>Emergency Booster Packs</h4>
-            <p class="text-sm text-muted">Need additional quota this month without changing your plan?</p>
-            <div class="booster-list mt-3">
-              <div class="booster-row">
-                <div>
-                  <strong>Quick Apply Pack</strong>
-                  <span class="text-xs text-muted d-block">5 Fits + 3 Versions + 2 Exports</span>
-                </div>
-                <button class="secondary-btn xs" onclick="handleBoosterPack('pack_10')">₹29</button>
-              </div>
-              <div class="booster-row mt-2">
-                <div>
-                  <strong>Weekend Sprint</strong>
-                  <span class="text-xs text-muted d-block">15 Fits + 8 Versions + 5 Exports</span>
-                </div>
-                <button class="secondary-btn xs" onclick="handleBoosterPack('pack_20')">₹49</button>
-              </div>
-            </div>
+          <div class="table-wrap mt-3">
+            <table id="paymentHistoryTable" class="clean-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                  <th>Reference ID</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="paymentHistoryTbody">
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-3">No payment events recorded.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -2268,30 +2255,53 @@
           </div>
         </div>
 
-
-        <!-- 6. PAYMENT HISTORY -->
-        <div class="panel mb-4">
-          <div class="panel-head">
-            <h3><i data-lucide="receipt"></i> Payment History</h3>
-            <button id="refreshPaymentHistoryBtn" class="icon-btn" type="button" title="Refresh transactions"><i data-lucide="refresh-cw"></i></button>
+        <!-- 6. ADDITIONAL USAGE CREDITS -->
+        <h3 class="section-heading mb-3"><i data-lucide="file-check"></i> Additional Usage & Credits</h3>
+        <div class="grid two mb-4">
+          <!-- Standalone One-Time Export -->
+          <div class="panel one-time-panel">
+            <div class="one-time-header">
+              <div>
+                <h4>One-Time Resume Export</h4>
+                <p class="text-sm text-muted">Pay once for one export. Does not start a subscription. Does not create a recurring mandate.</p>
+              </div>
+              <div class="price-tag-sm" id="priceSingleExport">₹1</div>
+            </div>
+            <ul class="clean-list text-sm mt-3 mb-3">
+              <li><i data-lucide="check"></i> 1 High-Resolution Resume Export (PDF or Word DOCX)</li>
+              <li><i data-lucide="check"></i> Access to your chosen template formatting</li>
+              <li><i data-lucide="check"></i> <strong>No recurring charges</strong> ever</li>
+            </ul>
+            <button id="checkoutSingleExportBtn" class="primary-btn sm" type="button"><i data-lucide="download"></i><span>Purchase 1 Export (<span class="single-price-inline">₹1</span>)</span></button>
           </div>
-          <div class="table-wrap">
-            <table id="paymentHistoryTable" class="clean-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Amount</th>
-                  <th>Reference ID</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="paymentHistoryTbody">
-                <tr>
-                  <td colspan="5" class="text-center text-muted py-3">No payment events recorded.</td>
-                </tr>
-              </tbody>
-            </table>
+
+          <!-- Additional Usage Packs -->
+          <div class="panel">
+            <h4>Additional Usage Credits</h4>
+            <p class="text-sm text-muted">Need extra quota this month without changing your subscription plan?</p>
+            <div class="booster-list mt-3">
+              <div class="booster-row">
+                <div>
+                  <strong>Quick Boost (Pack 10)</strong>
+                  <span class="text-xs text-muted d-block">5 Fits + 3 Versions + 2 Exports</span>
+                </div>
+                <button class="secondary-btn xs" type="button" onclick="handleBoosterPack('pack_10')">₹29</button>
+              </div>
+              <div class="booster-row mt-2">
+                <div>
+                  <strong>Standard Boost (Pack 20)</strong>
+                  <span class="text-xs text-muted d-block">15 Fits + 8 Versions + 5 Exports</span>
+                </div>
+                <button class="secondary-btn xs" type="button" onclick="handleBoosterPack('pack_20')">₹49</button>
+              </div>
+              <div class="booster-row mt-2">
+                <div>
+                  <strong>Power Boost (Pack 50)</strong>
+                  <span class="text-xs text-muted d-block">40 Fits + 25 Versions + 15 Exports</span>
+                </div>
+                <button class="secondary-btn xs" type="button" onclick="handleBoosterPack('pack_50')">₹99</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -3472,25 +3482,25 @@
             <div>
               <span class="text-xs font-semibold text-muted text-uppercase">Monthly Plan</span>
               <div class="my-2">
-                <span class="text-2xl font-bold">₹599</span>
+                <span class="text-2xl font-bold">₹49</span>
                 <span class="text-xs text-muted">/ month</span>
               </div>
               <p class="text-xs text-muted mb-3">Billed monthly · Cancel anytime with 1 click</p>
             </div>
-            <button id="upgradeModalMonthlyBtn" class="primary-btn sm w-full" type="button">Start Pro Monthly</button>
+            <button id="upgradeModalMonthlyBtn" class="primary-btn sm w-full" type="button">Start Pro Monthly (₹49)</button>
           </div>
 
           <div class="panel p-3 text-center flex-col justify-between" style="border: 2px solid var(--primary); border-radius: var(--radius-md); background: var(--surface-2); position: relative;">
-            <span class="tier-badge pro" style="position: absolute; top: -10px; right: 12px;">SAVE 30%</span>
+            <span class="tier-badge pro" style="position: absolute; top: -10px; right: 12px;">SAVE 32%</span>
             <div>
               <span class="text-xs font-semibold text-primary text-uppercase">Annual Plan</span>
               <div class="my-2">
-                <span class="text-2xl font-bold">₹4,999</span>
+                <span class="text-2xl font-bold">₹399</span>
                 <span class="text-xs text-muted">/ year</span>
               </div>
-              <p class="text-xs text-muted mb-3">Effective ₹416/mo · Billed annually</p>
+              <p class="text-xs text-muted mb-3">Save ₹189/yr · Effective ₹33.25/mo</p>
             </div>
-            <button id="upgradeModalAnnualBtn" class="primary-btn sm w-full" type="button">Choose Pro Annual</button>
+            <button id="upgradeModalAnnualBtn" class="primary-btn sm w-full" type="button">Choose Pro Annual (₹399)</button>
           </div>
         </div>
 

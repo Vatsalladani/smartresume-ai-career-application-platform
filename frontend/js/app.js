@@ -8298,7 +8298,7 @@ async function handleUpgrade(planKey) {
       currency: order.currency,
       order_id: order.order_id,
       name: "SmartResume.ai",
-      description: planKey === "PRO_ANNUAL" ? "Annual Power Plan" : "Pro Monthly Plan",
+      description: planKey === "PRO_ANNUAL" ? "Pro Annual Plan" : (planKey === "PRO_MONTHLY" ? "Pro Monthly Plan" : "Additional Usage Credits"),
       handler: async (response) => {
         try {
           await API.request("/payments/verify", {
@@ -8317,9 +8317,12 @@ async function handleUpgrade(planKey) {
           await loadPaymentHistory();
           renderDashboard();
         } catch (err) {
-          toast(err.message, "error");
+          toast(err.message || "Payment verification failed. Please try again.", "error");
         }
       },
+    });
+    rzp.on("payment.failed", function () {
+      toast("Payment could not be completed. Please try again.", "error");
     });
     rzp.open();
   } catch (error) {
@@ -8527,39 +8530,88 @@ function renderBillingSummary(data) {
     }
   }
 
+  // Update pricing cards is-current and badge
+  const pricingCards = [
+    $("#pricingCardFree"),
+    $("#pricingCardTrial"),
+    $("#pricingCardMonthly"),
+    $("#pricingCardAnnual"),
+  ];
+
+  pricingCards.forEach((card) => {
+    if (!card) return;
+    card.classList.remove("is-current", "is-selected");
+    card.removeAttribute("aria-current");
+    card.querySelector(".pricing-card-current-badge")?.remove();
+  });
+
+  let activeCard = null;
+  if (sub.is_trial || planName === "PRO_TRIAL") {
+    activeCard = $("#pricingCardTrial");
+  } else if (planName === "PRO_ANNUAL" && subStatus === "ACTIVE") {
+    activeCard = $("#pricingCardAnnual");
+  } else if ((planName === "PRO_MONTHLY" || planName === "PRO") && subStatus === "ACTIVE") {
+    activeCard = $("#pricingCardMonthly");
+  } else if ((planName === "FREE" && !sub.is_trial) || subStatus === "EXPIRED" || subStatus === "CANCELLED") {
+    activeCard = $("#pricingCardFree");
+  }
+
+  if (activeCard) {
+    activeCard.classList.add("is-current", "is-selected");
+    activeCard.setAttribute("aria-current", "true");
+    const badge = document.createElement("div");
+    badge.className = "pricing-card-current-badge";
+    badge.innerHTML = `<i data-lucide="check" style="width:12px;height:12px;"></i><span>Current Plan</span>`;
+    activeCard.appendChild(badge);
+  }
+
   // Active Plan Buttons toggle
   if ($("#freePlanBtn")) {
-    $("#freePlanBtn").textContent = (planName === "FREE" && !sub.is_trial) ? "Current Active Plan" : "Free Plan";
-    $("#freePlanBtn").disabled = (planName === "FREE" && !sub.is_trial);
+    const isFreeActive = (planName === "FREE" && !sub.is_trial) || subStatus === "EXPIRED" || subStatus === "CANCELLED";
+    $("#freePlanBtn").textContent = isFreeActive ? "Current Plan" : "Free Plan";
+    $("#freePlanBtn").disabled = isFreeActive;
+    if (isFreeActive) $("#freePlanBtn").setAttribute("aria-current", "true");
+    else $("#freePlanBtn").removeAttribute("aria-current");
   }
   if ($("#startTrialBtn")) {
     if (sub.is_trial || planName === "PRO_TRIAL") {
       $("#startTrialBtn").disabled = true;
-      $("#startTrialBtn").innerHTML = `<i data-lucide="check"></i><span>Trial Active</span>`;
-    } else if (planName !== "FREE") {
+      $("#startTrialBtn").innerHTML = `<i data-lucide="check"></i><span>Current Plan (Trial)</span>`;
+      $("#startTrialBtn").setAttribute("aria-current", "true");
+    } else if (planName !== "FREE" && subStatus === "ACTIVE") {
       $("#startTrialBtn").disabled = true;
       $("#startTrialBtn").innerHTML = `<span>Included in Pro</span>`;
+      $("#startTrialBtn").removeAttribute("aria-current");
     } else {
       $("#startTrialBtn").disabled = false;
       $("#startTrialBtn").innerHTML = `<i data-lucide="sparkles"></i><span>Start 7-Day Pro Trial (₹0)</span>`;
+      $("#startTrialBtn").removeAttribute("aria-current");
     }
   }
   if ($("#upgradeProBtn")) {
     if (planName === "PRO_MONTHLY" && subStatus === "ACTIVE") {
       $("#upgradeProBtn").disabled = true;
-      $("#upgradeProBtn").textContent = "Current Active Plan";
+      $("#upgradeProBtn").textContent = "Current Plan";
+      $("#upgradeProBtn").setAttribute("aria-current", "true");
     } else {
       $("#upgradeProBtn").disabled = false;
       $("#upgradeProBtn").innerHTML = `<i data-lucide="zap"></i><span>Upgrade to Pro</span>`;
+      $("#upgradeProBtn").removeAttribute("aria-current");
     }
   }
   if ($("#upgradeAnnualBtn")) {
     if (planName === "PRO_ANNUAL" && subStatus === "ACTIVE") {
       $("#upgradeAnnualBtn").disabled = true;
-      $("#upgradeAnnualBtn").textContent = "Current Active Plan";
+      $("#upgradeAnnualBtn").textContent = "Current Plan";
+      $("#upgradeAnnualBtn").setAttribute("aria-current", "true");
+    } else if (planName === "PRO_MONTHLY" && subStatus === "ACTIVE") {
+      $("#upgradeAnnualBtn").disabled = false;
+      $("#upgradeAnnualBtn").innerHTML = `<i data-lucide="crown"></i><span>Switch to Annual (Save 32%)</span>`;
+      $("#upgradeAnnualBtn").removeAttribute("aria-current");
     } else {
       $("#upgradeAnnualBtn").disabled = false;
-      $("#upgradeAnnualBtn").textContent = "Get Pro Annual";
+      $("#upgradeAnnualBtn").innerHTML = `<i data-lucide="crown"></i><span>Get Pro Annual</span>`;
+      $("#upgradeAnnualBtn").removeAttribute("aria-current");
     }
   }
 
@@ -11148,14 +11200,12 @@ function wireTemplates() {
 
   $("#upgradeModalMonthlyBtn")?.addEventListener("click", () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
-    navigateToTab("billing");
-    toast("Select Pro Monthly (₹599/mo) to unlock all premium templates.");
+    handleUpgrade("PRO_MONTHLY");
   });
 
   $("#upgradeModalAnnualBtn")?.addEventListener("click", () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
-    navigateToTab("billing");
-    toast("Select Pro Annual (₹4,999/yr — Save 30%) to unlock all premium templates.");
+    handleUpgrade("PRO_ANNUAL");
   });
 
   $("#upgradeModalActionBtn")?.addEventListener("click", async () => {
