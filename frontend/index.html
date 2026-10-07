@@ -867,59 +867,6 @@
             </button>
           </div>
         </div>
-
-        <!-- Target Market & Purpose Context Ribbon -->
-        <div class="builder-context-bar flex-row align-center justify-between flex-wrap gap-2 mb-3">
-          <div class="flex-row align-center gap-2 flex-wrap">
-            <span class="text-xs text-muted font-medium">Target Context:</span>
-            <select id="builderMarketSelect" class="form-select xs builder-market-select" title="Target Market Guidance">
-              <option value="GLOBAL">Market: Global</option>
-              <option value="US">Market: United States (US)</option>
-              <option value="CA">Market: Canada (CA)</option>
-              <option value="UK">Market: United Kingdom (UK)</option>
-              <option value="AU">Market: Australia (AU)</option>
-              <option value="NZ">Market: New Zealand (NZ)</option>
-              <option value="DE">Market: Germany (DE)</option>
-              <option value="EU">Market: Europe (EU)</option>
-              <option value="SG">Market: Singapore (SG)</option>
-              <option value="AE">Market: UAE</option>
-              <option value="SA">Market: Saudi Arabia / GCC</option>
-              <option value="IN">Market: India (IN)</option>
-            </select>
-            <select id="builderPurposeSelect" class="form-select xs builder-purpose-select" title="Document Purpose">
-              <option value="Professional Resume">Professional Resume</option>
-              <option value="Professional CV">Professional CV</option>
-              <option value="Academic CV">Academic CV</option>
-            </select>
-            <select id="builderAtsModeSelect" class="form-select xs builder-ats-select" title="ATS Safety Mode">
-              <option value="ATS-Safe">ATS-Safe</option>
-              <option value="Balanced">Balanced</option>
-              <option value="Visual">Visual</option>
-            </select>
-            <span id="builderResumeTargetChip" class="badge-sub">General</span>
-          </div>
-          <button id="builderToggleMarketGuideBtn" class="ghost-btn xs" type="button" title="View Market & ATS Guidance">
-            <i data-lucide="globe"></i><span>Market Guidance</span>
-          </button>
-        </div>
-
-        <!-- Location Market Recommendation Toast -->
-        <div id="builderLocationRecommendToast" class="location-recommend-toast hidden mb-3">
-          <div class="flex-row align-center gap-2">
-            <i data-lucide="map-pin" style="width: 16px; height: 16px; color: var(--primary);"></i>
-            <span id="builderLocationRecommendText" class="text-xs font-semibold">Recommended Market: Canada</span>
-          </div>
-          <div class="flex-row align-center gap-2">
-            <button class="primary-btn xs" type="button" id="builderApplyLocationMarketBtn">Apply Market Guidance</button>
-            <button class="ghost-btn xs" type="button" id="builderDismissLocationMarketBtn">Dismiss</button>
-          </div>
-        </div>
-
-        <!-- Market & ATS Guidance Drawer -->
-        <div id="builderMarketGuidanceDrawer" class="market-guidance-drawer hidden mb-3">
-          <!-- Populated dynamically via renderMarketGuidance() -->
-        </div>
-
         <!-- Progressive Disclosure Sub-Pills -->
         <div class="subnav-pills-bar">
           <button class="subnav-pill active" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Editor</span></button>
@@ -1289,26 +1236,24 @@
                 <span class="text-xs font-bold uppercase tracking-wider text-muted">Resume Sections</span>
               </div>
               <div class="flex-row align-center gap-2">
-                <select id="builderAddSectionSelect" class="form-select sm" style="width: 160px; font-weight: 600; color: var(--primary); border-color: var(--primary-soft);">
+                <select id="builderAddSectionSelect" class="form-select sm" style="width: 175px; font-weight: 600; color: var(--primary); border-color: var(--primary-soft);">
                   <option value="" disabled selected>+ Add Section</option>
-                  <optgroup label="Core & Common">
+                  <optgroup label="Most Used">
                     <option value="summary">Summary</option>
                     <option value="skills">Skills</option>
                     <option value="experiences">Work Experience</option>
                     <option value="education">Education</option>
                     <option value="projects">Key Projects</option>
-                    <option value="certifications">Certifications & Licenses</option>
-                    <option value="achievements">Achievements</option>
-                    <option value="awards">Awards & Honors</option>
-                    <option value="languages">Languages</option>
-                    <option value="courses">Courses & Training</option>
                   </optgroup>
-                  <optgroup label="Additional">
+                  <optgroup label="More Sections">
+                    <option value="certifications">Certifications & Licenses</option>
+                    <option value="awards">Awards & Honors</option>
+                    <option value="achievements">Achievements</option>
+                    <option value="languages">Languages</option>
                     <option value="volunteer">Volunteer Experience</option>
                     <option value="leadership">Leadership & Activities</option>
                     <option value="publications">Publications & Research</option>
-                  </optgroup>
-                  <optgroup label="Universal Custom">
+                    <option value="courses">Courses & Training</option>
                     <option value="custom_new">+ Custom Section...</option>
                   </optgroup>
                 </select>

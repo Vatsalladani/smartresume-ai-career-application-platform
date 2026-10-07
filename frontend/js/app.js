@@ -4346,7 +4346,6 @@ window.removeBuilderSection = function(secKey) {
   }
 };
 
-// Repeatable entry controls
 window.addBuilderEntry = function(collection, customId) {
   if (collection === "custom" && customId) {
     builderSectionUiState[customId] = true;
@@ -4357,18 +4356,23 @@ window.addBuilderEntry = function(collection, customId) {
     }
   } else if (collection === "experiences") {
     builderSectionUiState["experiences"] = true;
+    if (!resumeBuilderState.experiences) resumeBuilderState.experiences = [];
     resumeBuilderState.experiences.push({ title: "", company: "", location: "", start_date: "", end_date: "", is_current: false, bullets: [""], is_hidden: false });
   } else if (collection === "projects") {
     builderSectionUiState["projects"] = true;
+    if (!resumeBuilderState.projects) resumeBuilderState.projects = [];
     resumeBuilderState.projects.push({ title: "", technologies: "", url: "", start_date: "", end_date: "", description: "", bullets: [""], is_hidden: false });
   } else if (collection === "education") {
     builderSectionUiState["education"] = true;
+    if (!resumeBuilderState.education) resumeBuilderState.education = [];
     resumeBuilderState.education.push({ institution: "", degree: "", field_of_study: "", start_date: "", end_date: "", grade: "", location: "", is_hidden: false });
   } else if (collection === "certifications") {
     builderSectionUiState["certifications"] = true;
+    if (!resumeBuilderState.certifications) resumeBuilderState.certifications = [];
     resumeBuilderState.certifications.push({ name: "", issuer: "", date: "", is_hidden: false });
   } else if (collection === "achievements") {
     builderSectionUiState["achievements"] = true;
+    if (!resumeBuilderState.achievements) resumeBuilderState.achievements = [];
     resumeBuilderState.achievements.push({ text: "", is_hidden: false });
   } else if (collection === "awards") {
     builderSectionUiState["awards"] = true;
@@ -4376,6 +4380,7 @@ window.addBuilderEntry = function(collection, customId) {
     resumeBuilderState.awards.push({ text: "", is_hidden: false });
   } else if (collection === "languages") {
     builderSectionUiState["languages"] = true;
+    if (!resumeBuilderState.languages) resumeBuilderState.languages = [];
     resumeBuilderState.languages.push({ language: "", proficiency: "Proficient", is_hidden: false });
   } else if (collection === "volunteer") {
     builderSectionUiState["volunteer"] = true;
@@ -4606,12 +4611,12 @@ function renderBuilderEditorFromState() {
   const container = $("#builderDynamicSectionsList");
   if (!container) return;
 
-  // Preserve live DOM state of mounted sections before re-rendering
+  // Preserve live DOM state of mounted sections if not already set in state
   const existingPanels = container.querySelectorAll(".panel[id^='secEditor-']");
   existingPanels.forEach(panel => {
     const sKey = panel.id.replace("secEditor-", "");
     const body = panel.querySelector(".panel-body");
-    if (body) {
+    if (body && builderSectionUiState[sKey] === undefined) {
       builderSectionUiState[sKey] = !body.classList.contains("hidden");
     }
   });
