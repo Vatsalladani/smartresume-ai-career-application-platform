@@ -2297,47 +2297,215 @@
       </section>
 
       <!-- TAB 6: SETTINGS -->
+      <!-- TAB 6: SETTINGS -->
       <section id="tabSettings" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
             <h2>Account Settings</h2>
-            <p>Manage account security credentials, personal profile details, and global preferences.</p>
+            <p>Manage account security credentials, personal preferences, notifications, and career data privacy.</p>
           </div>
           <div class="view-header-actions">
+            <button id="exportMyDataBtnTop" class="secondary-btn sm" type="button" onclick="exportUserCareerData()"><i data-lucide="download"></i><span>Export My Data</span></button>
             <button id="resetEducationalGuidesBtn" class="secondary-btn sm" type="button"><i data-lucide="help-circle"></i><span>Show Educational Tips Again</span></button>
           </div>
         </div>
 
-        <div class="grid two">
-          <form id="profileForm" class="panel">
-            <h3><i data-lucide="user"></i> Account Profile</h3>
-            <label>Full Name
-              <input id="profileName" required placeholder="Your full name">
-            </label>
-            <label>Email Address
-              <input id="profileEmail" type="email" disabled>
-            </label>
-            <button class="primary-btn mt-3" type="submit"><i data-lucide="save"></i><span>Save Profile</span></button>
-          </form>
+        <div class="grid two gap-4">
+          <!-- 1. Account Profile -->
+          <div class="panel">
+            <div class="panel-head flex-between align-center">
+              <h3><i data-lucide="user"></i> Account Profile</h3>
+              <span id="settingsAccountPlanBadge" class="badge-sub badge-primary font-bold">Free Plan</span>
+            </div>
+            <form id="profileForm" class="column-stack gap-3">
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="profileName">Full Name</label>
+                <input id="profileName" class="form-control" required placeholder="Your full name">
+              </div>
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="profileEmail">Email Address</label>
+                <input id="profileEmail" class="form-control" type="email" disabled style="background: var(--surface-2); cursor: not-allowed;">
+                <span class="text-xs text-muted mt-1 block">Email is associated with your account ID and cannot be changed directly.</span>
+              </div>
+              <div class="flex-between align-center text-xs text-muted pt-2 border-t">
+                <span>Member Since: <strong id="settingsMemberSince">Active Member</strong></span>
+                <span id="settingsAccountRole">Role: User</span>
+              </div>
+              <button class="primary-btn sm align-self-start" type="submit" id="saveProfileBtn"><i data-lucide="save"></i><span>Save Profile</span></button>
+            </form>
+          </div>
 
-          <form id="passwordForm" class="panel">
-            <h3><i data-lucide="lock"></i> Change Password</h3>
-            <label>Current Password
-              <input id="currentPassword" type="password" required placeholder="••••••••">
-            </label>
-            <label>New Password
-              <input id="newPassword" type="password" required minlength="8" placeholder="••••••••">
-            </label>
-            <button class="primary-btn mt-3" type="submit"><i data-lucide="key"></i><span>Update Password</span></button>
-          </form>
+          <!-- 2. Security & Credentials -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="lock"></i> Security & Authentication</h3>
+            </div>
+            <!-- Google OAuth Banner (Shown for OAuth users) -->
+            <div id="settingsOAuthCard" class="panel p-3 mb-3 hidden" style="background: var(--surface-2); border-left: 3px solid var(--success); border-radius: var(--radius-sm);">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="shield-check" style="color: var(--success); width: 18px; height: 18px;"></i>
+                <strong class="text-sm">Google Sign-In Active</strong>
+              </div>
+              <p class="text-xs text-muted mb-0">Your account is secured via Google OAuth. Password changes, two-factor authentication, and login credentials are managed through your Google Account.</p>
+            </div>
 
-          <div class="panel span-2 mt-3">
-            <h3><i data-lucide="shield"></i> Data Privacy & Security</h3>
-            <p class="text-sm text-muted">Your career facts and evidence items are encrypted at rest and never shared with third parties or used to train public models.</p>
-            <div class="flex gap-3 mt-3">
-              <span class="badge-status active"><i data-lucide="lock"></i> End-to-End Privacy</span>
-              <span class="badge-status active"><i data-lucide="check"></i> GDPR & CCPA Ready</span>
-              <span class="badge-status active"><i data-lucide="globe"></i> Contextual Market Intelligence</span>
+            <!-- Standard Password Change Form -->
+            <form id="passwordForm" class="column-stack gap-3">
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="currentPassword">Current Password</label>
+                <input id="currentPassword" class="form-control" type="password" required placeholder="••••••••">
+              </div>
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="newPassword">New Password (8+ characters)</label>
+                <input id="newPassword" class="form-control" type="password" required minlength="8" placeholder="••••••••">
+              </div>
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="confirmPassword">Confirm New Password</label>
+                <input id="confirmPassword" class="form-control" type="password" required minlength="8" placeholder="••••••••">
+              </div>
+              <button class="primary-btn sm align-self-start" type="submit" id="updatePasswordBtn"><i data-lucide="key"></i><span>Update Password</span></button>
+            </form>
+          </div>
+
+          <!-- 3. Notification Preferences -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="bell"></i> Notification Preferences</h3>
+            </div>
+            <div class="column-stack gap-3">
+              <label class="flex-row align-center justify-between pointer p-2 rounded bg-surface border">
+                <div>
+                  <strong class="text-xs block">Resume Score & Health Updates</strong>
+                  <span class="text-xs text-muted">Receive alerts when resume evidence benchmarks improve</span>
+                </div>
+                <input type="checkbox" id="notifScoreUpdates" checked onchange="saveNotificationPreferences()">
+              </label>
+
+              <label class="flex-row align-center justify-between pointer p-2 rounded bg-surface border">
+                <div>
+                  <strong class="text-xs block">Application Follow-up Reminders</strong>
+                  <span class="text-xs text-muted">Weekly prompts to follow up on pending job applications</span>
+                </div>
+                <input type="checkbox" id="notifAppReminders" checked onchange="saveNotificationPreferences()">
+              </label>
+
+              <label class="flex-row align-center justify-between pointer p-2 rounded bg-surface border">
+                <div>
+                  <strong class="text-xs block">Interview Simulator Coach Tips</strong>
+                  <span class="text-xs text-muted">Personalized answer tips calibrated against your target roles</span>
+                </div>
+                <input type="checkbox" id="notifInterviewTips" checked onchange="saveNotificationPreferences()">
+              </label>
+
+              <label class="flex-row align-center justify-between pointer p-2 rounded bg-surface border">
+                <div>
+                  <strong class="text-xs block">Product Updates & ATS Templates</strong>
+                  <span class="text-xs text-muted">Notifications about new template releases and platform improvements</span>
+                </div>
+                <input type="checkbox" id="notifProductNews" checked onchange="saveNotificationPreferences()">
+              </label>
+            </div>
+          </div>
+
+          <!-- 4. Application & Editor Preferences -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3><i data-lucide="sliders"></i> Application Preferences</h3>
+            </div>
+            <div class="column-stack gap-3">
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="prefDefaultPageSize">Default Resume Paper Format</label>
+                <select id="prefDefaultPageSize" class="form-control text-sm" onchange="saveAppPreferences()">
+                  <option value="a4" selected>A4 (210 x 297 mm) — Global & International Standard</option>
+                  <option value="letter">US Letter (8.5 x 11 in) — North American Standard</option>
+                </select>
+                <span class="text-xs text-muted mt-1 block">New resumes will default to this paper size. You can always change it per resume in the builder.</span>
+              </div>
+
+              <div>
+                <label class="form-label text-xs font-semibold mb-1" for="prefDefaultFont">Default Typography</label>
+                <select id="prefDefaultFont" class="form-control text-sm" onchange="saveAppPreferences()">
+                  <option value="inter" selected>Inter (Clean Modern Sans-Serif)</option>
+                  <option value="arial">Arial (Classic ATS Standard)</option>
+                  <option value="calibri">Calibri (Corporate Clean)</option>
+                  <option value="georgia">Georgia (Executive Serif)</option>
+                  <option value="times">Times New Roman (Academic Serif)</option>
+                  <option value="roboto">Roboto (Tech Standard)</option>
+                </select>
+              </div>
+
+              <div class="pt-2 border-t">
+                <label class="flex-row align-center justify-between pointer">
+                  <div>
+                    <strong class="text-xs block">Compact Mode UI</strong>
+                    <span class="text-xs text-muted">Use high-density padding across editor panels</span>
+                  </div>
+                  <input type="checkbox" id="prefCompactMode" onchange="saveAppPreferences()">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Data Privacy & Export (Full Span) -->
+          <div class="panel span-2">
+            <div class="panel-head flex-between align-center">
+              <div>
+                <h3><i data-lucide="shield-check"></i> Data Privacy & Ownership</h3>
+                <p class="text-xs text-muted mb-0">Your career data belongs to you. Export your complete archive anytime in JSON format.</p>
+              </div>
+              <button class="primary-btn sm" type="button" id="exportMyDataBtn" onclick="exportUserCareerData()">
+                <i data-lucide="download"></i><span>Export My Career Data</span>
+              </button>
+            </div>
+            <div class="grid three gap-3 mt-3">
+              <div class="p-3 border rounded bg-surface">
+                <div class="flex items-center gap-2 mb-1">
+                  <i data-lucide="lock" style="color: var(--success); width: 16px; height: 16px;"></i>
+                  <strong class="text-xs">End-to-End Privacy</strong>
+                </div>
+                <p class="text-xs text-muted mb-0">Career facts and resumes are encrypted at rest and in transit. Never exposed publicly.</p>
+              </div>
+              <div class="p-3 border rounded bg-surface">
+                <div class="flex items-center gap-2 mb-1">
+                  <i data-lucide="eye-off" style="color: var(--primary); width: 16px; height: 16px;"></i>
+                  <strong class="text-xs">No Public Model Training</strong>
+                </div>
+                <p class="text-xs text-muted mb-0">Your resumes, personal statements, and project metrics are never used to train foundational AI models.</p>
+              </div>
+              <div class="p-3 border rounded bg-surface">
+                <div class="flex items-center gap-2 mb-1">
+                  <i data-lucide="check-circle" style="color: var(--success); width: 16px; height: 16px;"></i>
+                  <strong class="text-xs">GDPR & CCPA Compliant</strong>
+                </div>
+                <p class="text-xs text-muted mb-0">You have full right of portability, correction, and permanent deletion of your data.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Billing & Subscription Shortcut -->
+          <div class="panel span-2">
+            <div class="panel-head flex-between align-center">
+              <div>
+                <h3><i data-lucide="credit-card"></i> Subscription & Billing</h3>
+                <p class="text-xs text-muted mb-0">Manage your subscription tier, billing period, invoices, and payment methods.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="secondary-btn sm" type="button" onclick="navigateToTab('billing')"><i data-lucide="receipt"></i><span>View Invoices</span></button>
+                <button class="primary-btn sm" type="button" onclick="navigateToTab('billing')"><i data-lucide="arrow-up-right"></i><span>Manage Subscription</span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. Danger Zone (Full Span) -->
+          <div class="panel span-2" style="border: 1px solid var(--danger-light, #fecaca); background: rgba(239, 68, 68, 0.02);">
+            <div class="panel-head flex-between align-center">
+              <div>
+                <h3 style="color: var(--danger);"><i data-lucide="alert-triangle"></i> Danger Zone</h3>
+                <p class="text-xs text-muted mb-0">Permanently deactivate your account and erase your saved career profile, resumes, and evidence.</p>
+              </div>
+              <button class="danger-btn sm" type="button" onclick="openDeleteAccountModal()">
+                <i data-lucide="trash-2"></i><span>Delete Account</span>
+              </button>
             </div>
           </div>
         </div>
@@ -4534,6 +4702,38 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
         <button class="secondary-btn sm" type="button" id="cancelDowngradeModalBtn">Keep Pro</button>
         <button class="primary-btn sm" type="button" id="confirmDowngradeBtn">
           <i data-lucide="check"></i><span>Schedule Free Switch</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+  <div id="deleteAccountModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteAccountModalTitle">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="deleteAccountModalTitle" style="color: var(--danger);"><i data-lucide="alert-triangle"></i> Delete Account</h3>
+          <p class="text-xs text-muted mb-0">Permanent action. Please read carefully before continuing.</p>
+        </div>
+        <button class="modal-close" type="button" onclick="closeDeleteAccountModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="panel p-3 mb-3" style="background: rgba(239, 68, 68, 0.05); border-left: 3px solid var(--danger); border-radius: var(--radius-sm);">
+          <strong class="text-xs block text-danger mb-1">This will permanently delete:</strong>
+          <ul class="clean-list text-xs text-muted column-stack gap-1">
+            <li>• All your created resumes and custom sections</li>
+            <li>• All Career Profile facts, history, and verified evidence</li>
+            <li>• All job applications and interview practice records</li>
+            <li>• Any active subscription benefits</li>
+          </ul>
+        </div>
+        <p class="text-xs mb-2">To confirm deletion, please type <strong style="color: var(--danger);">DELETE MY ACCOUNT</strong> in the field below:</p>
+        <input type="text" id="deleteAccountConfirmInput" class="form-control text-sm" placeholder="Type DELETE MY ACCOUNT" oninput="onDeleteAccountInputChanged(this.value)">
+      </div>
+      <div class="modal-footer flex items-center justify-between gap-3">
+        <button class="secondary-btn sm" type="button" onclick="closeDeleteAccountModal()">Cancel</button>
+        <button class="danger-btn sm" type="button" id="confirmDeleteAccountBtn" disabled onclick="executeAccountDeletion()">
+          <i data-lucide="trash-2"></i><span>Permanently Delete Account</span>
         </button>
       </div>
     </div>

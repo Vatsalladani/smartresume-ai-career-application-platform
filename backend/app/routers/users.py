@@ -53,3 +53,15 @@ def change_password(
     write_audit_log(db, action="user.change_password", user_id=current_user.id)
     db.commit()
     return success_response(message="Password changed successfully.")
+
+
+@router.delete("/account")
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    write_audit_log(db, action="user.account_deleted", user_id=current_user.id)
+    current_user.is_active = False
+    db.commit()
+    return success_response(message="Account deleted successfully.")
+

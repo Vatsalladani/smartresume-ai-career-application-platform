@@ -954,6 +954,7 @@ function wireNavigation() {
       loadPaymentHistory();
     }
     if (validTab === "dashboard") renderDashboard();
+    if (validTab === "settings") loadSettingsUI();
 
     drawIcons();
   }
@@ -8738,36 +8739,219 @@ async function handleRetryPayment() {
 }
 
 // TAB 6: SETTINGS
+function loadSettingsUI() {
+  const u = state.user || {};
+  if ($("#profileName")) $("#profileName").value = u.full_name || "";
+  if ($("#profileEmail")) $("#profileEmail").value = u.email || "";
+
+  if ($("#settingsAccountPlanBadge")) {
+    const plan = (u.plan_name || "FREE").toUpperCase();
+    $("#settingsAccountPlanBadge").textContent = plan === "PRO" ? "Pro Member" : "Free Plan";
+    $("#settingsAccountPlanBadge").className = plan === "PRO" ? "badge-sub badge-primary font-bold" : "badge-sub font-bold";
+  }
+
+  if ($("#settingsMemberSince")) {
+    $("#settingsMemberSince").textContent = u.created_at ? new Date(u.created_at).toLocaleDateString() : "Active Member";
+  }
+  if ($("#settingsAccountRole")) {
+    $("#settingsAccountRole").textContent = `Role: ${u.role || "User"}`;
+  }
+
+  // Google OAuth detection
+  const isGoogleOAuth = Boolean(u.is_oauth || u.auth_provider === "google" || u.google_id);
+  if (isGoogleOAuth) {
+    $("#settingsOAuthCard")?.classList.remove("hidden");
+    $("#passwordForm")?.classList.add("hidden");
+  } else {
+    $("#settingsOAuthCard")?.classList.add("hidden");
+    $("#passwordForm")?.classList.remove("hidden");
+  }
+
+  // Notification Preferences persistence
+  try {
+    const notifs = JSON.parse(localStorage.getItem("sr_settings_notifications") || "{}");
+    if ($("#notifScoreUpdates") && notifs.score_updates !== undefined) $("#notifScoreUpdates").checked = notifs.score_updates;
+    if ($("#notifAppReminders") && notifs.app_reminders !== undefined) $("#notifAppReminders").checked = notifs.app_reminders;
+    if ($("#notifInterviewTips") && notifs.interview_tips !== undefined) $("#notifInterviewTips").checked = notifs.interview_tips;
+    if ($("#notifProductNews") && notifs.product_news !== undefined) $("#notifProductNews").checked = notifs.product_news;
+  } catch (_) {}
+
+  // App & Editor Preferences persistence
+  const pageSize = localStorage.getItem("sr_pref_page_size") || "a4";
+  if ($("#prefDefaultPageSize")) $("#prefDefaultPageSize").value = pageSize;
+  const font = localStorage.getItem("sr_pref_font") || "inter";
+  if ($("#prefDefaultFont")) $("#prefDefaultFont").value = font;
+  const compact = localStorage.getItem("sr_pref_compact") === "true";
+  if ($("#prefCompactMode")) $("#prefCompactMode").checked = compact;
+}
+
+window.saveNotificationPreferences = function() {
+  const notifs = {
+    score_updates: $("#notifScoreUpdates") ? $("#notifScoreUpdates").checked : true,
+    app_reminders: $("#notifAppReminders") ? $("#notifAppReminders").checked : true,
+    interview_tips: $("#notifInterviewTips") ? $("#notifInterviewTips").checked : true,
+    product_news: $("#notifProductNews") ? $("#notifProductNews").checked : true
+  };
+  localStorage.setItem("sr_settings_notifications", JSON.stringify(notifs));
+  toast("Notification preferences saved.");
+};
+
+window.saveAppPreferences = function() {
+  const pageSize = $("#prefDefaultPageSize") ? $("#prefDefaultPageSize").value : "a4";
+  const font = $("#prefDefaultFont") ? $("#prefDefaultFont").value : "inter";
+  const compact = $("#prefCompactMode") ? $("#prefCompactMode").checked : false;
+  localStorage.setItem("sr_pref_page_size", pageSize);
+  localStorage.setItem("sr_pref_font", font);
+  localStorage.setItem("sr_pref_compact", String(compact));
+  document.body.classList.toggle("compact-density", compact);
+  toast("Preferences updated.");
+};
+
+window.exportUserCareerData = async function() {
+  const btn = $("#exportMyDataBtn");
+  if (btn) setButtonLoading(btn, true, "Exporting...");
+  try {
+    toast("Generating your complete career archive...");
+
+    let evidence = cachedEvidenceItems;
+    try {
+      const evRes = await API.request("/evidence-vault");
+      evidence = Array.isArray(evRes) ? evRes : (evRes?.data || cachedEvidenceItems || []);
+    } catch (_) {}
+
+    const exportBundle = {
+      app: "SmartResume.AI",
+      export_version: "2.0",
+      exported_at: new Date().toISOString(),
+      user: {
+        id: state.user?.id,
+        email: state.user?.email,
+        full_name: state.user?.full_name,
+        role: state.user?.role,
+        plan_name: state.user?.plan_name || "FREE"
+      },
+      career_profile: state.profile || {},
+      resumes: state.resumes || [],
+      applications: state.applications || [],
+      evidence_vault: evidence || [],
+      saved_preferences: {
+        page_size: localStorage.getItem("sr_pref_page_size") || "a4",
+        font: localStorage.getItem("sr_pref_font") || "inter",
+        compact_mode: localStorage.getItem("sr_pref_compact") === "true",
+        notifications: JSON.parse(localStorage.getItem("sr_settings_notifications") || "{}")
+      }
+    };
+
+    const jsonStr = JSON.stringify(exportBundle, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `smartresume_career_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast("Export complete! Your career archive has been downloaded.");
+  } catch (err) {
+    toast(`Export failed: ${err.message}`, "error");
+  } finally {
+    if (btn) setButtonLoading(btn, false, "Export My Career Data");
+  }
+};
+
+window.openDeleteAccountModal = function() {
+  const modal = $("#deleteAccountModal");
+  if (!modal) return;
+  const input = $("#deleteAccountConfirmInput");
+  if (input) input.value = "";
+  const btn = $("#confirmDeleteAccountBtn");
+  if (btn) btn.disabled = true;
+  modal.classList.remove("hidden");
+  if (input) input.focus();
+};
+
+window.closeDeleteAccountModal = function() {
+  $("#deleteAccountModal")?.classList.add("hidden");
+};
+
+window.onDeleteAccountInputChanged = function(val) {
+  const btn = $("#confirmDeleteAccountBtn");
+  if (btn) {
+    btn.disabled = val.trim() !== "DELETE MY ACCOUNT";
+  }
+};
+
+window.executeAccountDeletion = async function() {
+  const btn = $("#confirmDeleteAccountBtn");
+  setButtonLoading(btn, true, "Deleting account...");
+  try {
+    await API.request("/users/account", { method: "DELETE" });
+    closeDeleteAccountModal();
+    toast("Your account has been deleted.");
+    localStorage.clear();
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
+  } catch (err) {
+    toast(`Deletion failed: ${err.message}`, "error");
+    if (btn) setButtonLoading(btn, false, "Permanently Delete Account");
+  }
+};
+
 function wireSettings() {
-  $("#profileForm").addEventListener("submit", async (e) => {
+  loadSettingsUI();
+
+  $("#profileForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const btn = $("#saveProfileBtn");
+    setButtonLoading(btn, true, "Saving...");
     try {
       state.user = await API.request("/users/profile", {
         method: "PATCH",
         body: { full_name: $("#profileName").value },
       });
       renderUserBar();
+      loadSettingsUI();
       toast("Profile updated successfully.");
       renderDashboard();
     } catch (error) {
       toast(error.message, "error");
+    } finally {
+      setButtonLoading(btn, false, "Save Profile");
     }
   });
 
-  $("#passwordForm").addEventListener("submit", async (e) => {
+  $("#passwordForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const newPass = $("#newPassword").value;
+    const confirmPass = $("#confirmPassword") ? $("#confirmPassword").value : newPass;
+    if (newPass !== confirmPass) {
+      toast("New password and confirmation do not match.", "error");
+      return;
+    }
+    if (newPass.length < 8) {
+      toast("New password must be at least 8 characters long.", "error");
+      return;
+    }
+
+    const btn = $("#updatePasswordBtn");
+    setButtonLoading(btn, true, "Updating...");
     try {
       await API.request("/users/change-password", {
         method: "POST",
         body: {
           current_password: $("#currentPassword").value,
-          new_password: $("#newPassword").value,
+          new_password: newPass,
         },
       });
       $("#passwordForm").reset();
       toast("Password updated successfully.");
     } catch (error) {
       toast(error.message, "error");
+    } finally {
+      setButtonLoading(btn, false, "Update Password");
     }
   });
 }
