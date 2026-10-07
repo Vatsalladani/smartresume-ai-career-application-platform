@@ -37,33 +37,47 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
-document.addEventListener("DOMContentLoaded", () => {
-  wireTheme();
-  wireAuth();
-  wireNavigation();
-  wireMultiResumeWorkspace();
-  wireResumeBuilder();
-  wireMasterProfile();
-  wireJobFit();
-  wireTailoringStudio();
-  wireApplications();
-  wireBilling();
-  wireSettings();
-  wireIntelligenceModals();
-  wireOnboardingModal();
-  wireEvidenceVault();
-  wireTemplates();
-  wireJobRadar();
-  wireSmartApplyTab();
-  wireInterviewCopilot();
-  wireCareerInsights();
-  wireNotifications();
-  wireProTrial();
-  wireInternationalRules();
-  wireApplicationPackModal();
-  wireGuidanceSystem();
-  boot();
-});
+function initializeApp() {
+  const safeInit = (fnName, fn) => {
+    try {
+      fn();
+    } catch (err) {
+      console.error(`Error in ${fnName}:`, err);
+    }
+  };
+
+  safeInit("wireTheme", wireTheme);
+  safeInit("wireAuth", wireAuth);
+  safeInit("wireNavigation", wireNavigation);
+  safeInit("wireMultiResumeWorkspace", wireMultiResumeWorkspace);
+  safeInit("wireResumeBuilder", wireResumeBuilder);
+  safeInit("wireMasterProfile", wireMasterProfile);
+  safeInit("wireJobFit", wireJobFit);
+  safeInit("wireTailoringStudio", wireTailoringStudio);
+  safeInit("wireApplications", wireApplications);
+  safeInit("wireBilling", wireBilling);
+  safeInit("wireSettings", wireSettings);
+  safeInit("wireIntelligenceModals", wireIntelligenceModals);
+  safeInit("wireOnboardingModal", wireOnboardingModal);
+  safeInit("wireEvidenceVault", wireEvidenceVault);
+  safeInit("wireTemplates", wireTemplates);
+  safeInit("wireJobRadar", wireJobRadar);
+  safeInit("wireSmartApplyTab", wireSmartApplyTab);
+  safeInit("wireInterviewCopilot", wireInterviewCopilot);
+  safeInit("wireCareerInsights", wireCareerInsights);
+  safeInit("wireNotifications", wireNotifications);
+  safeInit("wireProTrial", wireProTrial);
+  safeInit("wireInternationalRules", wireInternationalRules);
+  safeInit("wireApplicationPackModal", wireApplicationPackModal);
+  safeInit("wireGuidanceSystem", wireGuidanceSystem);
+  safeInit("boot", boot);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeApp);
+} else {
+  initializeApp();
+}
 
 // Auth state variables (Tokens kept strictly private in memory)
 let _activeResetToken = null;
@@ -490,19 +504,32 @@ function wireAuth() {
     googleBtn.addEventListener("click", async () => {
       try {
         clearAuthAlert();
+        setButtonLoading(googleBtn, true, "Connecting to Google...");
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem("oauth_provider", "google");
         }
         const config = await API.request("/auth/oauth/config", { auth: false });
         state.oauthConfig = config;
-        if (config.google?.configured || config.google_enabled) {
+        if (config && (config.google?.configured || config.google_enabled)) {
           const urlData = await API.request("/auth/oauth/google/url", { auth: false });
-          window.location.href = urlData.url;
+          if (urlData && urlData.url) {
+            window.location.href = urlData.url;
+            return;
+          }
+          throw new Error("Unable to generate Google sign-in URL.");
         } else {
-          openOAuthModal("Google Sign-In", "Google 1-click sign-in is currently unavailable in this environment. Please sign in with your email address.");
+          showAuthAlert("Google sign-in is temporarily unavailable. Please try email sign-in.");
+          openOAuthModal("Google Sign-In", "Google sign-in is temporarily unavailable. Please try email sign-in.");
         }
       } catch (err) {
-        openOAuthModal("Google Sign-In", "Google sign-in is currently unavailable. Please continue with your email address.");
+        let msg = "Google sign-in could not be completed. Please try again.";
+        if (err.isNetworkError || (err.message && (err.message.includes("Unable to connect") || err.message.includes("Failed to fetch")))) {
+          msg = "Unable to connect to the sign-in service. Please try again.";
+        }
+        showAuthAlert(msg);
+        openOAuthModal("Google Sign-In", msg);
+      } finally {
+        setButtonLoading(googleBtn, false, "Continue with Google");
       }
     });
   }
@@ -513,19 +540,32 @@ function wireAuth() {
     linkedinBtn.addEventListener("click", async () => {
       try {
         clearAuthAlert();
+        setButtonLoading(linkedinBtn, true, "Connecting to LinkedIn...");
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem("oauth_provider", "linkedin");
         }
         const config = await API.request("/auth/oauth/config", { auth: false });
         state.oauthConfig = config;
-        if (config.linkedin?.configured || config.linkedin_enabled) {
+        if (config && (config.linkedin?.configured || config.linkedin_enabled)) {
           const urlData = await API.request("/auth/oauth/linkedin/url", { auth: false });
-          window.location.href = urlData.url;
+          if (urlData && urlData.url) {
+            window.location.href = urlData.url;
+            return;
+          }
+          throw new Error("Unable to generate LinkedIn sign-in URL.");
         } else {
+          showAuthAlert("LinkedIn sign-in is temporarily unavailable in this environment. Please sign in with your email address.");
           openOAuthModal("LinkedIn Sign-In", "LinkedIn 1-click sign-in is currently unavailable in this environment. Please sign in with your email address.");
         }
       } catch (err) {
-        openOAuthModal("LinkedIn Sign-In", "LinkedIn sign-in is currently unavailable. Please continue with your email address.");
+        let msg = "LinkedIn sign-in is currently unavailable. Please continue with your email address.";
+        if (err.isNetworkError || (err.message && (err.message.includes("Unable to connect") || err.message.includes("Failed to fetch")))) {
+          msg = "Unable to connect to the sign-in service. Please try again.";
+        }
+        showAuthAlert(msg);
+        openOAuthModal("LinkedIn Sign-In", msg);
+      } finally {
+        setButtonLoading(linkedinBtn, false, "Continue with LinkedIn");
       }
     });
   }
@@ -809,9 +849,11 @@ async function handleOAuthCallback(code, provider) {
     toast("Authenticated successfully!");
     await loadApp();
   } catch (error) {
-    toast(`Authentication failed: ${error.message}`, "error");
+    const errorMsg = error.message || "Authentication could not be completed. Please try again.";
+    toast(`Authentication failed: ${errorMsg}`, "error");
     window.history.replaceState({}, document.title, window.location.pathname);
     showAuth("login");
+    showAuthAlert(errorMsg);
   }
 }
 
@@ -5966,56 +6008,60 @@ function renderResumePreviewCanvas() {
 
 // TAB 1: MASTER PROFILE
 function wireMasterProfile() {
-  $("#saveMasterProfileBtn").addEventListener("click", saveMasterProfileDetails);
-  $("#openImportModalBtn").addEventListener("click", () => openImportModal());
-  $("#closeImportModalBtn").addEventListener("click", () => closeImportModal());
-  $("#cancelImportBtn").addEventListener("click", () => closeImportModal());
+  $("#saveMasterProfileBtn")?.addEventListener("click", saveMasterProfileDetails);
+  $("#openImportModalBtn")?.addEventListener("click", () => openImportModal());
+  $("#openImportModalBtnTop")?.addEventListener("click", () => openImportModal());
+  $("#closeImportModalBtn")?.addEventListener("click", () => closeImportModal());
+  $("#cancelImportBtn")?.addEventListener("click", () => closeImportModal());
 
   // Dropzone for import
   const dropZone = $("#importDropZone");
-  ["dragenter", "dragover"].forEach((evt) => {
-    dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add("dragging"); });
-  });
-  ["dragleave", "drop"].forEach((evt) => {
-    dropZone.addEventListener(evt, () => dropZone.classList.remove("dragging"));
-  });
-  dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.files.length) {
-      $("#importFileInput").files = e.dataTransfer.files;
-      toast(`Selected: ${e.dataTransfer.files[0].name}`);
-    }
-  });
+  if (dropZone) {
+    ["dragenter", "dragover"].forEach((evt) => {
+      dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add("dragging"); });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      dropZone.addEventListener(evt, () => dropZone.classList.remove("dragging"));
+    });
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        const fileInput = $("#importFileInput");
+        if (fileInput) fileInput.files = e.dataTransfer.files;
+        toast(`Selected: ${e.dataTransfer.files[0].name}`);
+      }
+    });
+  }
 
-  $("#parseResumeBtn").addEventListener("click", parseResumeForImport);
-  $("#commitImportBtn").addEventListener("click", commitImportDraft);
+  $("#parseResumeBtn")?.addEventListener("click", parseResumeForImport);
+  $("#commitImportBtn")?.addEventListener("click", commitImportDraft);
 
   // Experience modal
-  $("#addExperienceBtn").addEventListener("click", () => openExperienceModal());
-  $("#closeExpModalBtn").addEventListener("click", () => closeExperienceModal());
-  $("#cancelExpBtn").addEventListener("click", () => closeExperienceModal());
-  $("#experienceForm").addEventListener("submit", handleSaveExperience);
+  $("#addExperienceBtn")?.addEventListener("click", () => openExperienceModal());
+  $("#closeExpModalBtn")?.addEventListener("click", () => closeExperienceModal());
+  $("#cancelExpBtn")?.addEventListener("click", () => closeExperienceModal());
+  $("#experienceForm")?.addEventListener("submit", handleSaveExperience);
 
   // Project modal
-  $("#addProjectBtn").addEventListener("click", () => openProjectModal());
-  $("#closeProjModalBtn").addEventListener("click", () => closeProjectModal());
-  $("#cancelProjBtn").addEventListener("click", () => closeProjectModal());
-  $("#projectForm").addEventListener("submit", handleSaveProject);
+  $("#addProjectBtn")?.addEventListener("click", () => openProjectModal());
+  $("#closeProjModalBtn")?.addEventListener("click", () => closeProjectModal());
+  $("#cancelProjBtn")?.addEventListener("click", () => closeProjectModal());
+  $("#projectForm")?.addEventListener("submit", handleSaveProject);
 
   // Education modal
-  $("#addEducationBtn").addEventListener("click", () => openEducationModal());
-  $("#closeEduModalBtn").addEventListener("click", () => closeEducationModal());
-  $("#cancelEduBtn").addEventListener("click", () => closeEducationModal());
-  $("#educationForm").addEventListener("submit", handleSaveEducation);
+  $("#addEducationBtn")?.addEventListener("click", () => openEducationModal());
+  $("#closeEduModalBtn")?.addEventListener("click", () => closeEducationModal());
+  $("#cancelEduBtn")?.addEventListener("click", () => closeEducationModal());
+  $("#educationForm")?.addEventListener("submit", handleSaveEducation);
 
   // Certification modal
-  $("#addCertBtn").addEventListener("click", () => openCertModal());
-  $("#closeCertModalBtn").addEventListener("click", () => closeCertModal());
-  $("#cancelCertBtn").addEventListener("click", () => closeCertModal());
-  $("#certForm").addEventListener("submit", handleSaveCert);
+  $("#addCertBtn")?.addEventListener("click", () => openCertModal());
+  $("#closeCertModalBtn")?.addEventListener("click", () => closeCertModal());
+  $("#cancelCertBtn")?.addEventListener("click", () => closeCertModal());
+  $("#certForm")?.addEventListener("submit", handleSaveCert);
 
   // Inline skill form
-  $("#addSkillForm").addEventListener("submit", handleAddSkill);
+  $("#addSkillForm")?.addEventListener("submit", handleAddSkill);
 
   // Health report & relevance checks
   $("#openHealthReportBtn")?.addEventListener("click", () => openHealthReportModal());

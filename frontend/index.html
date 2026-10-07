@@ -599,7 +599,7 @@
           <div class="view-header-actions">
             <button class="primary-btn sm" type="button" onclick="openAddEvidenceModal()"><i data-lucide="shield-check"></i><span>+ Add Career Evidence</span></button>
             <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Builder</span></button>
-            <button class="secondary-btn sm" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
+            <button class="secondary-btn sm" type="button" id="openImportModalBtn" onclick="openImportModal()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
             <button class="secondary-btn sm" type="button" id="saveMasterProfileBtn" onclick="saveMasterProfileDetails()"><i data-lucide="save"></i><span>Save Profile</span></button>
           </div>
         </div>
@@ -629,7 +629,7 @@
           <div class="button-row">
             <button id="openHealthReportBtn" class="secondary-btn" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>Resume Health Report</span></button>
             <button id="openRelevanceBtn" class="secondary-btn" type="button" onclick="openRelevanceModal()"><i data-lucide="filter"></i><span>Check Relevance</span></button>
-            <button id="openImportModalBtnTop" class="secondary-btn" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
+            <button id="openImportModalBtnTop" class="secondary-btn" type="button" onclick="openImportModal()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
             <button class="primary-btn" type="button" onclick="saveMasterProfileDetails()"><i data-lucide="save"></i><span>Save Profile</span></button>
           </div>
         </div>
@@ -3656,34 +3656,7 @@
     </div>
   </div>
 
-  <!-- MODAL: SOCIAL OAUTH CONFIGURATION NOTICE -->
-  <div id="oauthModal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div>
-          <h3 id="oauthModalTitle"><i data-lucide="key"></i> OAuth Configuration</h3>
-          <p class="text-sm">Social sign-in status and environment settings.</p>
-        </div>
-        <button id="closeOAuthModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert-info mb-3">
-          <i data-lucide="info"></i>
-          <span id="oauthModalMessage">OAuth 2.0 backend endpoints are mounted. Configure your credentials in <code>.env</code> to activate 1-click social authentication.</span>
-        </div>
-        <div class="code-box">
-          <pre id="oauthEnvInstructions"># Add to .env:
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-LINKEDIN_CLIENT_ID=your-linkedin-client-id
-LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="dismissOAuthModalBtn" class="primary-btn" type="button">Understood</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- MODAL: RESUME IMPORT HUMAN REVIEW -->
   <div id="importModal" class="modal-overlay hidden">
