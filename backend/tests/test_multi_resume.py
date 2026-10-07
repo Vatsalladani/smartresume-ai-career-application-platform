@@ -180,3 +180,48 @@ def test_resume_archiving_and_filtering(test_db_user):
     db.commit()
     db.refresh(res)
     assert res.is_archived is False
+
+
+def test_duplicate_title_numbering_avoids_copy_chains(test_db_user):
+    db, user = test_db_user
+
+    base = create_resume(db, user_id=user.id, title="Product Lead", status="Draft")
+    db.commit()
+
+    # First duplicate -> "Product Lead — Copy"
+    dup1 = duplicate_resume(db, base, user.id)
+    db.commit()
+    assert dup1.title == "Product Lead — Copy"
+
+    # Second duplicate of base -> "Product Lead — Copy 2"
+    dup2 = duplicate_resume(db, base, user.id)
+    db.commit()
+    assert dup2.title == "Product Lead — Copy 2"
+
+    # Duplicating the duplicate itself should yield "Product Lead — Copy 3", NOT "Product Lead — Copy — Copy"
+    dup3 = duplicate_resume(db, dup1, user.id)
+    db.commit()
+    assert dup3.title == "Product Lead — Copy 3"
+    assert "Copy — Copy" not in dup3.title
+
+
+def test_delete_resume_removes_from_database(test_db_user):
+    db, user = test_db_user
+
+    res = create_resume(db, user_id=user.id, title="To Be Deleted", status="Draft")
+    db.commit()
+    db.refresh(res)
+    res_id = res.id
+
+    # Verify exists
+    assert db.query(Resume).filter(Resume.id == res_id).first() is not None
+
+    # Delete
+    db.delete(res)
+    db.commit()
+
+    # Verify completely absent from database
+    assert db.query(Resume).filter(Resume.id == res_id).first() is None
+    all_user_resumes = db.query(Resume).filter(Resume.user_id == user.id).all()
+    assert res_id not in [r.id for r in all_user_resumes]
+

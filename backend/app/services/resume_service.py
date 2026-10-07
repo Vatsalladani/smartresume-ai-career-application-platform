@@ -212,9 +212,36 @@ def update_resume(
     return resume
 
 
+def generate_duplicate_title(db: Session, user_id: int, base_title: str) -> str:
+    root_title = re.sub(r"\s*[—–-]\s*Copy(?:\s+\d+)?$", "", (base_title or "").strip()).strip()
+    if not root_title:
+        root_title = "Resume"
+    existing_titles = {
+        r[0] for r in db.query(Resume.title).filter(Resume.user_id == user_id, Resume.is_archived.is_(False)).all() if r[0]
+    }
+    candidate = f"{root_title} — Copy"
+    if candidate not in existing_titles:
+        return candidate
+    counter = 2
+    while f"{root_title} — Copy {counter}" in existing_titles:
+        counter += 1
+    return f"{root_title} — Copy {counter}"
+
+
 def duplicate_resume(db: Session, resume: Resume, user_id: int, new_title: str | None = None) -> Resume:
     import copy
-    title = new_title.strip() if new_title and new_title.strip() else f"{resume.title} — Copy"
+    if new_title and new_title.strip():
+        cleaned_provided = new_title.strip()
+        existing_titles = {
+            r[0] for r in db.query(Resume.title).filter(Resume.user_id == user_id, Resume.is_archived.is_(False)).all() if r[0]
+        }
+        if cleaned_provided in existing_titles:
+            title = generate_duplicate_title(db, user_id, cleaned_provided)
+        else:
+            title = cleaned_provided
+    else:
+        title = generate_duplicate_title(db, user_id, resume.title)
+
     copied_content = copy.deepcopy(resume.parsed_content) if isinstance(resume.parsed_content, dict) else {}
     return create_resume(
         db,

@@ -2047,6 +2047,77 @@ function renderSharedRichTextField({
   `;
 }
 
+function getBlankResumeBuilderState(tplId) {
+  const tpl = tplId || state.activeTemplateId || "classic_ats";
+  const tplConf = RESUME_BUILDER_TEMPLATES[tpl] || RESUME_BUILDER_TEMPLATES.classic_ats;
+
+  return {
+    template: tpl,
+    fontFamily: tplConf.fontId || "inter",
+    fontSize: "medium",
+    spacing: "standard",
+    accentColor: tplConf.accentColor || "#1e3a8a",
+    secondaryColor: tplConf.secondaryColor || "#475569",
+    layout: tplConf.layout || "single",
+    headerAlignment: "left",
+    columnLayout: {
+      main_sections: ["summary", "experiences", "projects", "education", "volunteer", "leadership"],
+      side_sections: ["skills", "certifications", "achievements", "awards", "languages", "courses"],
+      column_width: "balanced"
+    },
+    pageSize: "a4",
+    margins: "standard",
+    lineHeight: "standard",
+    contactSeparator: tplConf.contactSeparator || "|",
+    bulletStyle: "disc",
+    dateAlignment: "right",
+    dateFormat: "MMM YYYY",
+    photoEnabled: false,
+    photoUrl: "",
+    photoShape: "circle",
+    photoSize: "md",
+    elementColors: {
+      name: "",
+      headline: "",
+      body: "",
+      links: "",
+      dates: "",
+      dividers: "",
+      bullets: "",
+      secondary: ""
+    },
+    sectionStyles: {},
+    skillsLayout: "inline",
+    sectionOrder: ["summary", "skills", "experiences", "projects", "education", "certifications", "achievements", "languages"],
+    sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
+    header: {
+      full_name: "",
+      headline: "",
+      email: "",
+      phone: "",
+      location: "",
+      linkedin: "",
+      github: "",
+      website: ""
+    },
+    summary: "",
+    skills: [],
+    skillCategories: [],
+    experiences: [],
+    projects: [],
+    education: [],
+    certifications: [],
+    achievements: [],
+    awards: [],
+    languages: [],
+    volunteer: [],
+    leadership: [],
+    publications: [],
+    courses: [],
+    customSections: []
+  };
+}
+
 function getCleanResumeBuilderState() {
   const p = state.profile || {};
   const u = state.user || {};
@@ -2324,7 +2395,22 @@ function updateBuilderHeaderUI(resume) {
     const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
     resume = activeResumes[0];
   }
-  if (!resume) return;
+  if (!resume) {
+    const titleEl = $("#builderResumeTitle");
+    if (titleEl) titleEl.textContent = "No Resumes Yet";
+    const statusSel = $("#builderResumeStatusSelect");
+    if (statusSel) statusSel.value = "Draft";
+    const targetChip = $("#builderResumeTargetChip");
+    if (targetChip) {
+      targetChip.textContent = "No document";
+      targetChip.className = "badge-sub";
+    }
+    const metaEl = $("#builderResumeMetaInfo");
+    if (metaEl) {
+      metaEl.textContent = "Create a new resume to start building";
+    }
+    return;
+  }
 
   const titleEl = $("#builderResumeTitle");
   if (titleEl) titleEl.textContent = resume.title || "Resume Draft";
@@ -2498,49 +2584,63 @@ async function switchActiveResume(newResumeId) {
   }
 }
 
+function generateDuplicateTitleLocal(baseTitle) {
+  if (!baseTitle) return "Resume — Copy";
+  const root = baseTitle.replace(/\s*[—–-]\s*Copy(?:\s+\d+)?$/i, "").trim() || "Resume";
+  const existingTitles = new Set((state.resumes || []).map(r => (r.title || "").trim()));
+  const candidate = `${root} — Copy`;
+  if (!existingTitles.has(candidate)) {
+    return candidate;
+  }
+  let counter = 2;
+  while (existingTitles.has(`${root} — Copy ${counter}`)) {
+    counter++;
+  }
+  return `${root} — Copy ${counter}`;
+}
+
 async function duplicateActiveResume() {
   if (!state.activeResumeId) {
     toast("No active resume to duplicate.", "warning");
     return;
   }
-  await flushBuilderAutosave();
-  const current = (state.resumes || []).find(r => r.id === state.activeResumeId);
-  const newTitle = current ? `${current.title} — Copy` : "Resume — Copy";
-  try {
-    toast("Duplicating resume...");
-    const dup = await API.request(`/resumes/${state.activeResumeId}/duplicate`, {
-      method: "POST",
-      body: { title: newTitle },
-    });
-    state.resumes.unshift(dup);
-    await switchActiveResume(dup.id);
-    toast(`Created independent copy "${dup.title}".`);
-  } catch (err) {
-    toast(`Failed to duplicate resume: ${err.message}`, "error");
-  }
+  await duplicateResumeById(state.activeResumeId);
 }
 
 async function duplicateResumeById(resumeId) {
   await flushBuilderAutosave();
   const current = (state.resumes || []).find(r => r.id === resumeId);
-  const newTitle = current ? `${current.title} — Copy` : "Resume — Copy";
+  const baseTitle = current ? current.title : "Resume";
+  const newTitle = generateDuplicateTitleLocal(baseTitle);
+
+  const activeBtn = document.activeElement;
+  if (activeBtn && activeBtn.tagName === "BUTTON") {
+    activeBtn.disabled = true;
+  }
+
   try {
     toast("Duplicating resume...");
     const dup = await API.request(`/resumes/${resumeId}/duplicate`, {
       method: "POST",
       body: { title: newTitle },
     });
-    state.resumes.unshift(dup);
-    renderDashboardMyResumes();
-    renderResumeSwitcherModal();
-    toast(`Duplicated "${dup.title}".`);
+    // Re-fetch from server as source of truth
+    await loadResumes();
+    await switchActiveResume(dup.id);
+    $("#resumeSwitcherModal")?.classList.add("hidden");
+    navigateToTab("resume-builder");
+    toast(`Created a new copy: "${dup.title}".`);
     return dup;
   } catch (err) {
     toast(`Failed to duplicate: ${err.message}`, "error");
+  } finally {
+    if (activeBtn && activeBtn.tagName === "BUTTON") {
+      activeBtn.disabled = false;
+    }
   }
 }
 
-function openCreateResumeModal() {
+function openCreateResumeModal(opts = {}) {
   const modal = $("#createResumeModal");
   if (!modal) return;
   modal.classList.remove("hidden");
@@ -2550,84 +2650,73 @@ function openCreateResumeModal() {
   const compInput = $("#newResumeTargetCompanyInput");
   const locInput = $("#newResumeTargetLocationInput");
 
-  if (titleInput) titleInput.value = "New Resume Draft";
-  if (roleInput) roleInput.value = "";
-  if (compInput) compInput.value = "";
-  if (locInput) locInput.value = "";
+  if (titleInput) titleInput.value = opts.title || "New Resume Draft";
+  if (roleInput) roleInput.value = opts.targetRole || "";
+  if (compInput) compInput.value = opts.targetCompany || "";
+  if (locInput) locInput.value = opts.targetLocation || "";
 
+  const initialSource = opts.source || "profile";
   $$(".source-card").forEach(c => {
-    c.classList.toggle("active", c.dataset.source === "profile");
+    const isSelected = c.dataset.source === initialSource;
+    c.classList.toggle("active", isSelected);
+    c.classList.toggle("is-selected", isSelected);
+    c.classList.toggle("is-active", isSelected);
+    c.setAttribute("aria-selected", isSelected ? "true" : "false");
   });
   drawIcons();
 }
 
 async function submitCreateResume() {
-  const title = $("#newResumeTitleInput")?.value.trim() || "Untitled Resume";
-  const targetRole = $("#newResumeTargetRoleInput")?.value.trim() || null;
-  const targetCompany = $("#newResumeTargetCompanyInput")?.value.trim() || null;
-  const targetLocation = $("#newResumeTargetLocationInput")?.value.trim() || null;
-  const targetMarket = $("#newResumeTargetMarketInput")?.value || "GLOBAL";
-  const documentPurpose = $("#newResumeDocumentPurposeInput")?.value || "Professional Resume";
-  const activeCard = $(".source-card.active");
-  const source = activeCard?.dataset.source || "profile";
-
-  await flushBuilderAutosave();
-
-  let initialParsedContent;
-  if (source === "duplicate" && resumeBuilderState) {
-    initialParsedContent = JSON.parse(JSON.stringify(resumeBuilderState));
-  } else if (source === "blank") {
-    initialParsedContent = getCleanResumeBuilderState();
-    initialParsedContent.header.full_name = state.user?.full_name || state.profile?.full_name || "";
-    initialParsedContent.header.email = state.user?.email || state.profile?.email || "";
-  } else {
-    // Start from Profile
-    initialParsedContent = getCleanResumeBuilderState();
-    if (state.profile) {
-      initialParsedContent.header.full_name = state.profile.full_name || state.user?.full_name || "";
-      initialParsedContent.header.headline = state.profile.headline || "";
-      initialParsedContent.header.email = state.profile.email || state.user?.email || "";
-      initialParsedContent.header.phone = state.profile.phone || "";
-      initialParsedContent.header.location = state.profile.location || "";
-      initialParsedContent.header.linkedin = state.profile.linkedin_url || "";
-      initialParsedContent.header.github = state.profile.github_url || "";
-      initialParsedContent.summary = state.profile.summary || "";
-      initialParsedContent.skills = (state.profile.skills || []).map(s => s.name || s);
-      initialParsedContent.experiences = (state.profile.experiences || []).map(e => ({
-        company: e.company || "",
-        role: e.title || e.role || "",
-        location: e.location || "",
-        start_date: e.start_date || "",
-        end_date: e.end_date || "",
-        is_current: !!e.is_current,
-        description: e.description || "",
-        bullets: Array.isArray(e.bullets) ? e.bullets : (e.description ? [e.description] : [])
-      }));
-      initialParsedContent.education = (state.profile.education || []).map(ed => ({
-        institution: ed.institution || "",
-        degree: ed.degree || "",
-        field_of_study: ed.field_of_study || "",
-        start_date: ed.start_date || "",
-        end_date: ed.end_date || "",
-        gpa: ed.gpa || ""
-      }));
-    }
-  }
-
-  if (state.pendingNewResumeTemplate) {
-    initialParsedContent.template = state.pendingNewResumeTemplate;
-    const tplCfg = RESUME_BUILDER_TEMPLATES[state.pendingNewResumeTemplate];
-    if (tplCfg) {
-      if (tplCfg.fontFamily) initialParsedContent.fontFamily = tplCfg.fontFamily;
-      if (tplCfg.accentColor) initialParsedContent.accentColor = tplCfg.accentColor;
-      if (tplCfg.layout) initialParsedContent.layout = tplCfg.layout;
-      if (tplCfg.headerAlignment) initialParsedContent.headerAlignment = tplCfg.headerAlignment;
-      if (tplCfg.defaultSectionOrder) initialParsedContent.sectionOrder = [...tplCfg.defaultSectionOrder];
-    }
-    state.pendingNewResumeTemplate = null;
+  const submitBtn = $("#submitCreateResumeBtn");
+  if (submitBtn && submitBtn.disabled) return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loading-spinner sm"></span> Creating...';
   }
 
   try {
+    const title = $("#newResumeTitleInput")?.value.trim() || "Untitled Resume";
+    const targetRole = $("#newResumeTargetRoleInput")?.value.trim() || null;
+    const targetCompany = $("#newResumeTargetCompanyInput")?.value.trim() || null;
+    const targetLocation = $("#newResumeTargetLocationInput")?.value.trim() || null;
+    const targetMarket = $("#newResumeTargetMarketInput")?.value || "GLOBAL";
+    const documentPurpose = $("#newResumeDocumentPurposeInput")?.value || "Professional Resume";
+    const activeCard = $(".source-card.active") || $(".source-card.is-selected");
+    const source = activeCard?.dataset.source || "profile";
+
+    await flushBuilderAutosave();
+
+    let initialParsedContent;
+    if (source === "duplicate") {
+      const currentActive = (state.resumes || []).find(r => r.id === state.activeResumeId);
+      if (resumeBuilderState) {
+        initialParsedContent = JSON.parse(JSON.stringify(resumeBuilderState));
+      } else if (currentActive && currentActive.parsed_content) {
+        initialParsedContent = JSON.parse(JSON.stringify(currentActive.parsed_content));
+      } else {
+        initialParsedContent = getBlankResumeBuilderState();
+      }
+    } else if (source === "blank") {
+      // TRULY BLANK RESUME - Zero user/profile data injected!
+      initialParsedContent = getBlankResumeBuilderState();
+    } else {
+      // Start from Profile - ONLY copy verified Career Profile fields
+      initialParsedContent = getCleanResumeBuilderState();
+    }
+
+    if (state.pendingNewResumeTemplate) {
+      initialParsedContent.template = state.pendingNewResumeTemplate;
+      const tplCfg = RESUME_BUILDER_TEMPLATES[state.pendingNewResumeTemplate];
+      if (tplCfg) {
+        if (tplCfg.fontFamily || tplCfg.fontId) initialParsedContent.fontFamily = tplCfg.fontFamily || tplCfg.fontId;
+        if (tplCfg.accentColor) initialParsedContent.accentColor = tplCfg.accentColor;
+        if (tplCfg.layout) initialParsedContent.layout = tplCfg.layout;
+        if (tplCfg.headerAlignment) initialParsedContent.headerAlignment = tplCfg.headerAlignment;
+        if (tplCfg.defaultSectionOrder) initialParsedContent.sectionOrder = [...tplCfg.defaultSectionOrder];
+      }
+      state.pendingNewResumeTemplate = null;
+    }
+
     toast("Creating independent resume...");
     const created = await API.request("/resumes", {
       method: "POST",
@@ -2643,13 +2732,20 @@ async function submitCreateResume() {
       },
     });
 
-    state.resumes.unshift(created);
+    // Re-fetch resumes to ensure server is the source of truth
+    await loadResumes();
     $("#createResumeModal")?.classList.add("hidden");
     await switchActiveResume(created.id);
     navigateToTab("resume-builder");
     toast(`Created new resume "${created.title}" as Draft.`);
   } catch (err) {
     toast(`Failed to create resume: ${err.message}`, "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="check"></i><span>Create Resume</span>';
+      drawIcons();
+    }
   }
 }
 
@@ -2730,23 +2826,53 @@ async function deleteResume(resumeId) {
   if (!confirm(`Are you sure you want to permanently delete "${name}"? This action cannot be undone.`)) {
     return;
   }
+
+  const activeBtn = document.activeElement;
+  if (activeBtn && activeBtn.tagName === "BUTTON") {
+    activeBtn.disabled = true;
+  }
+
   try {
+    toast("Deleting resume...");
     await API.request(`/resumes/${resumeId}`, { method: "DELETE" });
-    state.resumes = (state.resumes || []).filter(x => x.id !== resumeId);
-    toast("Resume deleted.");
+
+    // Re-fetch from server as source of truth
+    const list = await API.request("/resumes?include_archived=true");
+    state.resumes = Array.isArray(list) ? list : [];
+
+    // Verify deleted ID is absent
+    const stillExists = state.resumes.some(x => x.id === resumeId);
+    if (stillExists) {
+      console.warn("Deleted resume ID still returned by server list, filtering out locally.");
+      state.resumes = state.resumes.filter(x => x.id !== resumeId);
+    }
+
     if (state.activeResumeId === resumeId) {
-      const nextActive = (state.resumes || []).find(x => !x.is_archived) || state.resumes[0];
+      const activeResumes = state.resumes.filter(x => !x.is_archived);
+      const nextActive = activeResumes[0]; // Most recently updated non-archived resume
       if (nextActive) {
         await switchActiveResume(nextActive.id);
       } else {
         state.activeResumeId = null;
         localStorage.removeItem("smartresume_active_resume_id");
+        resumeBuilderState = null;
+        localStorage.removeItem("smartresume_builder_state");
+        updateBuilderHeaderUI(null);
+        renderBuilderEditorFromState();
+        renderResumePreviewCanvas();
       }
     }
+
     renderDashboardMyResumes();
     renderResumeSwitcherModal();
+    populateInterviewResumeSelect();
+    toast("Resume deleted.");
   } catch (err) {
     toast(`Failed to delete resume: ${err.message}`, "error");
+  } finally {
+    if (activeBtn && activeBtn.tagName === "BUTTON") {
+      activeBtn.disabled = false;
+    }
   }
 }
 
@@ -4634,8 +4760,28 @@ window.moveSkillCategory = function(catIdx, dir) {
 };
 
 function renderBuilderEditorFromState() {
-  const h = resumeBuilderState.header || {};
   const setVal = (id, val) => { const el = $(`#${id}`); if (el) el.value = val || ""; };
+
+  if (!resumeBuilderState) {
+    ["builderFullName", "builderHeadline", "builderEmail", "builderPhone", "builderLocation", "builderLinkedin", "builderGithub", "builderWebsite"].forEach(id => setVal(id, ""));
+    const container = $("#builderDynamicSectionsList");
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state-structured p-4 text-center">
+          <i data-lucide="file-x" style="color: var(--muted); margin: 0 auto 12px auto; width: 32px; height: 32px;"></i>
+          <h4 style="font-size: 0.95rem;">No Resumes Found</h4>
+          <p class="text-xs text-muted mb-3">You don't have an active resume selected. Create or select a resume to begin editing.</p>
+          <button class="primary-btn sm" type="button" onclick="openCreateResumeModal()">
+            <i data-lucide="plus"></i><span>Create New Resume</span>
+          </button>
+        </div>
+      `;
+      drawIcons();
+    }
+    return;
+  }
+
+  const h = resumeBuilderState.header || {};
 
   setVal("builderFullName", h.full_name);
   setVal("builderHeadline", h.headline);
@@ -5398,6 +5544,20 @@ function applyCustomizerStylesToCanvas() {
 function renderResumeDocumentInto(containerEl, rState, options = {}) {
   if (!containerEl) return;
   const s = rState || resumeBuilderState;
+  if (!s) {
+    containerEl.innerHTML = `
+      <div class="empty-state-structured p-4 text-center" style="margin: 40px auto; max-width: 360px;">
+        <i data-lucide="file-text" style="color: var(--muted); margin: 0 auto 12px auto; width: 36px; height: 36px;"></i>
+        <h4 style="font-size: 0.95rem;">No Document Selected</h4>
+        <p class="text-xs text-muted mb-3">Create or select a resume from your workspace to view the live preview.</p>
+        <button class="primary-btn sm" type="button" onclick="openCreateResumeModal()">
+          <i data-lucide="plus"></i><span>Create New Resume</span>
+        </button>
+      </div>
+    `;
+    drawIcons();
+    return;
+  }
   const tplId = s.template || "classic_ats";
   const tplConfig = RESUME_BUILDER_TEMPLATES[tplId] || RESUME_BUILDER_TEMPLATES.classic_ats;
   const layout = s.layout || tplConfig.layout || "single";
