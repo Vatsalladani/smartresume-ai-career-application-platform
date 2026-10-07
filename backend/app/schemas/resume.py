@@ -113,4 +113,7 @@ class ResumeScoreOut(BaseModel):
     score_confidence: str = "Medium"
     all_insights: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     potentially_overstated_claims: list[dict[str, Any]] = Field(default_factory=list)
+    grounding_summary: dict[str, Any] = Field(default_factory=dict)
+    dimensions_list: list[dict[str, Any]] = Field(default_factory=list)
+    disclaimer: str = "Resume Health Report — internal career diagnostic, not a hiring prediction."
 

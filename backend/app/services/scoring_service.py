@@ -227,6 +227,42 @@ def get_positive_skill_phrasing(skill_name: str, level: str) -> str:
     return f"Subject matter authority in {skill_name}, establishing organizational architectural standards, mentoring peers, and driving critical outcomes."
 
 
+def clean_skill_name(raw: Any) -> Optional[str]:
+    """Cleans skill strings from common parsing/tokenization noise.
+    - Strips leading conjunctions ('and ', 'And ', 'AND ', '& ')
+    - Strips trailing punctuation ('.', ',', ';', ':')
+    - Filters out 'DECLARATION', single 'and', 'none', etc.
+    """
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    # Remove leading conjunctions
+    s = re.sub(r"^(?:and|And|AND|&)\s+", "", s)
+    # Strip trailing punctuation
+    s = s.strip().rstrip(".,;:")
+    # Strip quotes
+    s = s.strip("'\" \t\r\n")
+    if not s:
+        return None
+    low = s.lower()
+    noise_words = {
+        "declaration", "declarations", "and", "&", "none", "n/a", "na",
+        "nil", "etc", "etc.", "skill", "skills", "competencies", "tools"
+    }
+    if low in noise_words or len(low) < 2:
+        return None
+    return s
+
+
+GROUNDING_STATUS_LABELS = {
+    "SUPPORTED": "Supported by your resume",
+    "PARTIALLY_SUPPORTED": "Listed by you",
+    "SELF_REPORTED": "Listed by you",
+    "POTENTIALLY_OVERSTATED": "Strong claim — review wording",
+    "OPTIONAL": "No extra proof needed",
+}
+
+
 def calculate_evidence_based_score(
     resume_data: dict[str, Any],
     target_role: str = "Software Engineer",
@@ -266,6 +302,169 @@ def calculate_evidence_based_score(
         )
     )
     if not has_meaningful_content:
+        empty_dimensions_dict = {
+            "structure_parsability": {
+                "id": "structure_parsability",
+                "name": "ATS & Structural Parsability",
+                "dimension": "Parsing / Format Health",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "15%",
+                "weight_numeric": 0.15,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": "Resume is currently empty. Add basic sections.",
+                "explanation": "Evaluates standard section hierarchy and structural parsability."
+            },
+            "role_alignment": {
+                "id": "role_alignment",
+                "name": "Target Role Keyword Alignment",
+                "dimension": "Target Role Alignment",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "20%",
+                "weight_numeric": 0.20,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": f"No content to align with target role '{target_role}'.",
+                "explanation": f"Evaluates presence of core keywords and domain competencies for {target_role}."
+            },
+            "evidence_grounding": {
+                "id": "evidence_grounding",
+                "name": "Work & Project Evidence Coverage",
+                "dimension": "Bullet & Outcome Evidence",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "20%",
+                "weight_numeric": 0.20,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": "No work experience or project bullets provided yet.",
+                "explanation": "Evaluates documented experience, projects, and actionable accomplishments."
+            },
+            "content_quality": {
+                "id": "content_quality",
+                "name": "Content Quality & Impact Phrasing",
+                "dimension": "Language & Impact Quality",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "15%",
+                "weight_numeric": 0.15,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": "No bullet points or descriptions available to analyze impact.",
+                "explanation": "Checks for action verbs, measurable outcomes, and concise professional framing."
+            },
+            "summary_alignment": {
+                "id": "summary_alignment",
+                "name": "Professional Summary Alignment",
+                "dimension": "Summary Alignment",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "10%",
+                "weight_numeric": 0.10,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": "Professional summary has not been written yet.",
+                "explanation": f"Checks that your opening summary clearly articulates value for {target_role}."
+            },
+            "skills_consistency": {
+                "id": "skills_consistency",
+                "name": "Skills Grounding & Consistency",
+                "dimension": "Skill-to-Evidence Consistency",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "10%",
+                "weight_numeric": 0.10,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": "No skills cataloged yet.",
+                "explanation": "Verifies that cataloged skills are grounded in actual work, projects, or credentials."
+            },
+            "career_consistency": {
+                "id": "career_consistency",
+                "name": "Career & Timeline Consistency",
+                "dimension": "Career Consistency",
+                "type": "score",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0/100",
+                "weight": "10%",
+                "weight_numeric": 0.10,
+                "scorable": True,
+                "status": "NEEDS_ATTENTION",
+                "reason": "No career timeline to verify yet.",
+                "explanation": "Checks for consistency between headline seniority, summary claims, and documented experience."
+            },
+            "job_description_match": {
+                "id": "job_description_match",
+                "name": "Job Requirement Coverage",
+                "dimension": "Requirement Coverage",
+                "type": "ratio",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "0 core skills matched",
+                "weight": "0%",
+                "weight_numeric": 0.0,
+                "scorable": False,
+                "status": "BASELINE",
+                "reason": "Evaluated against general target role requirements.",
+                "explanation": "Evaluates coverage against target job description or core role competencies."
+            },
+            "missing_information": {
+                "id": "missing_information",
+                "name": "Missing Information & Links",
+                "dimension": "Missing Information",
+                "type": "metric",
+                "value": 0,
+                "max_value": 100,
+                "score": 0,
+                "display": "4 items missing",
+                "weight": "0%",
+                "weight_numeric": 0.0,
+                "scorable": False,
+                "status": "INCOMPLETE",
+                "reason": "Add contact info, summary, experience, and skills to complete your resume.",
+                "explanation": "Audits missing contact information, social/portfolio links, or credential sections."
+            },
+            "risk_flags": {
+                "id": "risk_flags",
+                "name": "Risk Flags & Overstated Claims",
+                "dimension": "Risk Flags",
+                "type": "status",
+                "value": 100,
+                "max_value": 100,
+                "score": 100,
+                "display": "Low Risk · 0 flags",
+                "weight": "0%",
+                "weight_numeric": 0.0,
+                "scorable": False,
+                "status": "LOW_RISK",
+                "reason": "No critical flags detected in empty draft.",
+                "explanation": "Highlights buzzword density, ungrounded expert designations, or seniority mismatches."
+            },
+        }
+
         return {
             "overall_score": 0,
             "target_role": target_role,
@@ -295,7 +494,8 @@ def calculate_evidence_based_score(
                     "suggested_direction": "Add your target title and a concise summary."
                 }
             ],
-            "dimensions": {},
+            "dimensions": empty_dimensions_dict,
+            "dimensions_list": list(empty_dimensions_dict.values()),
             "buzzwords_detected": [],
             "unsupported_skills": [],
             "supported_skills_count": 0,
@@ -305,21 +505,30 @@ def calculate_evidence_based_score(
             "score_delta": None,
             "delta_explanation": None,
             "skills_grounding": [],
+            "grounding_summary": {
+                "supported_count": 0,
+                "self_reported_count": 0,
+                "overstated_count": 0,
+                "optional_count": 0,
+                "total_count": 0,
+            },
             "skill_proficiency_feedback": [],
             "consistency_checks": [],
             "all_insights": {},
             "potentially_overstated_claims": [],
+            "disclaimer": "Resume Health Report — internal career diagnostic, not a hiring prediction.",
         }
 
-    # Standardize skills list
+    # Standardize skills list with normalization & noise sanitization
     parsed_skills: list[dict[str, str]] = []
     for s in raw_skills:
         if isinstance(s, str):
-            clean_name = s.strip()
+            clean_name = clean_skill_name(s)
             if clean_name:
                 parsed_skills.append({"name": clean_name, "proficiency": "proficient"})
         elif isinstance(s, dict):
-            clean_name = str(s.get("name") or "").strip()
+            raw_n = str(s.get("name") or "")
+            clean_name = clean_skill_name(raw_n)
             prof = str(s.get("proficiency") or "proficient").strip()
             if clean_name:
                 parsed_skills.append({"name": clean_name, "proficiency": prof})
@@ -375,7 +584,9 @@ def calculate_evidence_based_score(
             supported_skills.append({"name": s, "source": "self-declared language"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": "SUPPORTED",
+                "status_label": "No extra proof needed",
                 "source": "language",
                 "message": "Self-declared language competency.",
             })
@@ -386,7 +597,9 @@ def calculate_evidence_based_score(
             supported_skills.append({"name": s, "source": "standard domain knowledge"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": "SUPPORTED",
+                "status_label": "No extra proof needed",
                 "source": "domain_knowledge",
                 "message": "Standard professional competency.",
             })
@@ -420,7 +633,9 @@ def calculate_evidence_based_score(
             supported_skills.append({"name": s, "source": "work experience"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": status,
+                "status_label": GROUNDING_STATUS_LABELS.get(status, "Supported by your resume"),
                 "source": source,
                 "message": msg,
             })
@@ -430,7 +645,9 @@ def calculate_evidence_based_score(
             supported_skills.append({"name": s, "source": "project portfolio"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": status,
+                "status_label": GROUNDING_STATUS_LABELS.get(status, "Supported by your resume"),
                 "source": source,
                 "message": "Evidenced in documented project work.",
             })
@@ -440,7 +657,9 @@ def calculate_evidence_based_score(
             supported_skills.append({"name": s, "source": "education or certification"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": status,
+                "status_label": GROUNDING_STATUS_LABELS.get(status, "Supported by your resume"),
                 "source": source,
                 "message": "Evidenced in academic studies or credentials.",
             })
@@ -450,7 +669,9 @@ def calculate_evidence_based_score(
             self_reported_skills.append({"name": s, "source": "summary"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": status,
+                "status_label": GROUNDING_STATUS_LABELS.get(status, "Listed by you"),
                 "source": source,
                 "message": "Mentioned in summary, but lacks project or work deliverables.",
             })
@@ -470,7 +691,9 @@ def calculate_evidence_based_score(
             })
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": status,
+                "status_label": GROUNDING_STATUS_LABELS.get(status, "Strong claim — review wording"),
                 "source": source,
                 "message": msg,
             })
@@ -487,7 +710,9 @@ def calculate_evidence_based_score(
             self_reported_skills.append({"name": s, "source": "self-reported"})
             skills_grounding.append({
                 "name": s,
+                "skill": s,
                 "status": status,
+                "status_label": GROUNDING_STATUS_LABELS.get(status, "Listed by you"),
                 "source": source,
                 "message": msg,
             })
@@ -497,6 +722,14 @@ def calculate_evidence_based_score(
                 "problem": f"'{s}' is self-reported without supporting work or project examples.",
                 "advice": f"Optional: add where you applied {s} if you want stronger evidence."
             })
+
+    grounding_summary = {
+        "supported_count": len([sg for sg in skills_grounding if sg["status"] == "SUPPORTED"]),
+        "self_reported_count": len([sg for sg in skills_grounding if sg["status"] in {"SELF_REPORTED", "PARTIALLY_SUPPORTED"}]),
+        "overstated_count": len([sg for sg in skills_grounding if sg["status"] == "POTENTIALLY_OVERSTATED"]),
+        "optional_count": len([sg for sg in skills_grounding if sg.get("status_label") == "No extra proof needed"]),
+        "total_count": len(skills_grounding),
+    }
 
     # 4. Skill Proficiency Feedback (Part H)
     skill_proficiency_feedback = []
@@ -683,46 +916,34 @@ def calculate_evidence_based_score(
     else:
         dim_skills_consistency = 40
 
-    # 7. Contextual Weighting (Zero universal penalty for missing experience on freshers)
-    if level == "EARLY_CAREER":
-        weights = {
-            "structure": 0.15,
-            "target_align": 0.20,
-            "jd_match": 0.15,
-            "evidence": 0.25,
-            "quality": 0.10,
-            "summary": 0.05,
-            "skills_consistency": 0.10,
-        }
-    elif level == "DEVELOPING":
-        weights = {
-            "structure": 0.10,
-            "target_align": 0.20,
-            "jd_match": 0.20,
-            "evidence": 0.25,
-            "quality": 0.10,
-            "summary": 0.05,
-            "skills_consistency": 0.10,
-        }
-    else:  # EXPERIENCED, EXECUTIVE, etc.
-        weights = {
-            "structure": 0.10,
-            "target_align": 0.25,
-            "jd_match": 0.20,
-            "evidence": 0.20,
-            "quality": 0.10,
-            "summary": 0.05,
-            "skills_consistency": 0.10,
-        }
+    # 7. Canonical Dimension Weights (100% Total Across 7 Scorable Dimensions)
+    # Structure 15%, Role Alignment 20%, Evidence 20%, Quality 15%, Summary 10%, Skills 10%, Consistency 10%
+    dim_consistency = 100
+    for chk in consistency_checks:
+        if chk.get("status") == "MISMATCH":
+            dim_consistency -= 20
+        elif chk.get("status") == "POTENTIALLY_OVERSTATED":
+            dim_consistency -= 15
+    dim_consistency = max(40, min(100, dim_consistency))
+
+    weights = {
+        "structure": 0.15,
+        "target_align": 0.20,
+        "evidence": 0.20,
+        "quality": 0.15,
+        "summary": 0.10,
+        "skills_consistency": 0.10,
+        "consistency": 0.10,
+    }
 
     overall = round(
         (dim_structure * weights["structure"]) +
         (dim_target_align * weights["target_align"]) +
-        (dim_jd_match * weights["jd_match"]) +
         (dim_evidence * weights["evidence"]) +
         (dim_quality * weights["quality"]) +
         (dim_summary * weights["summary"]) +
-        (dim_skills_consistency * weights["skills_consistency"])
+        (dim_skills_consistency * weights["skills_consistency"]) +
+        (dim_consistency * weights["consistency"])
     )
     overall = max(20, min(98, overall))
 
@@ -792,6 +1013,7 @@ def calculate_evidence_based_score(
     if not summary or dim_summary < 75:
         target_example_kw = ", ".join(matched_role_kws[:3] or skills[:3] or ["core competencies"])
         all_potential_improvements.append({
+            "id": "SUMMARY_ALIGNMENT_01",
             "priority": "HIGH",
             "impact_label": "High Impact",
             "action_type": "IMPROVE_SUMMARY",
@@ -809,6 +1031,7 @@ def calculate_evidence_based_score(
     if potentially_overstated_claims:
         top_claim = potentially_overstated_claims[0]
         all_potential_improvements.append({
+            "id": "CLAIM_CREDIBILITY_01",
             "priority": "HIGH",
             "impact_label": "High Impact",
             "action_type": "SOFTEN_CLAIM",
@@ -826,6 +1049,7 @@ def calculate_evidence_based_score(
     if len(metrics) < 2 and (experiences or projects):
         first_role = experiences[0].get("role_title") if experiences else projects[0].get("title", "your top work")
         all_potential_improvements.append({
+            "id": "MEASURABLE_OUTCOMES_01",
             "priority": "MEDIUM",
             "impact_label": "Medium Impact",
             "action_type": "REWRITE_BULLETS",
@@ -842,6 +1066,7 @@ def calculate_evidence_based_score(
     # Priority 4: Consistency check (Headline mismatch)
     if headline_senior_term and level == "EARLY_CAREER":
         all_potential_improvements.append({
+            "id": "HEADLINE_ALIGNMENT_01",
             "priority": "MEDIUM",
             "impact_label": "Medium Impact",
             "action_type": "REVIEW_HEADLINE",
@@ -858,6 +1083,7 @@ def calculate_evidence_based_score(
     # Priority 5: Consolidated self-reported skills
     if self_reported_skills and len(self_reported_skills) >= 3:
         all_potential_improvements.append({
+            "id": "SKILL_EVIDENCE_01",
             "priority": "LOW",
             "impact_label": "Opportunity",
             "action_type": "REVIEW_SKILLS",
@@ -925,6 +1151,191 @@ def calculate_evidence_based_score(
         else:
             delta_explanation = f"Score remained steady at {overall}/100. Incorporate top improvements below to increase alignment."
 
+    missing_fields = []
+    if not header.get("linkedin"):
+        missing_fields.append("LinkedIn URL")
+    if not header.get("phone"):
+        missing_fields.append("Phone number")
+    if not header.get("location"):
+        missing_fields.append("Location")
+    if not certifications:
+        missing_fields.append("Certifications (optional)")
+    dim_missing_score = max(50, 100 - len(missing_fields) * 15)
+
+    risk_flags = []
+    if len(potentially_overstated_claims) > 0:
+        risk_flags.append(f"{len(potentially_overstated_claims)} claim{'s' if len(potentially_overstated_claims) > 1 else ''} with high-level wording not backed by verified track record")
+    if len(buzzwords_found) >= 3:
+        risk_flags.append(f"{len(buzzwords_found)} generic buzzwords reduce ATS credibility")
+    if summary_consistency_notes:
+        risk_flags.append("Seniority or headline mismatch detected")
+    dim_risk_score = max(35, 100 - len(risk_flags) * 20)
+
+    dim_jd_display = f"{len(matched_jd_terms)} of {len(significant_jd_terms)} matched" if (job_description and len(job_description.strip()) > 30) else f"{len(matched_role_kws)} core skills matched"
+
+    dimensions_dict = {
+        "structure_parsability": {
+            "id": "structure_parsability",
+            "name": "ATS & Structural Parsability",
+            "dimension": "Parsing / Format Health",
+            "type": "score",
+            "value": dim_structure,
+            "max_value": 100,
+            "score": dim_structure,
+            "display": f"{dim_structure}/100",
+            "weight": f"{int(weights['structure']*100)}%",
+            "weight_numeric": weights["structure"],
+            "scorable": True,
+            "status": "STRONG" if dim_structure >= 80 else "NEEDS_ATTENTION",
+            "reason": "Single column, standard ATS headings, contact info and sections parsable." if dim_structure >= 80 else "Structure lacks contact info or standard sections.",
+            "explanation": "Evaluates ATS readability, standard heading labels, and essential contact details."
+        },
+        "target_role_alignment": {
+            "id": "target_role_alignment",
+            "name": "Target Role Alignment",
+            "dimension": "Role Alignment",
+            "type": "score",
+            "value": dim_target_align,
+            "max_value": 100,
+            "score": dim_target_align,
+            "display": f"{dim_target_align}/100",
+            "weight": f"{int(weights['target_align']*100)}%",
+            "weight_numeric": weights["target_align"],
+            "scorable": True,
+            "status": "STRONG" if dim_target_align >= 75 else "PARTIAL",
+            "reason": f"Matched {len(matched_role_kws)} core keyword{'s' if len(matched_role_kws) != 1 else ''} for target role '{target_role}'.",
+            "explanation": f"Evaluates keyword density and terminology relevance for {target_role}."
+        },
+        "evidence_strength": {
+            "id": "evidence_strength",
+            "name": "Evidence & Project Strength",
+            "dimension": "Evidence Strength",
+            "type": "score",
+            "value": dim_evidence,
+            "max_value": 100,
+            "score": dim_evidence,
+            "display": f"{dim_evidence}/100",
+            "weight": f"{int(weights['evidence']*100)}%",
+            "weight_numeric": weights["evidence"],
+            "scorable": True,
+            "status": "STRONG" if dim_evidence >= 70 else "DEVELOPING",
+            "reason": f"Includes {len(projects)} key projects, {len(experiences)} roles, and {len(metrics)} measurable metrics.",
+            "explanation": "Measures demonstrated deliverables, measurable metrics, and verifiable project outcomes."
+        },
+        "content_quality": {
+            "id": "content_quality",
+            "name": "Content Quality & Action Verbs",
+            "dimension": "Writing Quality",
+            "type": "score",
+            "value": dim_quality,
+            "max_value": 100,
+            "score": dim_quality,
+            "display": f"{dim_quality}/100",
+            "weight": f"{int(weights['quality']*100)}%",
+            "weight_numeric": weights["quality"],
+            "scorable": True,
+            "status": "STRONG" if dim_quality >= 80 else "NEEDS_ATTENTION",
+            "reason": f"Found {action_verb_count} action verbs and {len(buzzwords_found)} generic buzzwords.",
+            "explanation": "Detects strong active verbs while screening out weak generic buzzwords."
+        },
+        "summary_alignment": {
+            "id": "summary_alignment",
+            "name": "Professional Summary Alignment",
+            "dimension": "Summary Alignment",
+            "type": "score",
+            "value": dim_summary,
+            "max_value": 100,
+            "score": dim_summary,
+            "display": f"{dim_summary}/100",
+            "weight": f"{int(weights['summary']*100)}%",
+            "weight_numeric": weights["summary"],
+            "scorable": True,
+            "status": "STRONG" if dim_summary >= 80 else "NEEDS_ATTENTION",
+            "reason": f"Summary clearly targets {target_role}." if dim_summary >= 80 else "Summary is brief or could align more directly with the target role.",
+            "explanation": f"Checks that your opening summary clearly articulates value for {target_role}."
+        },
+        "skills_consistency": {
+            "id": "skills_consistency",
+            "name": "Skills Grounding & Consistency",
+            "dimension": "Skill-to-Evidence Consistency",
+            "type": "score",
+            "value": dim_skills_consistency,
+            "max_value": 100,
+            "score": dim_skills_consistency,
+            "display": f"{dim_skills_consistency}/100",
+            "weight": f"{int(weights['skills_consistency']*100)}%",
+            "weight_numeric": weights["skills_consistency"],
+            "scorable": True,
+            "status": "STRONG" if dim_skills_consistency >= 75 else "PARTIAL",
+            "reason": f"{len(supported_skills)} of {len(skills)} skills are grounded in verifiable experience, projects, or credentials." if skills else "No skills cataloged yet.",
+            "explanation": "Verifies that cataloged skills are grounded in actual work, projects, or credentials."
+        },
+        "career_consistency": {
+            "id": "career_consistency",
+            "name": "Career & Timeline Consistency",
+            "dimension": "Career Consistency",
+            "type": "score",
+            "value": dim_consistency,
+            "max_value": 100,
+            "score": dim_consistency,
+            "display": f"{dim_consistency}/100",
+            "weight": f"{int(weights['consistency']*100)}%",
+            "weight_numeric": weights["consistency"],
+            "scorable": True,
+            "status": "STRONG" if dim_consistency >= 80 else "NEEDS_ATTENTION",
+            "reason": "Timeline, role titles, and career scope follow a coherent progression." if not consistency_checks else f"{len(consistency_checks)} consistency check{'s' if len(consistency_checks) != 1 else ''} noted.",
+            "explanation": "Checks for consistency between headline seniority, summary claims, and documented experience."
+        },
+        "job_description_match": {
+            "id": "job_description_match",
+            "name": "Job Requirement Coverage",
+            "dimension": "Requirement Coverage",
+            "type": "ratio",
+            "value": dim_jd_match,
+            "max_value": 100,
+            "score": dim_jd_match,
+            "display": dim_jd_display,
+            "weight": "0%",
+            "weight_numeric": 0.0,
+            "scorable": False,
+            "status": "STRONG" if dim_jd_match >= 75 else "BASELINE",
+            "reason": f"{len(matched_jd_terms)} target requirements represented in resume." if (job_description and len(job_description.strip()) > 30) else "Evaluated against general target role requirements.",
+            "explanation": "Evaluates coverage against target job description or core role competencies."
+        },
+        "missing_information": {
+            "id": "missing_information",
+            "name": "Missing Information & Links",
+            "dimension": "Missing Information",
+            "type": "metric",
+            "value": dim_missing_score,
+            "max_value": 100,
+            "score": dim_missing_score,
+            "display": f"{len(missing_fields)} item{'s' if len(missing_fields) != 1 else ''} missing" if missing_fields else "All essential contact & links present",
+            "weight": "0%",
+            "weight_numeric": 0.0,
+            "scorable": False,
+            "status": "COMPLETE" if len(missing_fields) <= 1 else "INCOMPLETE",
+            "reason": "All core contact and credential links are present." if not missing_fields else f"Consider adding: {', '.join(missing_fields)}.",
+            "explanation": "Audits missing contact information, social/portfolio links, or credential sections."
+        },
+        "risk_flags": {
+            "id": "risk_flags",
+            "name": "Risk Flags & Overstated Claims",
+            "dimension": "Risk Flags",
+            "type": "status",
+            "value": dim_risk_score,
+            "max_value": 100,
+            "score": dim_risk_score,
+            "display": f"{len(risk_flags)} flag{'s' if len(risk_flags) != 1 else ''} noted" if risk_flags else "Low Risk · 0 flags",
+            "weight": "0%",
+            "weight_numeric": 0.0,
+            "scorable": False,
+            "status": "LOW_RISK" if len(risk_flags) == 0 else "ATTENTION_REQUIRED",
+            "reason": "No critical flags detected." if not risk_flags else "; ".join(risk_flags[:2]),
+            "explanation": "Highlights buzzword density, ungrounded expert designations, or seniority mismatches."
+        },
+    }
+
     return {
         "overall_score": overall,
         "target_role": target_role,
@@ -939,57 +1350,8 @@ def calculate_evidence_based_score(
         "what_is_holding_back": what_is_holding_back[:4],
         "top_improvements": top_improvements,
         "all_insights": all_insights,
-        "dimensions": {
-            "structure_parsability": {
-                "name": "ATS & Structural Parsability",
-                "score": dim_structure,
-                "weight": f"{int(weights['structure']*100)}%",
-                "status": "STRONG" if dim_structure >= 80 else "NEEDS_ATTENTION",
-                "explanation": "Evaluates ATS readability, standard heading labels, and essential contact details."
-            },
-            "target_role_alignment": {
-                "name": "Target Role Alignment",
-                "score": dim_target_align,
-                "weight": f"{int(weights['target_align']*100)}%",
-                "status": "STRONG" if dim_target_align >= 75 else "PARTIAL",
-                "explanation": f"Evaluates keyword density and terminology relevance for {target_role}."
-            },
-            "job_description_match": {
-                "name": "Job Description Keyword Match",
-                "score": dim_jd_match,
-                "weight": f"{int(weights['jd_match']*100)}%",
-                "status": "STRONG" if dim_jd_match >= 75 else "PARTIAL",
-                "explanation": "Evaluates overlap between candidate resume text and target job description requirements."
-            },
-            "evidence_strength": {
-                "name": "Evidence & Project Strength",
-                "score": dim_evidence,
-                "weight": f"{int(weights['evidence']*100)}%",
-                "status": "STRONG" if dim_evidence >= 70 else "DEVELOPING",
-                "explanation": "Measures demonstrated deliverables, measurable metrics, and verifiable project outcomes."
-            },
-            "content_quality": {
-                "name": "Content Quality & Action Verbs",
-                "score": dim_quality,
-                "weight": f"{int(weights['quality']*100)}%",
-                "status": "STRONG" if dim_quality >= 80 else "NEEDS_ATTENTION",
-                "explanation": "Detects strong active verbs while screening out weak generic buzzwords."
-            },
-            "summary_alignment": {
-                "name": "Professional Summary Alignment",
-                "score": dim_summary,
-                "weight": f"{int(weights['summary']*100)}%",
-                "status": "STRONG" if dim_summary >= 80 else "NEEDS_ATTENTION",
-                "explanation": f"Checks that your opening summary clearly articulates value for {target_role}."
-            },
-            "skills_consistency": {
-                "name": "Skills Grounding & Consistency",
-                "score": dim_skills_consistency,
-                "weight": f"{int(weights['skills_consistency']*100)}%",
-                "status": "STRONG" if dim_skills_consistency >= 75 else "UNGROUNDED",
-                "explanation": "Verifies that cataloged skills are grounded in actual work, projects, or credentials."
-            },
-        },
+        "dimensions": dimensions_dict,
+        "dimensions_list": list(dimensions_dict.values()),
         "buzzwords_detected": buzzwords_found,
         "unsupported_skills": unsupported_skills,
         "supported_skills_count": len(supported_skills),
@@ -999,7 +1361,13 @@ def calculate_evidence_based_score(
         "score_delta": score_delta,
         "delta_explanation": delta_explanation,
         "skills_grounding": skills_grounding,
+        "grounding_summary": grounding_summary,
         "skill_proficiency_feedback": skill_proficiency_feedback,
         "consistency_checks": consistency_checks,
         "potentially_overstated_claims": potentially_overstated_claims,
+        "disclaimer": "Resume Health Report — internal career diagnostic, not a hiring prediction.",
     }
+
+
+# Canonical Assessment Function Alias
+calculate_resume_assessment = calculate_evidence_based_score

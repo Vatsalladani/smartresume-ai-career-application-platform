@@ -508,3 +508,94 @@ def test_deterministic_reproducibility():
     assert res1["what_is_holding_back"] == res2["what_is_holding_back"]
 
 
+def test_clean_skill_name_normalization():
+    """Verify that skill tokenization errors and noise are correctly sanitized."""
+    from app.services.scoring_service import clean_skill_name
+
+    assert clean_skill_name("and Analytical Method Validation.") == "Analytical Method Validation"
+    assert clean_skill_name("and Data Integrity Compliance.") == "Data Integrity Compliance"
+    assert clean_skill_name("And Quality Assurance;") == "Quality Assurance"
+    assert clean_skill_name("& Machine Learning, ") == "Machine Learning"
+    assert clean_skill_name("  Python  ") == "Python"
+
+    # Noise filtering
+    assert clean_skill_name("DECLARATION") is None
+    assert clean_skill_name("declaration") is None
+    assert clean_skill_name("and") is None
+    assert clean_skill_name("&") is None
+    assert clean_skill_name("none") is None
+    assert clean_skill_name("na") is None
+    assert clean_skill_name("") is None
+    assert clean_skill_name(None) is None
+
+
+def test_canonical_10_dimensions_no_nan():
+    """All 10 dimensions must have explicit display types and numeric scores, never NaN."""
+    resume = {
+        "header": {
+            "full_name": "Test Engineer",
+            "headline": "Full Stack Developer",
+            "email": "test@example.com",
+            "phone": "+1 555-1234",
+            "location": "San Francisco, CA"
+        },
+        "summary": "Full stack engineer experienced in building fast REST APIs and web applications with React and Python.",
+        "skills": ["and Analytical Method Validation.", "DECLARATION", "Python", "React", "PostgreSQL"],
+        "experiences": [
+            {
+                "role_title": "Full Stack Developer",
+                "company": "Tech Corp",
+                "bullet_points": ["Engineered high-scale microservices reducing latency by 35% across 10k users."]
+            }
+        ],
+        "projects": [
+            {
+                "title": "Cloud Dashboard",
+                "bullet_points": ["Built responsive UI using React and Tailwind."]
+            }
+        ],
+        "education": [{"institution": "UC Berkeley", "degree": "B.S. CS"}],
+        "certifications": ["AWS Certified"]
+    }
+
+    result = calculate_evidence_based_score(resume, target_role="Software Engineer")
+
+    # Dimensions check
+    assert len(result["dimensions"]) == 10
+    assert len(result["dimensions_list"]) == 10
+
+    for d in result["dimensions_list"]:
+        # Type must be one of the explicit allowed types
+        assert d["type"] in {"score", "ratio", "status", "metric"}
+        # Score must be numeric (never string, never NaN)
+        assert isinstance(d["score"], (int, float))
+        assert not (d["score"] != d["score"])  # NaN check: NaN != NaN is True
+        # Display must be a valid non-empty string
+        assert isinstance(d["display"], str)
+        assert len(d["display"]) > 0
+
+    # Grounding summary check
+    gs = result["grounding_summary"]
+    assert "supported_count" in gs
+    assert "self_reported_count" in gs
+    assert "overstated_count" in gs
+    assert "total_count" in gs
+    assert gs["total_count"] > 0
+
+    # Human-friendly labels check
+    for sg in result["skills_grounding"]:
+        assert "status_label" in sg
+        assert sg["status_label"] in {
+            "Supported by your resume",
+            "Listed by you",
+            "Strong claim — review wording",
+            "No extra proof needed"
+        }
+
+    # Improvement structured IDs check
+    for imp in result["top_improvements"]:
+        assert "id" in imp
+        assert imp["id"].endswith("_01")
+
+
+

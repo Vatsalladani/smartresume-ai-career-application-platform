@@ -2424,6 +2424,17 @@ svg {
 }
 
 /* Product Intelligence V2 Modals & Widgets */
+#healthModal .modal-dialog {
+  max-width: 780px;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.health-resume-selector-bar {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
 .health-score-header {
   display: flex;
   align-items: center;
@@ -2439,6 +2450,102 @@ svg {
   font-size: 2.2rem;
   font-weight: 800;
   color: var(--primary);
+  line-height: 1.1;
+}
+
+.grounding-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.grounding-count-badge.supported {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.grounding-count-badge.self_reported {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.grounding-count-badge.overstated {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.grounding-count-badge.optional {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.health-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  max-width: 100%;
+}
+
+.health-skill-chip .skill-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.priority-fix-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.priority-fix-card.high {
+  border-left: 4px solid #ef4444;
+}
+
+.priority-fix-card.medium {
+  border-left: 4px solid #f59e0b;
+}
+
+.priority-fix-card.low {
+  border-left: 4px solid #3b82f6;
+}
+
+.priority-tag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.priority-tag.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.priority-tag.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.priority-tag.low {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
 }
 
 .dimension-card {

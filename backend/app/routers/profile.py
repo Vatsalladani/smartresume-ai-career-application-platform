@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.core.responses import success_response
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import User
+from app.models import Resume, User
+from app.services.scoring_service import calculate_evidence_based_score
 from app.schemas.master_profile import (
     CertificationCreate,
     CertificationOut,
@@ -248,11 +249,73 @@ def commit_imported_profile(
 @router.get("/health-report", response_model=dict)
 @router.get("/health", response_model=dict)
 def get_profile_health(
+    resume_id: int | None = Query(None),
+    target_role: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     profile = profile_service.get_or_create_profile(db, current_user.id)
-    health = calculate_resume_health(profile)
+    user_resumes = (
+        db.query(Resume)
+        .filter(Resume.user_id == current_user.id, Resume.is_archived == False)
+        .order_by(Resume.updated_at.desc())
+        .all()
+    )
+
+    scored_resumes = []
+    for r in user_resumes:
+        r_data = r.parsed_content or {}
+        r_role = r.target_role or target_role or profile.headline or "Software Engineer"
+        sc = calculate_evidence_based_score(r_data, target_role=r_role)
+        scored_resumes.append({
+            "id": r.id,
+            "title": r.title or f"Resume #{r.id}",
+            "target_role": r.target_role or r_role,
+            "score": sc["overall_score"],
+            "confidence": sc.get("score_confidence", "Medium"),
+            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+        })
+
+    selected_resume = None
+    if resume_id:
+        selected_resume = next((r for r in user_resumes if r.id == resume_id), None)
+
+    if not selected_resume and user_resumes:
+        best_resume_meta = max(scored_resumes, key=lambda x: x["score"]) if scored_resumes else None
+        if best_resume_meta:
+            selected_resume = next((r for r in user_resumes if r.id == best_resume_meta["id"]), user_resumes[0])
+
+    if selected_resume:
+        r_data = selected_resume.parsed_content or {}
+        r_role = target_role or selected_resume.target_role or profile.headline or "Software Engineer"
+        health = calculate_evidence_based_score(
+            resume_data=r_data,
+            target_role=r_role,
+            target_company=selected_resume.target_company,
+        )
+        health["selected_resume_id"] = selected_resume.id
+        health["selected_resume_title"] = selected_resume.title
+        health["selected_resume_target_role"] = selected_resume.target_role or r_role
+    else:
+        health = calculate_resume_health(profile)
+        health["selected_resume_id"] = None
+        health["selected_resume_title"] = "Master Profile"
+        health["selected_resume_target_role"] = profile.headline or "Software Engineer"
+
+    # Add active resumes list and best resume metadata
+    health["active_resumes"] = scored_resumes
+    best_meta = max(scored_resumes, key=lambda x: x["score"]) if scored_resumes else None
+    health["best_resume_id"] = best_meta["id"] if best_meta else None
+    health["best_resume_title"] = best_meta["title"] if best_meta else None
+    health["best_resume_score"] = best_meta["score"] if best_meta else None
+
+    # Ensure dimensions list exists for frontend
+    if "dimensions_list" not in health and isinstance(health.get("dimensions"), dict):
+        health["dimensions_list"] = list(health["dimensions"].values())
+    if isinstance(health.get("dimensions"), dict):
+        health["dimensions_map"] = health["dimensions"]
+        health["dimensions"] = list(health["dimensions"].values())
+
     return success_response(health, "Resume Health calculated.")
 
 

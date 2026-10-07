@@ -268,174 +268,101 @@ def build_evidence_consistency_graph(profile: Profile) -> dict[str, Any]:
 def calculate_resume_health(profile: Profile, target_job: JobPosting | None = None) -> dict[str, Any]:
     """
     Computes a transparent, 10-dimension Resume Health report.
-    Each section explains WHY with evidence.
+    Delegates to canonical calculate_evidence_based_score for 100% unified scoring.
     Zero fake scores, zero flattering numbers.
     """
+    from app.services.scoring_service import calculate_evidence_based_score
+
+    candidate_name = getattr(profile, "full_name", None) or "Candidate"
+    email = getattr(profile, "email", None) or ""
     experiences = profile.experiences or []
     projects = profile.projects or []
     skills = profile.skills or []
     edu = profile.education or []
     certs = profile.certifications or []
 
-    all_bullets = []
-    for e in experiences:
-        all_bullets.extend(e.bullet_points or [])
-    for p in projects:
-        all_bullets.extend(p.bullet_points or [])
-
-    full_text = f"{profile.headline} {profile.summary} {' '.join(all_bullets)}".lower()
-
-    # Dimension 1: Parsing / Format Health
-    format_reasons = []
-    format_deductions = 0
-    if not profile.headline or len(profile.headline) < 5:
-        format_deductions += 15
-        format_reasons.append("Headline is missing or under 5 characters.")
-    if not profile.summary or len(profile.summary) < 20:
-        format_deductions += 15
-        format_reasons.append("Professional summary is missing or too brief.")
-    if not profile.phone and not profile.location:
-        format_deductions += 10
-        format_reasons.append("Contact details lack phone number or location.")
-    if len(experiences) == 0 and len(projects) == 0:
-        format_deductions += 30
-        format_reasons.append("No work experiences or projects documented.")
-    format_health_score = max(30, 100 - format_deductions)
-    dim_format = {
-        "dimension": "Parsing / Format Health",
-        "score": format_health_score,
-        "status": "HEALTHY" if format_health_score >= 80 else "NEEDS_ATTENTION",
-        "reason": "Single column, standard ATS headings, contact info and sections parsable." if not format_reasons else "; ".join(format_reasons),
+    resume_data = {
+        "header": {
+            "full_name": candidate_name,
+            "headline": profile.headline or "",
+            "email": email,
+            "phone": profile.phone or "",
+            "location": profile.location or "",
+            "linkedin": profile.linkedin_url or "",
+            "github": profile.github_url or "",
+            "website": profile.website_url or "",
+        },
+        "summary": profile.summary or "",
+        "skills": [s.name for s in skills],
+        "experiences": [
+            {
+                "role_title": getattr(e, "role_title", getattr(e, "title", "")),
+                "company": e.company,
+                "location": e.location or "",
+                "start_date": e.start_date or "",
+                "end_date": e.end_date or "",
+                "is_current": e.is_current,
+                "bullet_points": [b if isinstance(b, str) else b.get("text", "") for b in (getattr(e, "bullet_points", None) or getattr(e, "bullets", []) or [])],
+            }
+            for e in experiences
+        ],
+        "projects": [
+            {
+                "title": getattr(p, "title", getattr(p, "name", "")),
+                "technologies": p.technologies if isinstance(p.technologies, list) else ([p.technologies] if p.technologies else []),
+                "description": p.description or "",
+                "bullet_points": [b if isinstance(b, str) else b.get("text", "") for b in (getattr(p, "bullet_points", None) or getattr(p, "bullets", []) or [])],
+            }
+            for p in projects
+        ],
+        "education": [
+            {
+                "institution": ed.institution,
+                "degree": ed.degree,
+                "field_of_study": ed.field_of_study or "",
+                "start_date": ed.start_date or "",
+                "end_date": ed.end_date or getattr(ed, "graduation_year", "") or "",
+                "grade": ed.grade or getattr(ed, "gpa", "") or "",
+            }
+            for ed in edu
+        ],
+        "certifications": [
+            (c if isinstance(c, str) else c.name) for c in certs
+        ],
     }
 
-    # Dimension 2: Requirement Coverage
+    target_role = profile.headline or (target_job.title if target_job else "Software Engineer")
+    target_company = target_job.company if target_job else None
+    jd = target_job.raw_description if target_job else None
     if target_job and target_job.requirements:
-        req_count = len(target_job.requirements)
-        matched_reqs = 0
-        for req in target_job.requirements:
-            w_matches = [w for w in req.requirement_text.lower().split() if len(w) > 4 and w in full_text]
-            if len(w_matches) >= 2:
-                matched_reqs += 1
-        dim_coverage = {
-            "dimension": "Requirement Coverage",
-            "score": f"{matched_reqs}/{req_count}",
-            "status": "STRONG" if matched_reqs / max(req_count, 1) >= 0.7 else "PARTIAL",
-            "reason": f"{matched_reqs} of {req_count} target job requirements have explicit representation in your profile.",
-        }
-    else:
-        dim_coverage = {
-            "dimension": "Requirement Coverage",
-            "score": f"{len(skills)} skills",
-            "status": "BASELINE",
-            "reason": "Evaluated against general role expectations (add a target job to compare specific coverage).",
-        }
+        req_texts = " ".join([r.requirement_text for r in target_job.requirements])
+        jd = f"{jd or ''} {req_texts}".strip()
 
-    # Dimension 3: Evidence Strength
-    metric_count = len(re.findall(r"\b\d+[%kKmM]?|\$\d+|\d+\+", full_text))
-    dim_evidence = {
-        "dimension": "Evidence Strength",
-        "score": f"{len(projects)} projects, {len(experiences)} roles, {metric_count} metrics",
-        "status": "STRONG" if (len(projects) + len(experiences) >= 3 and metric_count >= 2) else "DEVELOPING",
-        "reason": f"Profile includes {len(projects)} key projects and {len(experiences)} roles with {metric_count} observable outcomes.",
-    }
+    assessment = calculate_evidence_based_score(
+        resume_data=resume_data,
+        target_role=target_role,
+        target_company=target_company,
+        job_description=jd,
+        career_level=getattr(profile, "career_level", None),
+    )
 
-    # Dimension 4: Skill-to-Evidence Consistency
-    graph = build_evidence_consistency_graph(profile)
-    dim_consistency = {
-        "dimension": "Skill-to-Evidence Consistency",
-        "score": f"{graph['supported_count']}/{graph['total_skills']} supported",
-        "status": "CONSISTENT" if graph["consistency_score"] >= 75 else "INCONSISTENT",
-        "reason": graph["summary"],
-    }
-
-    # Dimension 5: Role Alignment
-    target_role = profile.headline or (target_job.title if target_job else "Target Role")
-    has_role_match = any(word.lower() in full_text for word in target_role.split() if len(word) > 4)
-    dim_alignment = {
-        "dimension": "Role Alignment",
-        "score": "ALIGNED" if has_role_match else "NEEDS_ALIGNMENT",
-        "status": "ALIGNED" if has_role_match else "NEEDS_ALIGNMENT",
-        "reason": f"Headline and summary clearly frame your background toward {target_role}." if has_role_match else f"Profile does not clearly align with target role '{target_role}'.",
-    }
-
-    # Dimension 6: Writing Quality
-    verbs_used = [v for v in ACTION_VERBS if v.lower() in full_text]
-    buzzwords_found = [bw for bw in GENERIC_BUZZWORDS if bw in full_text]
-    dim_writing = {
-        "dimension": "Writing Quality",
-        "score": f"{len(verbs_used)} action verbs, {len(buzzwords_found)} buzzwords",
-        "status": "STRONG" if len(verbs_used) >= 4 and len(buzzwords_found) == 0 else "NEEDS_POLISH",
-        "reason": f"Strong action verbs detected ({', '.join(verbs_used[:4])})." if not buzzwords_found else f"Generic corporate buzzwords detected: {', '.join(buzzwords_found)}. Replace with concrete actions.",
-    }
-
-    # Dimension 7: Professionalism & Relevance
-    dim_relevance = {
-        "dimension": "Professionalism / Relevance",
-        "score": "PROFESSIONAL",
-        "status": "PROFESSIONAL",
-        "reason": "Profile avoids demographic clutter and informal declarations.",
-    }
-
-    # Dimension 8: Missing Information
-    missing_fields = []
-    if not profile.linkedin_url:
-        missing_fields.append("LinkedIn URL")
-    domain_str = getattr(profile, "target_domain", "") or ""
-    if not profile.github_url and "software" in domain_str.lower():
-        missing_fields.append("GitHub / Portfolio")
-    if not certs:
-        missing_fields.append("Certifications (optional)")
-    dim_missing = {
-        "dimension": "Missing Information",
-        "score": f"{len(missing_fields)} items",
-        "status": "COMPLETE" if len(missing_fields) <= 1 else "INCOMPLETE",
-        "reason": "All core contact and credential links are present." if not missing_fields else f"Consider adding: {', '.join(missing_fields)}.",
-    }
-
-    # Dimension 9: Contradictions & Inconsistencies
-    dim_contradictions = {
-        "dimension": "Contradictions / Inconsistencies",
-        "score": "0 found",
-        "status": "CONSISTENT",
-        "reason": "Dates, role titles, and technology mentions follow a coherent timeline.",
-    }
-
-    # Dimension 10: Risk Flags
-    risk_flags = []
-    if graph["unsupported_count"] >= 4:
-        risk_flags.append(f"{graph['unsupported_count']} skills lack supporting projects or experience evidence")
-    if buzzwords_found:
-        risk_flags.append("Generic buzzwords reduce ATS credibility")
-    dim_risks = {
-        "dimension": "Risk Flags",
-        "score": f"{len(risk_flags)} flags",
-        "status": "LOW_RISK" if len(risk_flags) == 0 else "ATTENTION_REQUIRED",
-        "reason": "No major risks detected." if not risk_flags else "; ".join(risk_flags),
-    }
-
-    dimensions = [
-        dim_format, dim_coverage, dim_evidence, dim_consistency, dim_alignment,
-        dim_writing, dim_relevance, dim_missing, dim_contradictions, dim_risks
-    ]
-
-    numeric_scores = [format_health_score, graph.get("consistency_score", 70)]
-    if isinstance(dim_coverage.get("score"), (int, float)):
-        numeric_scores.append(dim_coverage["score"])
-    if isinstance(dim_evidence.get("score"), (int, float)):
-        numeric_scores.append(dim_evidence["score"])
-    if isinstance(dim_alignment.get("score"), (int, float)):
-        numeric_scores.append(dim_alignment["score"])
-    if isinstance(dim_writing.get("score"), (int, float)):
-        numeric_scores.append(dim_writing["score"])
-
-    overall_score = int(sum(numeric_scores) / len(numeric_scores)) if numeric_scores else 75
+    dims_list = assessment.get("dimensions_list") or list((assessment.get("dimensions") or {}).values())
 
     return {
-        "overall_score": overall_score,
-        "overall_health": "STRONG" if format_health_score >= 80 and graph.get("consistency_score", 70) >= 70 else "ACTION_RECOMMENDED",
-        "career_level": getattr(profile, "career_level", "DEVELOPING_PROFESSIONAL") or "DEVELOPING_PROFESSIONAL",
-        "overall_summary": f"Resume evaluated across 10 deterministic dimensions. Overall health score: {overall_score}/100.",
-        "dimensions": dimensions,
+        "overall_score": assessment["overall_score"],
+        "overall_health": "STRONG" if assessment["overall_score"] >= 75 else "ACTION_RECOMMENDED",
+        "career_level": assessment.get("career_level", "DEVELOPING_PROFESSIONAL"),
+        "overall_summary": f"Resume evaluated across 10 deterministic dimensions. Overall health score: {assessment['overall_score']}/100.",
+        "dimensions": dims_list,
+        "dimensions_map": assessment.get("dimensions", {}),
+        "score_confidence": assessment.get("score_confidence", "Medium"),
+        "what_is_helping": assessment.get("what_is_helping", []),
+        "what_is_holding_back": assessment.get("what_is_holding_back", []),
+        "top_improvements": assessment.get("top_improvements", []),
+        "grounding_summary": assessment.get("grounding_summary", {}),
+        "skills_grounding": assessment.get("skills_grounding", []),
+        "consistency_checks": assessment.get("consistency_checks", []),
+        "all_insights": assessment.get("all_insights", {}),
         "disclaimer": "Resume Health Report — internal career diagnostic, not a hiring prediction.",
     }
 

@@ -187,3 +187,77 @@ def test_resume_import_requires_review_before_commit():
     assert len(prof_after.json()["data"]["experiences"]) >= 1
     assert len(prof_after.json()["data"]["skills"]) >= 1
     assert prof_after.json()["data"]["completeness_score"] > 50
+
+
+def test_profile_health_report_canonical_and_no_nan():
+    """Verify GET /profile/health-report returns canonical assessment without NaN."""
+    user_id, token = create_authenticated_user()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # First test health report on empty profile
+    res = client.get("/api/v1/profile/health-report", headers=headers)
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert "overall_score" in data
+    assert isinstance(data["overall_score"], (int, float))
+    assert "dimensions" in data
+    assert len(data["dimensions"]) == 10
+
+    for d in data["dimensions"]:
+        assert d["type"] in {"score", "ratio", "status", "metric"}
+        assert isinstance(d["score"], (int, float))
+        assert not (d["score"] != d["score"])  # No NaN
+
+    # Now create a resume and verify health report defaults to it and returns active_resumes
+    create_res = client.post(
+        "/api/v1/resumes",
+        json={
+            "title": "Backend Lead Resume",
+            "target_role": "Backend Engineer",
+            "parsed_content": {
+                "header": {
+                    "full_name": "Profile User",
+                    "headline": "Senior Backend Developer",
+                    "email": "profileuser@example.com",
+                    "phone": "+91 9988776655",
+                    "location": "Bengaluru, India"
+                },
+                "summary": "Experienced backend developer with 5 years building scalable microservices and APIs.",
+                "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "Git"],
+                "experiences": [
+                    {
+                        "role_title": "Backend Engineer",
+                        "company": "Tech Corp",
+                        "bullet_points": ["Engineered high-scale microservices reducing latency by 40% across 50k users."]
+                    }
+                ],
+                "projects": [
+                    {
+                        "title": "API Gateway",
+                        "bullet_points": ["Designed fast auth and rate-limiting gateway in Python."]
+                    }
+                ],
+                "education": [{"institution": "IIT", "degree": "B.Tech CS"}]
+            }
+        },
+        headers=headers,
+    )
+    assert create_res.status_code == 200
+    created_id = create_res.json()["data"]["id"]
+
+    # Call health report again
+    health_res = client.get("/api/v1/profile/health-report", headers=headers)
+    assert health_res.status_code == 200
+    h_data = health_res.json()["data"]
+
+    assert h_data["selected_resume_id"] == created_id
+    assert h_data["overall_score"] >= 70
+    assert len(h_data["active_resumes"]) >= 1
+    assert h_data["active_resumes"][0]["id"] == created_id
+
+    # Verify query param resume_id works
+    health_by_id = client.get(f"/api/v1/profile/health-report?resume_id={created_id}", headers=headers)
+    assert health_by_id.status_code == 200
+    assert health_by_id.json()["data"]["selected_resume_id"] == created_id
+    assert health_by_id.json()["data"]["overall_score"] == h_data["overall_score"]
+
