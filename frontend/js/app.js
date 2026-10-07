@@ -4065,6 +4065,49 @@ function renderResumeScoreModal(data) {
             </div>
           `;
         }
+
+        let actionBtnHtml = "";
+        const actionType = imp.action_type || "";
+        const actionTarget = imp.action_target || "";
+        const actionLabel = imp.action_label || (
+          actionType === "IMPROVE_SUMMARY" ? "Improve Summary" :
+          actionType === "REVIEW_SKILLS" ? "Review Unsupported Skills" :
+          actionType === "REWRITE_BULLETS" ? "Rewrite Bullets" :
+          actionType === "REVIEW_HEADLINE" ? "Review Headline" : "Open in Builder"
+        );
+
+        if (actionType === "IMPROVE_SUMMARY" || actionTarget === "summary") {
+          actionBtnHtml = `
+            <button class="primary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = $('#builderSummaryText'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);">
+              <i data-lucide="edit-3"></i><span>${escapeHtml(actionLabel)}</span>
+            </button>
+          `;
+        } else if (actionType === "REVIEW_SKILLS" || actionTarget === "skills") {
+          actionBtnHtml = `
+            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = $('#builderSkillsInput'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);">
+              <i data-lucide="layers"></i><span>${escapeHtml(actionLabel)}</span>
+            </button>
+          `;
+        } else if (actionType === "REWRITE_BULLETS" || actionTarget === "experience") {
+          actionBtnHtml = `
+            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = document.querySelector('#secEditor-experiences') || document.querySelector('#secEditor-projects'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 200);">
+              <i data-lucide="sparkles"></i><span>${escapeHtml(actionLabel)}</span>
+            </button>
+          `;
+        } else if (actionType === "REVIEW_HEADLINE" || actionTarget === "headline") {
+          actionBtnHtml = `
+            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = $('#builderHeadline'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);">
+              <i data-lucide="user"></i><span>${escapeHtml(actionLabel)}</span>
+            </button>
+          `;
+        } else {
+          actionBtnHtml = `
+            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder');">
+              <i data-lucide="arrow-right"></i><span>${escapeHtml(actionLabel)}</span>
+            </button>
+          `;
+        }
+
         return `
           <div class="priority-fix-card ${impactClass}">
             <div class="flex-between align-center mb-1">
@@ -4074,6 +4117,7 @@ function renderResumeScoreModal(data) {
             <p class="text-xs text-muted mb-1">${escapeHtml(explanation)}</p>
             <p class="text-xs font-semibold mb-0" style="color: var(--primary);">${escapeHtml(action)}</p>
             ${exHtml}
+            ${actionBtnHtml}
           </div>
         `;
       }).join("");
@@ -4103,6 +4147,55 @@ function renderResumeScoreModal(data) {
         </div>
       `;
     }).join("");
+  }
+
+  // 8b. Skill Grounding Verification
+  const groundingList = $("#scoreSkillsGroundingList");
+  if (groundingList) {
+    const list = data.skills_grounding || [];
+    if (list.length > 0) {
+      groundingList.innerHTML = list.map(sg => {
+        const isSupported = sg.status === "SUPPORTED";
+        const isPartial = sg.status === "PARTIALLY_SUPPORTED";
+        const badgeClass = isSupported ? "badge-primary" : (isPartial ? "badge-warning" : "badge-secondary");
+        const iconName = isSupported ? "check-circle-2" : (isPartial ? "help-circle" : "alert-circle");
+        const statusLabel = isSupported ? "Supported" : (isPartial ? "In Summary Only" : "Needs Evidence");
+        return `
+          <div class="skill-grounding-chip p-2 border rounded" style="background: var(--surface); display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+            <strong>${escapeHtml(sg.name)}</strong>
+            <span class="badge-sub ${badgeClass} text-xs"><i data-lucide="${iconName}" style="width:11px;height:11px;"></i> ${statusLabel}</span>
+          </div>
+        `;
+      }).join("");
+    } else {
+      groundingList.innerHTML = `<span class="text-xs text-muted">No skills listed to verify.</span>`;
+    }
+  }
+
+  // 8c. Skill Proficiency & Credibility Guidance
+  const profSec = $("#scoreProficiencySection");
+  const profList = $("#scoreProficiencyList");
+  if (profSec && profList) {
+    const pFeedback = data.skill_proficiency_feedback || [];
+    if (pFeedback.length > 0) {
+      profSec.classList.remove("hidden");
+      profList.innerHTML = pFeedback.map(pf => {
+        const isGated = pf.status === "EVIDENCE_GATED";
+        const borderStyle = isGated ? "border-left: 3px solid #f59e0b;" : "border-left: 3px solid #10b981;";
+        return `
+          <div class="p-2 border rounded text-xs" style="background: var(--surface-2); ${borderStyle}">
+            <div class="flex-between align-center mb-1">
+              <strong>${escapeHtml(pf.skill)} · Level: ${escapeHtml(pf.level)}</strong>
+              <span class="badge-sub ${isGated ? 'badge-warning' : 'badge-primary'}">${escapeHtml(pf.status)}</span>
+            </div>
+            <p class="text-muted mb-1">${escapeHtml(pf.note)}</p>
+            ${pf.suggested_phrasing ? `<div class="p-1 font-mono text-xs bg-surface border rounded"><span class="text-muted">Suggested phrasing:</span> "${escapeHtml(pf.suggested_phrasing)}"</div>` : ''}
+          </div>
+        `;
+      }).join("");
+    } else {
+      profSec.classList.add("hidden");
+    }
   }
 
   // 9. Buzzwords

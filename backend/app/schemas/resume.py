@@ -104,4 +104,7 @@ class ResumeScoreOut(BaseModel):
     previous_score: int | None = None
     score_delta: int | None = None
     delta_explanation: str | None = None
+    skills_grounding: list[dict[str, Any]] = Field(default_factory=list)
+    skill_proficiency_feedback: list[dict[str, Any]] = Field(default_factory=list)
+    consistency_checks: list[dict[str, Any]] = Field(default_factory=list)
 
