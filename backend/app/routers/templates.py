@@ -92,8 +92,13 @@ def get_template_sample_data(template_id: str) -> dict[str, Any]:
     """Retrieve realistic example candidate data suited for this template."""
     sample = template_service.get_sample_candidate_data(template_id)
     tpl = template_service.get_template_by_id(template_id)
+    payload_data = {
+        "template": tpl.model_dump() if tpl else None,
+        "sample_data": sample,
+    }
     return {
         "success": True,
+        "data": payload_data,
         "template": tpl.model_dump() if tpl else None,
         "sample_data": sample,
     }

@@ -2761,12 +2761,12 @@ function renderResumeSwitcherModal() {
     const updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : "Recently";
 
     return `
-      <div class="switcher-resume-row ${isCurrent ? 'is-active' : ''}">
+      <div class="switcher-resume-row ${isCurrent ? 'is-active is-current' : ''}" ${isCurrent ? 'aria-current="true"' : ''}>
         <div class="my-resume-item-info">
           <div class="my-resume-item-header">
             <h4 class="my-resume-item-title">${escapeHtml(r.title || "Resume")}</h4>
             <span class="badge-status ${statusClass}">${escapeHtml(r.status || "Draft")}</span>
-            ${isCurrent ? '<span class="badge-sub badge-primary">Current</span>' : ''}
+            ${isCurrent ? '<span class="badge-sub badge-primary font-bold"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i> Current</span>' : ''}
           </div>
           <div class="my-resume-item-sub">
             <span><i data-lucide="briefcase" style="width:12px;height:12px;"></i> ${escapeHtml(targetText)}</span>
@@ -2831,12 +2831,12 @@ function renderDashboardMyResumes() {
     const updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : "Today";
 
     return `
-      <div class="my-resume-item-card">
+      <div class="my-resume-item-card ${isCurrent ? 'is-current is-active' : ''}" ${isCurrent ? 'aria-current="true"' : ''}>
         <div class="my-resume-item-info">
           <div class="my-resume-item-header">
             <h4 class="my-resume-item-title">${escapeHtml(r.title || "Resume")}</h4>
             <span class="badge-status ${statusClass}">${escapeHtml(r.status || "Draft")}</span>
-            ${isCurrent ? '<span class="badge-sub badge-primary">Active</span>' : ''}
+            ${isCurrent ? '<span class="badge-sub badge-primary font-bold"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i> Current</span>' : ''}
           </div>
           <div class="my-resume-item-sub">
             <span><i data-lucide="briefcase" style="width:12px;height:12px;"></i> ${escapeHtml(targetText)}</span>
@@ -3361,6 +3361,8 @@ function wireResumeBuilder() {
       group.querySelectorAll("button").forEach(b => {
         const isActive = (b.dataset.align === align);
         b.classList.toggle("active", isActive);
+        b.classList.toggle("is-active", isActive);
+        b.classList.toggle("is-selected", isActive);
         b.setAttribute("aria-checked", isActive ? "true" : "false");
       });
     }
@@ -10902,8 +10904,12 @@ function wireTemplates() {
   // Intent filter pills
   $$("#intentPillsContainer .intent-pill").forEach((pill) => {
     pill.addEventListener("click", () => {
-      $$("#intentPillsContainer .intent-pill").forEach((p) => p.classList.remove("active"));
-      pill.classList.add("active");
+      $$("#intentPillsContainer .intent-pill").forEach((p) => {
+        p.classList.remove("active", "is-active", "is-selected");
+        p.setAttribute("aria-selected", "false");
+      });
+      pill.classList.add("active", "is-active", "is-selected");
+      pill.setAttribute("aria-selected", "true");
       state.templateIntent = pill.dataset.intent || "ALL";
       filterAndRenderTemplates();
     });
@@ -10912,8 +10918,12 @@ function wireTemplates() {
   // Category filter chips
   $$("#categoryFilterBar .filter-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      $$("#categoryFilterBar .filter-chip").forEach((c) => c.classList.remove("active"));
-      chip.classList.add("active");
+      $$("#categoryFilterBar .filter-chip").forEach((c) => {
+        c.classList.remove("active", "is-active", "is-selected");
+        c.setAttribute("aria-selected", "false");
+      });
+      chip.classList.add("active", "is-active", "is-selected");
+      chip.setAttribute("aria-selected", "true");
       state.templateCategory = chip.dataset.cat || "ALL";
       filterAndRenderTemplates();
     });
@@ -10922,8 +10932,12 @@ function wireTemplates() {
   // Tier filter chips
   $$("[data-tier]").forEach((chip) => {
     chip.addEventListener("click", () => {
-      $$("[data-tier]").forEach((c) => c.classList.remove("active"));
-      chip.classList.add("active");
+      $$("[data-tier]").forEach((c) => {
+        c.classList.remove("active", "is-active", "is-selected");
+        c.setAttribute("aria-selected", "false");
+      });
+      chip.classList.add("active", "is-active", "is-selected");
+      chip.setAttribute("aria-selected", "true");
       state.templateTier = chip.dataset.tier || "ALL";
       filterAndRenderTemplates();
     });
@@ -10945,9 +10959,27 @@ function wireTemplates() {
     state.templateTier = "ALL";
     state.templateSearch = "";
     if (searchInput) searchInput.value = "";
-    $$("#intentPillsContainer .intent-pill").forEach((p) => p.classList.toggle("active", p.dataset.intent === "ALL"));
-    $$("#categoryFilterBar .filter-chip").forEach((c) => c.classList.toggle("active", c.dataset.cat === "ALL"));
-    $$("[data-tier]").forEach((c) => c.classList.toggle("active", c.dataset.tier === "ALL"));
+    $$("#intentPillsContainer .intent-pill").forEach((p) => {
+      const isAll = p.dataset.intent === "ALL";
+      p.classList.toggle("active", isAll);
+      p.classList.toggle("is-active", isAll);
+      p.classList.toggle("is-selected", isAll);
+      p.setAttribute("aria-selected", isAll ? "true" : "false");
+    });
+    $$("#categoryFilterBar .filter-chip").forEach((c) => {
+      const isAll = c.dataset.cat === "ALL";
+      c.classList.toggle("active", isAll);
+      c.classList.toggle("is-active", isAll);
+      c.classList.toggle("is-selected", isAll);
+      c.setAttribute("aria-selected", isAll ? "true" : "false");
+    });
+    $$("[data-tier]").forEach((c) => {
+      const isAll = c.dataset.tier === "ALL";
+      c.classList.toggle("active", isAll);
+      c.classList.toggle("is-active", isAll);
+      c.classList.toggle("is-selected", isAll);
+      c.setAttribute("aria-selected", isAll ? "true" : "false");
+    });
     filterAndRenderTemplates();
     toast("Filters reset to default.");
   });
@@ -11410,8 +11442,9 @@ function filterAndRenderTemplates() {
     }
 
     const card = document.createElement("div");
-    card.className = `template-card ${isCurrent ? "is-current" : ""}`;
+    card.className = `template-card ${isCurrent ? "is-current is-selected" : ""}`;
     card.dataset.templateId = t.template_id;
+    card.setAttribute("aria-selected", isCurrent ? "true" : "false");
 
     card.innerHTML = `
       <div class="template-card-thumb">
@@ -11445,10 +11478,17 @@ function filterAndRenderTemplates() {
           <button class="secondary-btn sm preview-tpl-btn" type="button" data-preview-id="${t.template_id}">
             <i data-lucide="eye"></i><span>Preview</span>
           </button>
-          <button class="${isCurrent ? "success-btn" : "primary-btn"} sm use-tpl-btn" type="button" data-use-id="${t.template_id}">
-            <i data-lucide="${isCurrent ? "check-circle-2" : "check"}"></i>
-            <span>${isCurrent ? "Active" : "Use Template"}</span>
-          </button>
+          ${isCurrent ? `
+            <button class="secondary-btn sm is-current" type="button" disabled aria-current="true" style="opacity: 0.95; cursor: default; background: var(--primary-subtle); color: var(--primary); border: 1.5px solid var(--primary); font-weight: 600;">
+              <i data-lucide="check-circle-2"></i>
+              <span>Current</span>
+            </button>
+          ` : `
+            <button class="primary-btn sm use-tpl-btn" type="button" data-use-id="${t.template_id}">
+              <i data-lucide="check"></i>
+              <span>Use Template</span>
+            </button>
+          `}
         </div>
       </div>
     `;
@@ -11471,7 +11511,7 @@ function filterAndRenderTemplates() {
       openTemplatePreview(t.template_id);
     });
 
-    card.querySelector(`[data-use-id="${t.template_id}"]`).addEventListener("click", () => {
+    card.querySelector(`[data-use-id="${t.template_id}"]`)?.addEventListener("click", () => {
       selectActiveTemplate(t.template_id);
     });
 
@@ -11484,6 +11524,282 @@ function filterAndRenderTemplates() {
 function updateCompareCountBadge() {
   const countEl = $("#compareCount");
   if (countEl) countEl.textContent = state.selectedCompareIds.size;
+}
+
+function getFallbackDemoCandidate(templateId, t) {
+  const tid = (templateId || "").toLowerCase();
+
+  if (tid.includes("campus") || tid.includes("fresher")) {
+    return {
+      candidate_name: "Alex Rivera",
+      headline: "Computer Science Graduate & Junior Software Engineer",
+      email: "alex.rivera@example.com",
+      phone: "+1 (555) 234-5678",
+      location: "San Jose, CA",
+      links: ["linkedin.com/in/alexrivera-dev", "github.com/alexrivera"],
+      summary: "High-achieving Computer Science graduate with hands-on internship experience building scalable web services and distributed tools in Python and TypeScript.",
+      skills: ["Python", "TypeScript", "React", "Node.js", "Docker", "Git", "SQL", "REST APIs"],
+      experiences: [
+        {
+          company: "Vertex Cloud Labs",
+          role_title: "Software Engineering Intern",
+          location: "San Francisco, CA",
+          start_date: "Jun 2025",
+          end_date: "Aug 2025",
+          is_current: false,
+          bullet_points: [
+            "Developed automated test coverage tools in Python that decreased CI build flakiness by 28%",
+            "Built 6 responsive React components adhering to company design system standards",
+            "Collaborated with senior engineers in bi-weekly agile sprints and peer code reviews"
+          ]
+        }
+      ],
+      education: [
+        {
+          institution: "University of California, Berkeley",
+          degree: "B.S. in Computer Science",
+          field_of_study: "Software Systems",
+          graduation_date: "May 2025",
+          grade: "3.85 GPA",
+          location: "Berkeley, CA"
+        }
+      ],
+      projects: [
+        {
+          name: "Distributed Task Queue",
+          technologies: "Go, Redis, Docker",
+          description: "Engineered an asynchronous task distribution worker processing up to 10k messages per second."
+        }
+      ],
+      certifications: [
+        { name: "AWS Certified Cloud Practitioner", issuing_organization: "Amazon Web Services", issue_date: "2025" }
+      ]
+    };
+  }
+
+  if (tid.includes("finance")) {
+    return {
+      candidate_name: "Elena Rostova",
+      headline: "Senior Financial Analyst & Corporate Valuation Specialist",
+      email: "elena.rostova@example.com",
+      phone: "+1 (555) 345-6789",
+      location: "New York, NY",
+      links: ["linkedin.com/in/elenarostova-cfa"],
+      summary: "Chartered Financial Analyst (CFA) candidate with 6+ years modeling cash flow projections, M&A valuations, and portfolio risk management for Fortune 500 corporate finance.",
+      skills: ["Financial Modeling", "DCF Valuation", "M&A Diligence", "SQL", "Power BI", "Corporate Budgeting", "GAAP Compliance"],
+      experiences: [
+        {
+          company: "Crestview Global Capital",
+          role_title: "Senior Financial Analyst",
+          location: "New York, NY",
+          start_date: "Jan 2022",
+          end_date: "Present",
+          is_current: true,
+          bullet_points: [
+            "Built robust 3-statement forecast models covering $420M in annual corporate operating budgets",
+            "Identified $14.2M in supply chain cost redundancies through variance analysis",
+            "Spearheaded financial due diligence across 4 cross-border acquisition targets"
+          ]
+        }
+      ],
+      education: [
+        {
+          institution: "NYU Stern School of Business",
+          degree: "B.S. in Finance & Statistics",
+          graduation_date: "May 2019",
+          grade: "Summa Cum Laude",
+          location: "New York, NY"
+        }
+      ],
+      projects: [
+        {
+          name: "Automated Capital Expenditure Dashboard",
+          technologies: "Power BI, SQL, Python",
+          description: "Real-time CapEx tracking suite replacing manual monthly spreadsheets across 12 divisions."
+        }
+      ],
+      certifications: [
+        { name: "CFA Level II Passed", issuing_organization: "CFA Institute", issue_date: "2024" }
+      ]
+    };
+  }
+
+  if (tid.includes("healthcare") || tid.includes("pharmacy")) {
+    return {
+      candidate_name: "Dr. Maya Lin, PharmD",
+      headline: "Clinical Pharmacist & Healthcare Operations Lead",
+      email: "maya.lin.pharmd@example.com",
+      phone: "+1 (555) 456-7890",
+      location: "Chicago, IL",
+      links: ["linkedin.com/in/mayalin-pharmd"],
+      summary: "Board-certified clinical specialist with 7+ years directing inpatient pharmacotherapy, medication safety protocols, and clinical outcome improvements in university hospital networks.",
+      skills: ["Clinical Pharmacotherapy", "Medication Safety", "EHR / Epic Systems", "Patient Care", "Healthcare Compliance", "Regulatory Audits"],
+      experiences: [
+        {
+          company: "Northwestern Memorial Hospital",
+          role_title: "Lead Clinical Specialist",
+          location: "Chicago, IL",
+          start_date: "Aug 2020",
+          end_date: "Present",
+          is_current: true,
+          bullet_points: [
+            "Oversaw daily clinical monitoring for a 36-bed intensive care unit with zero medication reconciliation errors",
+            "Standardized antibiotic stewardship guidelines reducing redundant therapy costs by $380,000 annually",
+            "Trained 18 pharmacy residents and delivered quarterly Grand Rounds clinical presentations"
+          ]
+        }
+      ],
+      education: [
+        {
+          institution: "University of Illinois Chicago",
+          degree: "Doctor of Pharmacy (PharmD)",
+          graduation_date: "May 2018",
+          location: "Chicago, IL"
+        }
+      ],
+      projects: [],
+      certifications: [
+        { name: "Board Certified Pharmacotherapy Specialist (BCPS)", issuing_organization: "BPS", issue_date: "2021" }
+      ]
+    };
+  }
+
+  if (tid.includes("academic") || tid.includes("research")) {
+    return {
+      candidate_name: "Dr. Aris Thorne",
+      headline: "Postdoctoral Research Fellow in Computational Biology",
+      email: "aris.thorne@academic.edu",
+      phone: "+1 (555) 567-8901",
+      location: "Cambridge, MA",
+      links: ["scholar.google.com/citations?user=aristhorne", "github.com/aristhorne"],
+      summary: "Computational biologist specializing in protein language models, genomic sequence alignment algorithms, and high-throughput biological data analysis with 9 peer-reviewed publications.",
+      skills: ["Bioinformatics", "Python", "PyTorch", "Nextflow", "HPC Clusters", "Genomics", "Statistical Genetics", "Scientific Writing"],
+      experiences: [
+        {
+          company: "Harvard Medical School",
+          role_title: "Postdoctoral Research Fellow",
+          location: "Boston, MA",
+          start_date: "Sep 2022",
+          end_date: "Present",
+          is_current: true,
+          bullet_points: [
+            "Authored 4 first-author papers in Nature Communications and Bioinformatics on deep learning for structural variant detection",
+            "Secured $180,000 NIH F32 Postdoctoral Fellowship research grant",
+            "Mentored 5 PhD candidates in statistical genetics and reproducible data pipeline architectures"
+          ]
+        }
+      ],
+      education: [
+        {
+          institution: "MIT",
+          degree: "Ph.D. in Computational Biology",
+          graduation_date: "June 2022",
+          location: "Cambridge, MA"
+        }
+      ],
+      projects: [],
+      certifications: [],
+      publications: [
+        "Thorne, A., et al. (2024). Deep generative models for de novo peptide design. Nature Communications, 15(1), 1120.",
+        "Thorne, A., et al. (2023). Scalable structural variant detection via transformer alignments. Bioinformatics, 39(8), btad489."
+      ]
+    };
+  }
+
+  if (tid.includes("executive") || tid.includes("leadership") || tid.includes("consulting")) {
+    return {
+      candidate_name: "David Sterling",
+      headline: "Vice President of Global Engineering & Product Delivery",
+      email: "david.sterling@example.com",
+      phone: "+1 (555) 678-9012",
+      location: "Austin, TX",
+      links: ["linkedin.com/in/davidsterling-vp"],
+      summary: "Executive technology leader with 16+ years scaling engineering organizations from $20M to $180M ARR. Champion of high-velocity delivery culture, enterprise reliability, and product-led growth.",
+      skills: ["Executive Leadership", "Org Scaling (150+ Engineers)", "Enterprise SaaS", "Strategic Roadmap", "M&A Integration", "Multi-Cloud Governance"],
+      experiences: [
+        {
+          company: "Nexus Enterprise Cloud",
+          role_title: "Vice President of Engineering",
+          location: "Austin, TX",
+          start_date: "Mar 2021",
+          end_date: "Present",
+          is_current: true,
+          bullet_points: [
+            "Scaled global engineering division across 4 hubs from 45 to 160 engineers with 94% annualized retention",
+            "Drove platform re-architecture migrating monolithic systems to distributed microservices with 99.99% uptime",
+            "Partnered with CEO and CFO to manage $24M engineering operational and capital expenditure budgets"
+          ]
+        }
+      ],
+      education: [
+        {
+          institution: "University of Texas at Austin",
+          degree: "M.S. in Software Engineering",
+          graduation_date: "2010",
+          location: "Austin, TX"
+        }
+      ],
+      projects: [],
+      certifications: []
+    };
+  }
+
+  // Default: General Technical / Modern Professional
+  return {
+    candidate_name: "Jordan Taylor",
+    headline: "Senior Full-Stack Engineer & Distributed Systems Architect",
+    email: "jordan.taylor@example.com",
+    phone: "+1 (555) 123-4567",
+    location: "Seattle, WA",
+    links: ["linkedin.com/in/jordantaylor-dev", "github.com/jordantaylor"],
+    summary: "Versatile systems engineer with 7+ years architecting high-throughput microservices, real-time analytics pipelines, and secure cloud applications handling millions of daily requests.",
+    skills: ["TypeScript", "Python", "Go", "React", "Node.js", "Kubernetes", "AWS", "PostgreSQL", "Kafka", "GraphQL"],
+    experiences: [
+      {
+        company: "Aether Dynamics",
+        role_title: "Senior Software Engineer",
+        location: "Seattle, WA",
+        start_date: "Mar 2022",
+        end_date: "Present",
+        is_current: true,
+        bullet_points: [
+          "Architected real-time event pipeline in Go and Kafka processing 45,000 requests/sec with p99 latency under 40ms",
+          "Engineered end-to-end caching architecture using Redis reducing database read load by 64%",
+          "Mentored 6 software engineers and instituted automated canary deployments with zero-downtime rollouts"
+        ]
+      },
+      {
+        company: "Beacon Cloud Systems",
+        role_title: "Software Engineer",
+        location: "Seattle, WA",
+        start_date: "Jun 2019",
+        end_date: "Feb 2022",
+        is_current: false,
+        bullet_points: [
+          "Designed 14 GraphQL microservices powering unified customer account management portals",
+          "Reduced CI/CD pipeline deployment time from 28 minutes to 6 minutes using multi-stage Docker builds"
+        ]
+      }
+    ],
+    education: [
+      {
+        institution: "University of Washington",
+        degree: "B.S. in Computer Science",
+        graduation_date: "June 2019",
+        location: "Seattle, WA"
+      }
+    ],
+    projects: [
+      {
+        name: "Distributed Key-Value Store",
+        technologies: "Go, Raft Consensus, Docker",
+        description: "High-performance distributed storage engine implementing the Raft consensus algorithm for fault-tolerant state replication."
+      }
+    ],
+    certifications: [
+      { name: "AWS Certified Solutions Architect – Professional", issuing_organization: "Amazon Web Services", issue_date: "2023" }
+    ]
+  };
 }
 
 async function openTemplatePreview(templateId) {
@@ -11524,10 +11840,21 @@ async function openTemplatePreview(templateId) {
   modal.classList.remove("hidden");
   drawIcons();
 
+  let sampleData = null;
   try {
     const sampleRes = await API.request(`/templates/${templateId}/sample`);
-    const sampleData = sampleRes.sample_data || sampleRes;
+    if (sampleRes) {
+      sampleData = sampleRes.sample_data || sampleRes.data?.sample_data || sampleRes;
+    }
+  } catch (fetchErr) {
+    console.warn("Could not fetch remote sample data, falling back to local persona:", fetchErr);
+  }
 
+  if (!sampleData || typeof sampleData !== "object" || !sampleData.candidate_name) {
+    sampleData = getFallbackDemoCandidate(templateId, t);
+  }
+
+  try {
     // Convert sample data into a full demo resume state
     window._currentDemoResumeState = convertSampleToResumeState(sampleData, templateId);
     window._originalDemoResumeState = JSON.parse(JSON.stringify(window._currentDemoResumeState));
@@ -11559,7 +11886,11 @@ async function openTemplatePreview(templateId) {
     renderResumeDocumentInto(canvas, window._currentDemoResumeState, { isDemo: true });
     drawIcons();
   } catch (err) {
-    canvas.innerHTML = `<div class="p-4 alert-info"><p>Failed to load sample preview: ${escapeHtml(err.message)}</p></div>`;
+    console.error("Preview rendering fallback triggered:", err);
+    sampleData = getFallbackDemoCandidate(templateId, t);
+    window._currentDemoResumeState = convertSampleToResumeState(sampleData, templateId);
+    renderResumeDocumentInto(canvas, window._currentDemoResumeState, { isDemo: true });
+    drawIcons();
   }
 }
 

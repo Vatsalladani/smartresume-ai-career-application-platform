@@ -2665,10 +2665,25 @@ svg {
   transition: all 0.2s ease;
 }
 
-.filter-chip:hover, .filter-chip.active {
-  background: var(--primary);
+.filter-chip:hover:not(.active):not(.is-active):not(.is-selected) {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border-dark, var(--border));
+}
+
+.filter-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.filter-chip.active,
+.filter-chip.is-active,
+.filter-chip.is-selected,
+.filter-chip[aria-selected="true"] {
+  background: var(--primary-subtle);
   border-color: var(--primary);
-  color: white;
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /* Job Radar Search Bar */
@@ -2866,10 +2881,25 @@ svg {
   gap: 6px;
 }
 
-.intent-pill:hover, .intent-pill.active {
+.intent-pill:hover:not(.active):not(.is-active):not(.is-selected) {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border-dark, var(--border));
+}
+
+.intent-pill:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.intent-pill.active,
+.intent-pill.is-active,
+.intent-pill.is-selected,
+.intent-pill[aria-selected="true"] {
   border-color: var(--primary);
   background: var(--primary-subtle);
   color: var(--primary);
+  font-weight: 600;
 }
 
 /* Recommended Hero Banner */
@@ -7214,9 +7244,93 @@ svg {
   border-color: var(--primary, #2563eb) !important;
   background: var(--surface-2, #f8fafc);
 }
-.option-card.selected {
+.option-card.selected,
+.option-card.is-selected,
+.option-card.is-active {
   border-color: var(--primary, #2563eb) !important;
   background: rgba(37, 99, 235, 0.05);
 }
+
+/* ==========================================================================
+   SMARTRESUME CENTRAL ACTIVE STATE DESIGN SYSTEM
+   Consistent visual states across tabs, filters, pills, cards, and segmented controls
+   ========================================================================== */
+
+/* 1. Base tokens & aria mappings */
+.is-active,
+.is-selected,
+[aria-selected="true"] {
+  outline: none;
+}
+
+/* 2. Interactive Pills & Filter Chips */
+.subnav-pill:hover:not(.active):not(.is-active):not(.is-selected),
+.filter-pill:hover:not(.active):not(.is-active):not(.is-selected) {
+  background: var(--surface-2, #f1f5f9);
+  color: var(--text, #0f172a);
+  border-color: var(--border-dark, var(--border));
+}
+
+.subnav-pill:focus-visible,
+.filter-pill:focus-visible {
+  outline: 2px solid var(--primary, #0284c7);
+  outline-offset: 2px;
+}
+
+.subnav-pill.is-active,
+.subnav-pill.is-selected,
+.subnav-pill[aria-selected="true"],
+.filter-pill.is-active,
+.filter-pill.is-selected,
+.filter-pill[aria-selected="true"] {
+  background: var(--primary-subtle, rgba(37, 99, 235, 0.08)) !important;
+  border-color: var(--primary, #0284c7) !important;
+  color: var(--primary, #0284c7) !important;
+  font-weight: 600 !important;
+}
+
+/* 3. Cards & Selectables */
+.template-card.is-current,
+.template-card.is-selected,
+.template-card[aria-selected="true"],
+.pricing-card.is-current,
+.my-resume-item-card.is-current,
+.switcher-resume-row.is-current,
+.switcher-resume-row.is-active {
+  border-color: var(--primary, #0284c7) !important;
+  box-shadow: 0 0 0 2px var(--primary-subtle, rgba(37, 99, 235, 0.18)) !important;
+}
+
+.pricing-card.is-current {
+  background: var(--surface-2, #f8fafc) !important;
+}
+
+.pricing-card-current-badge {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: #10b981;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+  z-index: 2;
+}
+
+/* 4. Segmented Controls */
+.segmented-control .segmented-btn.is-active,
+.segmented-control .segmented-btn.is-selected,
+.segmented-control .segmented-btn[aria-checked="true"] {
+  background: var(--surface, #ffffff) !important;
+  color: var(--primary, #0284c7) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
 
 
