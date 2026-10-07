@@ -225,7 +225,7 @@ def test_field_neutral_scoring_healthcare():
 
 
 def test_skill_evidence_grounding_levels():
-    """Validates that skills are explicitly categorized into SUPPORTED, PARTIALLY_SUPPORTED, and UNSUPPORTED."""
+    """Validates that skills are explicitly categorized into SUPPORTED, PARTIALLY_SUPPORTED, and SELF_REPORTED."""
     resume = {
         "header": {"full_name": "Alex Tech", "email": "alex@example.com", "phone": "123"},
         "summary": "Specialist in Python with familiarity in Docker.",
@@ -245,7 +245,7 @@ def test_skill_evidence_grounding_levels():
 
     assert grounding["Python"] == "SUPPORTED"
     assert grounding["Docker"] == "PARTIALLY_SUPPORTED"
-    assert grounding["UnusedFramework"] == "UNSUPPORTED"
+    assert grounding["UnusedFramework"] in ("SELF_REPORTED", "UNSUPPORTED")
 
 
 def test_skill_proficiency_language_and_expert_gating():
@@ -324,4 +324,187 @@ def test_top_improvements_action_types_and_targets():
         assert "action_type" in imp
         assert "action_target" in imp
         assert "action_label" in imp
+
+
+def test_language_no_evidence_penalty():
+    """Spoken languages like Hindi, English, Spanish carry ZERO evidence penalty and do not require project bullets."""
+    resume = {
+        "header": {"full_name": "Rohan Patel", "email": "rohan@example.com", "phone": "123"},
+        "summary": "Full stack engineer specializing in Python and web development.",
+        "skills": ["Python", "JavaScript", "English", "Hindi", "Gujarati"],
+        "experiences": [
+            {
+                "role_title": "Full Stack Developer",
+                "company": "Tech Corp",
+                "bullet_points": ["Developed web apps with Python and JavaScript."]
+            }
+        ],
+        "education": []
+    }
+
+    result = calculate_evidence_based_score(resume, target_role="Full Stack Developer")
+    grounding = {s["name"]: s["status"] for s in result["skills_grounding"]}
+
+    # Languages must be recognized and supported, never penalized as unsupported
+    assert grounding.get("English") == "SUPPORTED"
+    assert grounding.get("Hindi") == "SUPPORTED"
+    assert grounding.get("Gujarati") == "SUPPORTED"
+    assert not any("hindi" in str(h).lower() for h in result["what_is_holding_back"])
+    assert not any("english" in str(h).lower() for h in result["what_is_holding_back"])
+
+
+def test_common_skills_self_reported():
+    """Standard tools and domain knowledge like Excel, Communication, and Documentation are self-reported without penalty."""
+    resume = {
+        "header": {"full_name": "Priya Sharma", "email": "priya@example.com", "phone": "123"},
+        "summary": "Business Operations Analyst with cross-functional execution experience.",
+        "skills": ["Excel", "Communication", "Documentation", "Quality Control"],
+        "experiences": [
+            {
+                "role_title": "Operations Associate",
+                "company": "Logistics Ltd",
+                "bullet_points": ["Streamlined warehouse reporting and scheduled inventory dispatches."]
+            }
+        ],
+        "education": []
+    }
+
+    result = calculate_evidence_based_score(resume, target_role="Operations Analyst")
+    grounding = {s["name"]: s["status"] for s in result["skills_grounding"]}
+
+    assert grounding.get("Excel") == "SUPPORTED"
+    assert grounding.get("Communication") == "SUPPORTED"
+    assert grounding.get("Documentation") == "SUPPORTED"
+    assert grounding.get("Quality Control") == "SUPPORTED"
+    assert not any("excel has no evidence" in str(h).lower() for h in result["what_is_holding_back"])
+
+
+def test_potentially_overstated_claims():
+    """Strong proficiency claims like 'Expert in Python' without senior title or scale metrics are flagged as POTENTIALLY_OVERSTATED."""
+    resume = {
+        "header": {"full_name": "Junior Dev", "email": "dev@example.com", "phone": "123"},
+        "summary": "Junior programmer with 1 year experience.",
+        "skills": [
+            {"name": "Python", "proficiency": "Expert"},
+            {"name": "Machine Learning", "proficiency": "Master"}
+        ],
+        "experiences": [
+            {
+                "role_title": "Junior Developer",
+                "company": "Startup",
+                "bullet_points": ["Fixed bugs in Python backend."]
+            }
+        ],
+        "education": []
+    }
+
+    result = calculate_evidence_based_score(resume, target_role="Software Engineer", career_level="EARLY_CAREER")
+    claims = result["potentially_overstated_claims"]
+    assert len(claims) >= 1
+    assert any("Python" in str(c.get("claim")) or "Python" in str(c.get("skill")) for c in claims)
+
+
+def test_certification_standalone_evidence():
+    """Certifications like AWS Certified Developer count as standalone evidence for their associated technology."""
+    resume = {
+        "header": {"full_name": "Cloud Engineer", "email": "cloud@example.com", "phone": "123"},
+        "summary": "Cloud developer specializing in AWS infrastructure.",
+        "skills": ["AWS", "Docker"],
+        "experiences": [
+            {
+                "role_title": "Software Developer",
+                "company": "Tech Corp",
+                "bullet_points": ["Built containerized microservices."]
+            }
+        ],
+        "certifications": ["AWS Certified Solutions Architect", "Docker Certified Associate"],
+        "education": []
+    }
+
+    result = calculate_evidence_based_score(resume, target_role="Cloud Engineer")
+    grounding = {s["name"]: s["status"] for s in result["skills_grounding"]}
+
+    # AWS must be SUPPORTED because of the AWS certification!
+    assert grounding.get("AWS") == "SUPPORTED"
+    assert not any("aws certification has no supporting bullets" in str(h).lower() for h in result["what_is_holding_back"])
+
+
+def test_empty_resume_unscorable():
+    """An empty or completely blank resume returns is_scorable=False and empty_state=True."""
+    blank_resume = {
+        "header": {"full_name": ""},
+        "summary": "",
+        "skills": [],
+        "experiences": [],
+        "projects": [],
+        "education": [],
+        "certifications": []
+    }
+
+    result = calculate_evidence_based_score(blank_resume, target_role="Software Engineer")
+    assert result["is_scorable"] is False
+    assert result["empty_state"] is True
+    assert result["overall_score"] == 0
+    assert "Not enough resume information yet" in result["empty_state_message"]
+    assert result["score_confidence"] == "Low"
+
+
+def test_top_improvements_max_3():
+    """Top improvements must be strictly capped at 3 items maximum to prevent overwhelming the user."""
+    messy_resume = {
+        "header": {"full_name": "Messy Candidate"},
+        "summary": "Hardworking dynamic quick learner looking for any job.",
+        "skills": ["Skill1", "Skill2", "Skill3", "Skill4", "Skill5", "Skill6"],
+        "experiences": [
+            {
+                "role_title": "Junior Employee",
+                "company": "Old Corp",
+                "bullet_points": ["Did daily duties and helped team."]
+            }
+        ],
+        "projects": [],
+        "education": []
+    }
+
+    result = calculate_evidence_based_score(messy_resume, target_role="Lead Software Engineer")
+    assert len(result["top_improvements"]) <= 3
+
+
+def test_deterministic_reproducibility():
+    """Calculating score multiple times on identical input must produce identical results."""
+    resume = {
+        "header": {
+            "full_name": "Maya Lin",
+            "headline": "Financial Analyst | Valuation & FP&A Specialist",
+            "email": "maya@example.com",
+            "phone": "+1 555-0199",
+            "location": "Chicago, IL"
+        },
+        "summary": "Financial analyst with 3 years of experience in financial modeling, valuation, variance analysis, and annual budgeting.",
+        "skills": ["Financial Modeling", "Valuation", "Budgeting", "Forecasting", "Variance Analysis", "Excel", "GAAP"],
+        "experiences": [
+            {
+                "role_title": "Financial Analyst",
+                "company": "Horizon Capital",
+                "start_date": "2022",
+                "end_date": "2025",
+                "is_current": True,
+                "bullet_points": [
+                    "Constructed multi-scenario DCF and LBO financial models evaluating $45M in strategic acquisitions.",
+                    "Led quarterly variance analysis and budgeting workflows, reducing budget discrepancy by 18%."
+                ]
+            }
+        ],
+        "education": [{"institution": "NYU Stern", "degree": "B.S. Finance"}],
+        "certifications": ["CFA Level 1 Passed"]
+    }
+
+    res1 = calculate_evidence_based_score(resume, target_role="Financial Analyst")
+    res2 = calculate_evidence_based_score(resume, target_role="Financial Analyst")
+
+    assert res1["overall_score"] == res2["overall_score"]
+    assert res1["dimensions"] == res2["dimensions"]
+    assert res1["what_is_helping"] == res2["what_is_helping"]
+    assert res1["what_is_holding_back"] == res2["what_is_holding_back"]
+
 

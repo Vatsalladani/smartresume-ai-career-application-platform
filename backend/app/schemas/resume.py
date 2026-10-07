@@ -107,4 +107,10 @@ class ResumeScoreOut(BaseModel):
     skills_grounding: list[dict[str, Any]] = Field(default_factory=list)
     skill_proficiency_feedback: list[dict[str, Any]] = Field(default_factory=list)
     consistency_checks: list[dict[str, Any]] = Field(default_factory=list)
+    is_scorable: bool = True
+    empty_state: bool = False
+    empty_state_message: str | None = None
+    score_confidence: str = "Medium"
+    all_insights: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+    potentially_overstated_claims: list[dict[str, Any]] = Field(default_factory=list)
 

@@ -186,14 +186,29 @@ function drawIcons() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-function toast(message, type = "info") {
+function toast(message, type = "info", action = null) {
   const host = $("#toastHost");
   if (!host) return;
   const node = document.createElement("div");
   node.className = `toast ${type}`;
-  node.textContent = message;
+  const textSpan = document.createElement("span");
+  textSpan.textContent = message;
+  node.appendChild(textSpan);
+  if (action && action.label && typeof action.onClick === "function") {
+    const actBtn = document.createElement("button");
+    actBtn.type = "button";
+    actBtn.className = "toast-action-btn";
+    actBtn.textContent = action.label;
+    actBtn.style.cssText = "margin-left: 10px; font-weight: 700; text-decoration: underline; background: transparent; border: none; color: inherit; cursor: pointer; font-size: inherit;";
+    actBtn.onclick = (e) => {
+      e.stopPropagation();
+      action.onClick();
+      node.remove();
+    };
+    node.appendChild(actBtn);
+  }
   host.appendChild(node);
-  setTimeout(() => node.remove(), 4500);
+  setTimeout(() => node.remove(), 5500);
 }
 
 function showAuthAlert(message, type = "error") {
@@ -3187,18 +3202,374 @@ function wireMultiResumeWorkspace() {
   $("#submitRenameResumeBtn")?.addEventListener("click", () => submitRenameResume());
 }
 
+let currentSyncDiffs = [];
+
+async function openSyncProfileModal() {
+  const modal = $("#syncProfileModal");
+  if (!modal) return;
+
+  // Ensure latest profile data is loaded
+  try {
+    if (!state.profile) {
+      state.profile = await API.request("/profile");
+    }
+  } catch (err) {
+    console.warn("Could not fetch latest profile for sync:", err);
+  }
+
+  const p = state.profile || {};
+  const u = state.user || {};
+  const h = resumeBuilderState.header || {};
+  const diffs = [];
+
+  function addDiff(group, field, oldVal, newVal, isSafeAddition, applyFn) {
+    diffs.push({
+      id: "diff_" + diffs.length + "_" + Math.random().toString(36).slice(2, 6),
+      group,
+      field,
+      oldVal: oldVal || "",
+      newVal: newVal || "",
+      isSafeAddition,
+      applyFn,
+    });
+  }
+
+  // 1. CONTACT
+  const pName = p.full_name || u.full_name || "";
+  if (pName && pName.trim() && pName.trim() !== (h.full_name || "").trim()) {
+    addDiff("CONTACT", "Full Name", h.full_name, pName, !h.full_name?.trim(), () => {
+      resumeBuilderState.header.full_name = pName;
+    });
+  }
+
+  if (p.phone && p.phone.trim() && p.phone.trim() !== (h.phone || "").trim()) {
+    addDiff("CONTACT", "Phone Number", h.phone, p.phone, !h.phone?.trim(), () => {
+      resumeBuilderState.header.phone = p.phone;
+    });
+  }
+
+  if (p.location && p.location.trim() && p.location.trim() !== (h.location || "").trim()) {
+    addDiff("CONTACT", "Location", h.location, p.location, !h.location?.trim(), () => {
+      resumeBuilderState.header.location = p.location;
+    });
+  }
+
+  if (p.linkedin_url && p.linkedin_url.trim() && p.linkedin_url.trim() !== (h.linkedin || "").trim()) {
+    addDiff("CONTACT", "LinkedIn Profile", h.linkedin, p.linkedin_url, !h.linkedin?.trim(), () => {
+      resumeBuilderState.header.linkedin = p.linkedin_url;
+    });
+  }
+
+  if (p.github_url && p.github_url.trim() && p.github_url.trim() !== (h.github || "").trim()) {
+    addDiff("CONTACT", "GitHub Profile", h.github, p.github_url, !h.github?.trim(), () => {
+      resumeBuilderState.header.github = p.github_url;
+    });
+  }
+
+  const pWeb = p.portfolio_url || p.website_url || "";
+  if (pWeb && pWeb.trim() && pWeb.trim() !== (h.website || "").trim()) {
+    addDiff("CONTACT", "Website / Portfolio", h.website, pWeb, !h.website?.trim(), () => {
+      resumeBuilderState.header.website = pWeb;
+    });
+  }
+
+  // 2. PROFESSIONAL
+  if (p.headline && p.headline.trim() && p.headline.trim() !== (h.headline || "").trim()) {
+    const isSafe = !h.headline?.trim();
+    addDiff("PROFESSIONAL", "Professional Headline", h.headline, p.headline, isSafe, () => {
+      resumeBuilderState.header.headline = p.headline;
+    });
+  }
+
+  if (p.summary && p.summary.trim() && p.summary.trim() !== (resumeBuilderState.summary || "").trim()) {
+    const isSafe = !resumeBuilderState.summary?.trim();
+    addDiff("PROFESSIONAL", "Summary Statement", resumeBuilderState.summary, p.summary, isSafe, () => {
+      resumeBuilderState.summary = p.summary;
+    });
+  }
+
+  // Skills
+  const rSkills = (resumeBuilderState.skills || []).map(s => typeof s === "string" ? s : s.name).filter(Boolean);
+  const pSkills = (p.skills || []).map(s => typeof s === "string" ? s : s.name).filter(Boolean);
+  const newSkills = pSkills.filter(ps => !rSkills.some(rs => rs.toLowerCase() === ps.toLowerCase()));
+  if (newSkills.length > 0) {
+    addDiff("PROFESSIONAL", `New Skills from Profile (${newSkills.length})`, "(Not currently on resume)", newSkills.join(", "), true, () => {
+      resumeBuilderState.skills = Array.from(new Set([...rSkills, ...newSkills]));
+    });
+  }
+
+  // 3. EXPERIENCE
+  const pExps = p.experiences || [];
+  const rExps = resumeBuilderState.experiences || [];
+  pExps.forEach((pe) => {
+    const pTitle = pe.title || pe.role_title || "";
+    const pComp = pe.company || "";
+    const match = rExps.find(re => 
+      (re.company || "").toLowerCase().trim() === pComp.toLowerCase().trim() &&
+      (re.title || re.role_title || "").toLowerCase().trim() === pTitle.toLowerCase().trim()
+    );
+    if (!match) {
+      const bulletsCount = (pe.bullets || pe.bullet_points || []).length;
+      addDiff("EXPERIENCE", `New Experience: ${pTitle} at ${pComp}`, "(Not on resume)", `${pe.start_date || ""} – ${pe.is_current ? "Present" : (pe.end_date || "")} (${bulletsCount} bullets)`, true, () => {
+        if (!resumeBuilderState.experiences) resumeBuilderState.experiences = [];
+        resumeBuilderState.experiences.push({
+          title: pTitle,
+          company: pComp,
+          location: pe.location || "",
+          start_date: pe.start_date || "",
+          end_date: pe.end_date || "",
+          is_current: !!pe.is_current,
+          bullets: (pe.bullets || pe.bullet_points || []).map(b => typeof b === "string" ? b : (b.text || "")),
+          is_hidden: false,
+        });
+      });
+    }
+  });
+
+  // 4. EDUCATION
+  const pEdus = p.education || p.educations || [];
+  const rEdus = resumeBuilderState.education || [];
+  pEdus.forEach((pe) => {
+    const pDeg = pe.degree || "";
+    const pInst = pe.institution || pe.school || "";
+    const match = rEdus.find(re =>
+      (re.institution || "").toLowerCase().trim() === pInst.toLowerCase().trim() &&
+      (re.degree || "").toLowerCase().trim() === pDeg.toLowerCase().trim()
+    );
+    if (!match) {
+      addDiff("EDUCATION", `New Education: ${pDeg} from ${pInst}`, "(Not on resume)", `${pe.field_of_study ? pe.field_of_study + ", " : ""}${pe.end_date || pe.graduation_year || ""}`, true, () => {
+        if (!resumeBuilderState.education) resumeBuilderState.education = [];
+        resumeBuilderState.education.push({
+          institution: pInst,
+          degree: pDeg,
+          field_of_study: pe.field_of_study || "",
+          start_date: pe.start_date || "",
+          end_date: pe.end_date || pe.graduation_year || "",
+          grade: pe.grade || pe.gpa || "",
+          location: pe.location || "",
+          description: pe.description || "",
+          coursework: pe.coursework || "",
+          honors: pe.honors || "",
+          is_hidden: false,
+        });
+      });
+    }
+  });
+
+  // 5. CERTIFICATIONS
+  const pCerts = p.certifications || [];
+  const rCerts = resumeBuilderState.certifications || [];
+  pCerts.forEach((pc) => {
+    const cName = typeof pc === "string" ? pc : (pc.name || "");
+    const match = rCerts.find(rc => (typeof rc === "string" ? rc : rc.name)?.toLowerCase().trim() === cName.toLowerCase().trim());
+    if (!match) {
+      const issuer = typeof pc === "object" ? (pc.issuer || "") : "";
+      addDiff("CERTIFICATIONS", `New Certification: ${cName}`, "(Not on resume)", issuer ? `Issued by ${issuer}` : "Verified Credential", true, () => {
+        if (!resumeBuilderState.certifications) resumeBuilderState.certifications = [];
+        resumeBuilderState.certifications.push({
+          name: cName,
+          issuer: typeof pc === "object" ? (pc.issuer || "") : "",
+          date: typeof pc === "object" ? (pc.issue_date || pc.date || "") : "",
+          description: typeof pc === "object" ? (pc.description || "") : "",
+          is_hidden: false,
+        });
+      });
+    }
+  });
+
+  // 6. PROJECTS
+  const pProjects = p.projects || [];
+  const rProjects = resumeBuilderState.projects || [];
+  pProjects.forEach((pp) => {
+    const pTitle = pp.title || pp.name || "";
+    const match = rProjects.find(rp => (rp.title || rp.name)?.toLowerCase().trim() === pTitle.toLowerCase().trim());
+    if (!match) {
+      addDiff("PROJECTS", `New Project: ${pTitle}`, "(Not on resume)", pp.technologies || pp.description || "Project Entry", true, () => {
+        if (!resumeBuilderState.projects) resumeBuilderState.projects = [];
+        resumeBuilderState.projects.push({
+          title: pTitle,
+          technologies: Array.isArray(pp.technologies) ? pp.technologies.join(", ") : (pp.technologies || ""),
+          url: pp.url || pp.repo_url || "",
+          start_date: pp.start_date || "",
+          end_date: pp.end_date || "",
+          description: pp.description || "",
+          bullets: (pp.bullets || pp.bullet_points || []).map(b => typeof b === "string" ? b : (b.text || "")),
+          is_hidden: false,
+        });
+      });
+    }
+  });
+
+  // 7. LANGUAGES
+  const pLangs = p.languages || [];
+  const rLangs = resumeBuilderState.languages || [];
+  pLangs.forEach((pl) => {
+    const lName = typeof pl === "string" ? pl : (pl.language || pl.name || "");
+    const match = rLangs.find(rl => (typeof rl === "string" ? rl : (rl.language || rl.name))?.toLowerCase().trim() === lName.toLowerCase().trim());
+    if (!match) {
+      addDiff("LANGUAGES", `New Language: ${lName}`, "(Not on resume)", typeof pl === "object" ? (pl.proficiency || "Proficient") : "Proficient", true, () => {
+        if (!resumeBuilderState.languages) resumeBuilderState.languages = [];
+        resumeBuilderState.languages.push({
+          language: lName,
+          proficiency: typeof pl === "object" ? (pl.proficiency || "Proficient") : "Proficient",
+          is_hidden: false,
+        });
+      });
+    }
+  });
+
+  currentSyncDiffs = diffs;
+  renderSyncProfileDiff(diffs);
+  modal.classList.remove("hidden");
+  drawIcons();
+}
+window.openSyncProfileModal = openSyncProfileModal;
+
+function renderSyncProfileDiff(diffs) {
+  const noDiff = $("#syncProfileNoDiff");
+  const container = $("#syncProfileDiffContainer");
+  const applySafeBtn = $("#applyAllSafeSyncProfileBtn");
+  const applySelectedBtn = $("#applySelectedSyncProfileBtn");
+
+  if (!container) return;
+
+  if (diffs.length === 0) {
+    if (noDiff) noDiff.classList.remove("hidden");
+    container.innerHTML = "";
+    if (applySafeBtn) applySafeBtn.disabled = true;
+    if (applySelectedBtn) applySelectedBtn.disabled = true;
+    return;
+  }
+
+  if (noDiff) noDiff.classList.add("hidden");
+  if (applySafeBtn) applySafeBtn.disabled = false;
+  if (applySelectedBtn) applySelectedBtn.disabled = false;
+
+  const groups = {};
+  diffs.forEach(d => {
+    if (!groups[d.group]) groups[d.group] = [];
+    groups[d.group].push(d);
+  });
+
+  const groupOrder = ["CONTACT", "PROFESSIONAL", "EXPERIENCE", "EDUCATION", "CERTIFICATIONS", "PROJECTS", "LANGUAGES"];
+  let html = "";
+
+  groupOrder.forEach(grp => {
+    const items = groups[grp];
+    if (!items || items.length === 0) return;
+
+    html += `
+      <div class="panel p-3 mb-2" style="background: var(--surface-2); border-radius: var(--radius-sm);">
+        <div class="font-bold text-xs uppercase text-muted mb-2 tracking-wide flex-row align-center gap-1">
+          <i data-lucide="folder" style="width: 14px; height: 14px; color: var(--primary);"></i>
+          <span>${grp} (${items.length})</span>
+        </div>
+        <div class="flex-column gap-2">
+    `;
+
+    items.forEach(d => {
+      html += `
+        <div class="sync-diff-item" data-diff-id="${d.id}">
+          <div class="flex-between align-center mb-1">
+            <label class="flex-row align-center gap-2 cursor-pointer mb-0">
+              <input type="checkbox" class="sync-diff-checkbox" data-diff-id="${d.id}" ${d.isSafeAddition ? "checked" : ""}>
+              <span class="font-bold text-xs">${escapeHtml(d.field)}</span>
+            </label>
+            <span class="badge-sub ${d.isSafeAddition ? 'badge-primary' : 'badge-warning'} text-xs">
+              ${d.isSafeAddition ? 'New Addition (Safe)' : 'Differs from Resume'}
+            </span>
+          </div>
+          <div class="grid two gap-2 mt-2">
+            <div class="sync-diff-old">
+              <div class="text-xs text-muted font-bold mb-1">Resume (Current):</div>
+              <div class="text-xs">${escapeHtml(d.oldVal || '(Empty)')}</div>
+            </div>
+            <div class="sync-diff-new">
+              <div class="text-xs text-muted font-bold mb-1">Profile (New):</div>
+              <div class="text-xs">${escapeHtml(d.newVal || '')}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  drawIcons();
+}
+
+function applyProfileSync(onlySafe = false) {
+  if (!currentSyncDiffs || currentSyncDiffs.length === 0) {
+    $("#syncProfileModal")?.classList.add("hidden");
+    return;
+  }
+
+  let countApplied = 0;
+  if (onlySafe) {
+    currentSyncDiffs.forEach(d => {
+      if (d.isSafeAddition && typeof d.applyFn === "function") {
+        d.applyFn();
+        countApplied++;
+      }
+    });
+  } else {
+    const checkboxes = document.querySelectorAll(".sync-diff-checkbox");
+    const checkedIds = new Set();
+    checkboxes.forEach(cb => {
+      if (cb.checked) checkedIds.add(cb.dataset.diffId);
+    });
+    currentSyncDiffs.forEach(d => {
+      if (checkedIds.has(d.id) && typeof d.applyFn === "function") {
+        d.applyFn();
+        countApplied++;
+      }
+    });
+  }
+
+  $("#syncProfileModal")?.classList.add("hidden");
+  triggerBuilderAutosave();
+  renderBuilderEditorFromState();
+  renderResumePreviewCanvas();
+
+  if (state.activeResumeId) {
+    localStorage.setItem("sr_dismiss_profile_sync_" + state.activeResumeId, new Date().toISOString());
+  }
+  $("#builderProfileUpdateNotice")?.classList.add("hidden");
+
+  toast(`Applied ${countApplied} profile updates to this resume.`, "success", {
+    label: "Recheck Score",
+    onClick: () => {
+      openResumeScoreModal();
+    }
+  });
+}
+window.applyProfileSync = applyProfileSync;
+
 function wireResumeBuilder() {
   wireProfileUpdateNotice();
 
-  // Sync profile button
+  // Sync profile button opens diff review modal
   $("#builderSyncProfileBtn")?.addEventListener("click", () => {
-    if (confirm("Sync will refresh your resume fields with the latest data from your Career Profile. Continue?")) {
-      resumeBuilderState = getCleanResumeBuilderState();
-      triggerBuilderAutosave();
-      renderBuilderEditorFromState();
-      renderResumePreviewCanvas();
-      toast("Synchronized with your Career Profile.");
-    }
+    openSyncProfileModal();
+  });
+
+  // Sync Profile Modal controls
+  $("#closeSyncProfileModalBtn")?.addEventListener("click", () => {
+    $("#syncProfileModal")?.classList.add("hidden");
+  });
+  $("#cancelSyncProfileBtn")?.addEventListener("click", () => {
+    $("#syncProfileModal")?.classList.add("hidden");
+  });
+  $("#applyAllSafeSyncProfileBtn")?.addEventListener("click", () => {
+    applyProfileSync(true);
+  });
+  $("#applySelectedSyncProfileBtn")?.addEventListener("click", () => {
+    applyProfileSync(false);
   });
 
   // Template select
@@ -3976,7 +4347,43 @@ window.runResumeScoreCalculation = runResumeScoreCalculation;
 function renderResumeScoreModal(data) {
   if (!data) return;
 
-  // 1. Overall Score & styling
+  const emptyNotice = $("#scoreEmptyStateNotice");
+  const scorableBody = $("#scoreScorableBody");
+
+  // Check unscorable / empty resume state
+  if (data.empty_state || data.is_scorable === false) {
+    if (emptyNotice) {
+      emptyNotice.classList.remove("hidden");
+      const emptyText = $("#scoreEmptyStateText");
+      if (emptyText && data.empty_state_message) {
+        emptyText.textContent = data.empty_state_message;
+      }
+    }
+    if (scorableBody) scorableBody.classList.add("hidden");
+
+    const scoreNum = $("#scoreModalNum");
+    if (scoreNum) {
+      scoreNum.textContent = "--";
+      scoreNum.style.color = "var(--text-muted)";
+    }
+    const confBadge = $("#scoreConfidenceBadge");
+    if (confBadge) {
+      confBadge.textContent = "Unscorable (Blank)";
+      confBadge.className = "badge-sub badge-secondary text-xs";
+    }
+    const targetText = $("#scoreHeroTargetText");
+    if (targetText) {
+      targetText.textContent = `${data.target_role || "Resume"} Assessment`;
+    }
+    drawIcons();
+    return;
+  }
+
+  // Resume is scorable
+  if (emptyNotice) emptyNotice.classList.add("hidden");
+  if (scorableBody) scorableBody.classList.remove("hidden");
+
+  // 1. Overall Score & Number in Sticky Header
   const scoreNum = $("#scoreModalNum");
   if (scoreNum) {
     scoreNum.textContent = data.overall_score;
@@ -3989,24 +4396,32 @@ function renderResumeScoreModal(data) {
     }
   }
 
-  // 2. Target role
+  // 2. Target Role in Sticky Header
   const targetText = $("#scoreHeroTargetText");
   if (targetText) {
-    targetText.textContent = `${data.target_role || "Role"} Evaluation`;
+    targetText.textContent = `${data.target_role || "Role"} Assessment`;
   }
 
-  // 3. Fresher calibrated badge
+  // 3. Confidence Badge
+  const confBadge = $("#scoreConfidenceBadge");
+  if (confBadge) {
+    const conf = data.score_confidence || "Medium";
+    confBadge.textContent = `${conf} Confidence`;
+    confBadge.className = `badge-sub ${conf === "High" ? "badge-primary" : conf === "Medium" ? "badge-warning" : "badge-secondary"} text-xs`;
+  }
+
+  // 4. Fresher calibrated badge
   const calBadge = $("#scoreFresherCalibratedBadge");
   if (calBadge) {
     if (data.is_fresher_calibrated) {
       calBadge.classList.remove("hidden");
       calBadge.textContent = "Fresher Calibrated · Experience Penalty Waived";
     } else {
-      calBadge.textContent = "Professional Evaluation";
+      calBadge.textContent = "Professional Assessment";
     }
   }
 
-  // 4. Delta pill and explanation
+  // 5. Delta pill and explanation
   const deltaPill = $("#scoreDeltaPill");
   const deltaExp = $("#scoreDeltaExplanation");
   if (data.score_delta !== null && data.score_delta !== undefined) {
@@ -4024,7 +4439,7 @@ function renderResumeScoreModal(data) {
     if (deltaExp) deltaExp.textContent = "";
   }
 
-  // 5. What is Helping
+  // 6. What is Helping
   const helpList = $("#scoreHelpingList");
   if (helpList) {
     helpList.innerHTML = (data.what_is_helping || []).map((item) => `
@@ -4035,7 +4450,7 @@ function renderResumeScoreModal(data) {
     `).join("");
   }
 
-  // 6. What is Holding Back
+  // 7. What is Holding Back
   const holdList = $("#scoreHoldingBackList");
   if (holdList) {
     holdList.innerHTML = (data.what_is_holding_back || []).map((item) => `
@@ -4046,11 +4461,12 @@ function renderResumeScoreModal(data) {
     `).join("");
   }
 
-  // 7. Top Priority Improvements
+  // 8. Top Priority Improvements (Strictly Max 3!)
   const impList = $("#scoreTopImprovementsList");
   if (impList) {
-    if (data.top_improvements && data.top_improvements.length > 0) {
-      impList.innerHTML = data.top_improvements.map((imp) => {
+    const top3 = (data.top_improvements || []).slice(0, 3);
+    if (top3.length > 0) {
+      impList.innerHTML = top3.map((imp) => {
         const priority = imp.priority || imp.impact || "MEDIUM";
         const impactClass = priority.toLowerCase();
         const title = imp.problem || imp.title || "Improvement";
@@ -4066,50 +4482,35 @@ function renderResumeScoreModal(data) {
           `;
         }
 
-        let actionBtnHtml = "";
         const actionType = imp.action_type || "";
         const actionTarget = imp.action_target || "";
         const actionLabel = imp.action_label || (
           actionType === "IMPROVE_SUMMARY" ? "Improve Summary" :
           actionType === "REVIEW_SKILLS" ? "Review Unsupported Skills" :
           actionType === "REWRITE_BULLETS" ? "Rewrite Bullets" :
-          actionType === "REVIEW_HEADLINE" ? "Review Headline" : "Open in Builder"
+          actionType === "REVIEW_HEADLINE" ? "Review Headline" :
+          actionType === "SOFTEN_CLAIM" ? "Soften Claim" : "Open in Builder"
         );
 
+        let actionOnClick = `$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder');`;
         if (actionType === "IMPROVE_SUMMARY" || actionTarget === "summary") {
-          actionBtnHtml = `
-            <button class="primary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = $('#builderSummaryText'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);">
-              <i data-lucide="edit-3"></i><span>${escapeHtml(actionLabel)}</span>
-            </button>
-          `;
-        } else if (actionType === "REVIEW_SKILLS" || actionTarget === "skills") {
-          actionBtnHtml = `
-            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = $('#builderSkillsInput'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);">
-              <i data-lucide="layers"></i><span>${escapeHtml(actionLabel)}</span>
-            </button>
-          `;
+          actionOnClick += ` setTimeout(() => { const el = $('#builderSummaryText'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);`;
+        } else if (actionType === "REVIEW_SKILLS" || actionType === "SOFTEN_CLAIM" || actionTarget === "skills") {
+          actionOnClick += ` setTimeout(() => { const el = $('#builderSkillsInput'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);`;
         } else if (actionType === "REWRITE_BULLETS" || actionTarget === "experience") {
-          actionBtnHtml = `
-            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = document.querySelector('#secEditor-experiences') || document.querySelector('#secEditor-projects'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 200);">
-              <i data-lucide="sparkles"></i><span>${escapeHtml(actionLabel)}</span>
-            </button>
-          `;
+          actionOnClick += ` setTimeout(() => { const el = document.querySelector('#secEditor-experiences') || document.querySelector('#secEditor-projects'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 200);`;
         } else if (actionType === "REVIEW_HEADLINE" || actionTarget === "headline") {
-          actionBtnHtml = `
-            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder'); setTimeout(() => { const el = $('#builderHeadline'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);">
-              <i data-lucide="user"></i><span>${escapeHtml(actionLabel)}</span>
-            </button>
-          `;
-        } else {
-          actionBtnHtml = `
-            <button class="secondary-btn xs mt-2" type="button" onclick="$('#resumeScoreModal')?.classList.add('hidden'); navigateToTab('resume-builder');">
-              <i data-lucide="arrow-right"></i><span>${escapeHtml(actionLabel)}</span>
-            </button>
-          `;
+          actionOnClick += ` setTimeout(() => { const el = $('#builderHeadline'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200);`;
         }
 
+        const actionBtnHtml = `
+          <button class="primary-btn xs mt-2" type="button" onclick="${actionOnClick}">
+            <i data-lucide="sparkles"></i><span>${escapeHtml(actionLabel)}</span>
+          </button>
+        `;
+
         return `
-          <div class="priority-fix-card ${impactClass}">
+          <div class="priority-fix-card ${impactClass} mb-2">
             <div class="flex-between align-center mb-1">
               <strong>${escapeHtml(title)}</strong>
               <span class="priority-tag ${impactClass}">${escapeHtml(priority)} IMPACT</span>
@@ -4126,42 +4527,114 @@ function renderResumeScoreModal(data) {
     }
   }
 
-  // 8. Dimensions
+  // 9. Compact Scoring Dimensions with Clickable Expandable Details
   const dimsList = $("#scoreDimensionsList");
   if (dimsList) {
     const dimEntries = Array.isArray(data.dimensions)
       ? data.dimensions
       : Object.values(data.dimensions || {});
-    dimsList.innerHTML = dimEntries.map((d) => {
-      const weightDisplay = typeof d.weight === "number" ? `${Math.round(d.weight * 100)}% weight` : (d.weight || "");
+    dimsList.innerHTML = dimEntries.map((d, idx) => {
+      const weightDisplay = typeof d.weight === "number" ? `${Math.round(d.weight * 100)}%` : (d.weight || "");
+      const detailId = `dim_detail_${idx}`;
       return `
-        <div class="dim-row">
-          <div class="dim-label-row">
-            <span class="font-semibold text-xs">${escapeHtml(d.name || "Dimension")}</span>
-            <span class="text-xs font-bold">${d.score}/100 <span class="text-muted font-normal">(${weightDisplay})</span></span>
+        <div class="dim-row-compact" onclick="const el = document.getElementById('${detailId}'); if (el) el.classList.toggle('hidden');">
+          <div class="flex-between align-center" style="font-size: 0.82rem;">
+            <div class="flex-row align-center gap-2">
+              <span class="font-semibold">${escapeHtml(d.name || "Dimension")}</span>
+              <span class="badge-sub text-xs text-muted">${weightDisplay}</span>
+            </div>
+            <div class="flex-row align-center" style="width: 140px;">
+              <div class="dim-compact-bar">
+                <div class="dim-compact-fill" style="width: ${d.score}%;"></div>
+              </div>
+              <strong style="width: 44px; text-align: right;">${d.score}/100</strong>
+            </div>
           </div>
-          <div class="dim-bar">
-            <div class="dim-fill" style="width: ${d.score}%;"></div>
+          <div id="${detailId}" class="hidden text-xs text-muted mt-2 pt-2 border-top">
+            ${escapeHtml(d.explanation || "No dimension detail available.")}
           </div>
-          <span class="text-xs text-muted mt-1 block">${escapeHtml(d.explanation || "")}</span>
         </div>
       `;
     }).join("");
   }
 
-  // 8b. Skill Grounding Verification
+  // 10. Collapsible All Insights Accordion
+  const accordionContent = $("#scoreAllInsightsContent");
+  const accordionTitle = $("#scoreAllInsightsTitle");
+  const accordionHeader = $("#scoreAllInsightsHeader");
+  const accordionChevron = $("#scoreAllInsightsChevron");
+
+  if (accordionContent) {
+    const allInsights = data.all_insights || {};
+    const insightCategories = Object.keys(allInsights).filter(cat => allInsights[cat] && allInsights[cat].length > 0);
+    const totalInsightCount = insightCategories.reduce((acc, cat) => acc + allInsights[cat].length, 0);
+
+    if (accordionTitle) {
+      accordionTitle.textContent = `View all insights (${totalInsightCount})`;
+    }
+
+    if (totalInsightCount === 0) {
+      accordionContent.innerHTML = `<p class="text-xs text-muted mb-0">All sections align well with evidence principles.</p>`;
+    } else {
+      accordionContent.innerHTML = insightCategories.map((cat, catIdx) => {
+        const items = allInsights[cat];
+        const catBodyId = `insight_cat_body_${catIdx}`;
+        return `
+          <div class="score-accordion-group">
+            <div class="score-accordion-header" onclick="const b = document.getElementById('${catBodyId}'); if (b) b.classList.toggle('hidden');">
+              <div class="flex-row align-center gap-2">
+                <i data-lucide="folder" style="width: 13px; height: 13px; color: var(--primary);"></i>
+                <span>${escapeHtml(cat)}</span>
+                <span class="badge-sub text-xs">${items.length}</span>
+              </div>
+              <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+            </div>
+            <div id="${catBodyId}" class="score-accordion-body flex-column gap-2">
+              ${items.map(it => {
+                const statusColor = it.status === "PASS" ? "#10b981" : it.status === "INFO" ? "var(--primary)" : "#f59e0b";
+                const statusIcon = it.status === "PASS" ? "check" : it.status === "INFO" ? "info" : "alert-circle";
+                return `
+                  <div class="p-2 border rounded text-xs" style="background: var(--surface-2); border-left: 3px solid ${statusColor};">
+                    <div class="flex-between align-center mb-1">
+                      <strong>${escapeHtml(it.title || "Insight")}</strong>
+                      <span class="badge-sub text-xs"><i data-lucide="${statusIcon}" style="width: 11px; height: 11px;"></i> ${escapeHtml(it.status || "NOTE")}</span>
+                    </div>
+                    <p class="text-muted mb-1">${escapeHtml(it.detail || it.message || "")}</p>
+                    ${it.recommendation ? `<p class="font-semibold text-xs mb-0" style="color: var(--primary);">${escapeHtml(it.recommendation)}</p>` : ""}
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    if (accordionHeader && !accordionHeader._wired) {
+      accordionHeader._wired = true;
+      accordionHeader.addEventListener("click", () => {
+        const isHidden = accordionContent.classList.toggle("hidden");
+        if (accordionChevron) {
+          accordionChevron.style.transform = isHidden ? "rotate(0deg)" : "rotate(180deg)";
+        }
+        drawIcons();
+      });
+    }
+  }
+
+  // 11. Skill Evidence Grounding
   const groundingList = $("#scoreSkillsGroundingList");
   if (groundingList) {
     const list = data.skills_grounding || [];
     if (list.length > 0) {
       groundingList.innerHTML = list.map(sg => {
         const isSupported = sg.status === "SUPPORTED";
-        const isPartial = sg.status === "PARTIALLY_SUPPORTED";
-        const badgeClass = isSupported ? "badge-primary" : (isPartial ? "badge-warning" : "badge-secondary");
-        const iconName = isSupported ? "check-circle-2" : (isPartial ? "help-circle" : "alert-circle");
-        const statusLabel = isSupported ? "Supported" : (isPartial ? "In Summary Only" : "Needs Evidence");
+        const isSelfReported = sg.status === "SELF_REPORTED";
+        const badgeClass = isSupported ? "badge-primary" : (isSelfReported ? "badge-secondary" : "badge-warning");
+        const iconName = isSupported ? "check-circle-2" : (isSelfReported ? "info" : "alert-triangle");
+        const statusLabel = isSupported ? "Supported" : (isSelfReported ? "Self-Reported" : "Needs Evidence");
         return `
-          <div class="skill-grounding-chip p-2 border rounded" style="background: var(--surface); display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+          <div class="skill-grounding-chip p-2 border rounded" style="background: var(--surface); display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;" title="${escapeHtml(sg.evidence || '')}">
             <strong>${escapeHtml(sg.name)}</strong>
             <span class="badge-sub ${badgeClass} text-xs"><i data-lucide="${iconName}" style="width:11px;height:11px;"></i> ${statusLabel}</span>
           </div>
@@ -4172,7 +4645,29 @@ function renderResumeScoreModal(data) {
     }
   }
 
-  // 8c. Skill Proficiency & Credibility Guidance
+  // 12. Potentially Overstated Claims
+  const overstatedSec = $("#scoreOverstatedClaimsSection");
+  const overstatedList = $("#scoreOverstatedClaimsList");
+  if (overstatedSec && overstatedList) {
+    const claims = data.potentially_overstated_claims || [];
+    if (claims.length > 0) {
+      overstatedSec.classList.remove("hidden");
+      overstatedList.innerHTML = claims.map(c => `
+        <div class="p-2 border rounded text-xs" style="background: var(--surface-2); border-left: 3px solid #f59e0b;">
+          <div class="flex-between align-center mb-1">
+            <strong style="color: #d97706;">"${escapeHtml(c.claim || "")}"</strong>
+            <span class="badge-sub badge-warning text-xs">Evidence Gap</span>
+          </div>
+          <p class="text-muted mb-1">${escapeHtml(c.reason || "")}</p>
+          ${c.suggestion ? `<div class="p-1 font-mono text-xs bg-surface border rounded"><span class="text-muted">Suggested:</span> ${escapeHtml(c.suggestion)}</div>` : ""}
+        </div>
+      `).join("");
+    } else {
+      overstatedSec.classList.add("hidden");
+    }
+  }
+
+  // 13. Skill Proficiency Guidance
   const profSec = $("#scoreProficiencySection");
   const profList = $("#scoreProficiencyList");
   if (profSec && profList) {
@@ -4198,7 +4693,7 @@ function renderResumeScoreModal(data) {
     }
   }
 
-  // 9. Buzzwords
+  // 14. Weak Buzzwords
   const buzzSec = $("#scoreBuzzwordsSection");
   const buzzList = $("#scoreBuzzwordsList");
   if (buzzSec && buzzList) {
@@ -4214,7 +4709,7 @@ function renderResumeScoreModal(data) {
     }
   }
 
-  // 10. Eligibility Gaps
+  // 15. Eligibility Gaps
   const eligSec = $("#scoreEligibilityGapsSection");
   const eligText = $("#scoreEligibilityGapsText");
   if (eligSec && eligText) {
@@ -6707,28 +7202,7 @@ function wireProfileUpdateNotice() {
   });
 
   $("#builderApplyProfileUpdateBtn")?.addEventListener("click", () => {
-    if (!state.activeResumeId) return;
-    if (confirm("Apply updates from your Career Profile to this resume? Your existing tailored sections will be preserved.")) {
-      const p = state.profile || {};
-      if (p.headline && (!resumeBuilderState.header.headline || !resumeBuilderState.header.headline.trim())) {
-        resumeBuilderState.header.headline = p.headline;
-      }
-      if (p.summary && (!resumeBuilderState.summary || !resumeBuilderState.summary.trim())) {
-        resumeBuilderState.summary = p.summary;
-      }
-      if (p.location && !resumeBuilderState.header.location) resumeBuilderState.header.location = p.location;
-      if (p.phone && !resumeBuilderState.header.phone) resumeBuilderState.header.phone = p.phone;
-      if (p.linkedin_url && !resumeBuilderState.header.linkedin) resumeBuilderState.header.linkedin = p.linkedin_url;
-      if (p.github_url && !resumeBuilderState.header.github) resumeBuilderState.header.github = p.github_url;
-      if (p.portfolio_url && !resumeBuilderState.header.website) resumeBuilderState.header.website = p.portfolio_url;
-
-      localStorage.setItem("sr_dismiss_profile_sync_" + state.activeResumeId, new Date().toISOString());
-      $("#builderProfileUpdateNotice")?.classList.add("hidden");
-      triggerBuilderAutosave();
-      renderBuilderEditorFromState();
-      renderResumePreviewCanvas();
-      toast("Applied latest career profile updates to this resume.");
-    }
+    openSyncProfileModal();
   });
 }
 

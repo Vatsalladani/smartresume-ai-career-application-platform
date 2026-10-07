@@ -1422,108 +1422,154 @@
           </div>
         </div>
 
-        <!-- Evidence-Based Resume Score Modal -->
+        <!-- Evidence-Based Resume Assessment Modal -->
         <div id="resumeScoreModal" class="modal-backdrop hidden" style="z-index: 10000;">
-          <div class="modal-content score-modal-dialog" style="display: flex; flex-direction: column; padding: 0; background: var(--surface); border-radius: var(--radius-lg, 12px); overflow: hidden;">
+          <div class="modal-content score-modal-dialog" style="display: flex; flex-direction: column; padding: 0; background: var(--surface); border-radius: var(--radius-lg, 12px); overflow: hidden; max-height: 90vh;">
+            <!-- Modal Header Title Bar -->
             <div class="p-3 bg-surface flex-row justify-between align-center border-bottom">
               <div class="flex-row align-center gap-2">
                 <i data-lucide="award" style="color: var(--primary);"></i>
-                <strong style="font-size: 1.05rem;">Evidence-Based Resume Score</strong>
+                <strong style="font-size: 1.02rem;">Evidence-Based Resume Assessment</strong>
               </div>
               <div class="flex-row align-center gap-2">
                 <button class="icon-btn sm" type="button" onclick="$('#resumeScoreModal').classList.add('hidden')"><i data-lucide="x"></i></button>
               </div>
             </div>
 
-            <div class="p-4" style="overflow-y: auto; flex: 1; max-height: calc(90vh - 60px);">
-              <!-- Target Configuration Bar -->
-              <div class="panel p-3 mb-3 flex-row align-center justify-between gap-3 flex-wrap" style="background: var(--surface-2);">
-                <div class="flex-row align-center gap-3 flex-wrap">
-                  <div class="flex-row align-center gap-2">
-                    <label class="text-xs text-muted font-bold" for="scoreTargetRoleInput">Target Role:</label>
-                    <input id="scoreTargetRoleInput" class="form-input sm" style="width: 220px;" placeholder="e.g. Software Engineer" value="Software Engineer">
-                  </div>
-                  <div class="flex-row align-center gap-2">
-                    <label class="text-xs text-muted font-bold" for="scoreCareerLevelSelect">Career Stage:</label>
-                    <select id="scoreCareerLevelSelect" class="form-select sm" style="width: 170px;">
-                      <option value="EARLY_CAREER" selected>Early Career / Fresher</option>
-                      <option value="DEVELOPING">Developing (1-4 yrs)</option>
-                      <option value="EXPERIENCED">Experienced (5+ yrs)</option>
-                    </select>
-                  </div>
+            <!-- Sticky Score Header inside Modal -->
+            <div id="scoreStickyHeader" class="score-modal-sticky-header p-3 border-bottom flex-row align-center justify-between gap-3 flex-wrap">
+              <div class="flex-row align-center gap-3">
+                <div class="score-circle-display-compact">
+                  <span class="score-circle-num-compact" id="scoreModalNum">--</span>
+                  <span class="score-circle-max-compact">/ 100</span>
                 </div>
-                <button class="primary-btn sm" type="button" id="scoreRecalculateBtn">
-                  <i data-lucide="refresh-cw"></i>
-                  <span>Recalculate Score</span>
-                </button>
-              </div>
-
-              <!-- Score Hero Banner -->
-              <div class="score-hero-banner" id="scoreHeroBanner">
-                <div class="score-circle-display">
-                  <span class="score-circle-num" id="scoreModalNum">--</span>
-                  <span class="score-circle-max">/ 100</span>
-                </div>
-                <div class="score-hero-details">
-                  <h3 class="score-hero-title" id="scoreHeroTargetText">Software Engineer Evaluation</h3>
-                  <div class="score-hero-meta">
+                <div>
+                  <div class="flex-row align-center gap-2">
+                    <h3 class="score-hero-title mb-0" id="scoreHeroTargetText" style="font-size: 1.05rem; margin: 0;">Evaluation</h3>
+                    <span id="scoreConfidenceBadge" class="badge-sub badge-primary text-xs">High Confidence</span>
+                  </div>
+                  <div class="score-hero-meta mt-1">
                     <span id="scoreFresherCalibratedBadge" class="calibrated-badge">Fresher Context Calibrated</span>
                     <span id="scoreDeltaPill" class="text-xs text-muted"></span>
                   </div>
-                  <p id="scoreDeltaExplanation" class="text-xs text-muted mt-1 mb-0"></p>
                 </div>
               </div>
+              <div class="flex-row align-center gap-2">
+                <button class="secondary-btn xs" type="button" id="scoreRecalculateBtn">
+                  <i data-lucide="refresh-cw"></i><span>Recalculate</span>
+                </button>
+              </div>
+            </div>
 
-              <!-- What is Helping vs What is Holding Back Grid -->
-              <div class="score-insights-grid">
-                <div class="score-insight-card helping">
-                  <h4><i data-lucide="check-circle-2"></i> What is helping:</h4>
-                  <ul class="score-insight-list" id="scoreHelpingList"></ul>
+            <!-- Scrollable Content Body -->
+            <div class="p-4" style="overflow-y: auto; flex: 1; max-height: calc(90vh - 120px);">
+              <!-- Empty State Container (Unscorable / Empty Resume) -->
+              <div id="scoreEmptyStateNotice" class="hidden text-center p-4">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(var(--primary-rgb, 14, 165, 233), 0.1); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                  <i data-lucide="file-question" style="width: 24px; height: 24px; color: var(--primary);"></i>
                 </div>
-                <div class="score-insight-card holding-back">
-                  <h4><i data-lucide="alert-triangle"></i> What is holding it back:</h4>
-                  <ul class="score-insight-list" id="scoreHoldingBackList"></ul>
+                <h4 style="margin-bottom: 6px;">Not enough resume information yet</h4>
+                <p class="text-xs text-muted mb-3" style="max-width: 440px; margin-left: auto; margin-right: auto;" id="scoreEmptyStateText">
+                  Add your target role, experience, or skills to see an evidence-based assessment.
+                </p>
+                <button class="primary-btn sm" type="button" onclick="$('#resumeScoreModal').classList.add('hidden'); navigateToTab('resume-builder');">
+                  <i data-lucide="edit-3"></i><span>Edit Resume in Builder</span>
+                </button>
+              </div>
+
+              <!-- Scorable Body Container -->
+              <div id="scoreScorableBody">
+                <!-- Target Configuration Bar -->
+                <div class="panel p-2 mb-3 flex-row align-center justify-between gap-2 flex-wrap" style="background: var(--surface-2); font-size: 0.85rem;">
+                  <div class="flex-row align-center gap-3 flex-wrap">
+                    <div class="flex-row align-center gap-1">
+                      <label class="text-xs text-muted font-bold" for="scoreTargetRoleInput">Role:</label>
+                      <input id="scoreTargetRoleInput" class="form-input xs" style="width: 170px;" placeholder="e.g. Software Engineer" value="Software Engineer">
+                    </div>
+                    <div class="flex-row align-center gap-1">
+                      <label class="text-xs text-muted font-bold" for="scoreCareerLevelSelect">Stage:</label>
+                      <select id="scoreCareerLevelSelect" class="form-select xs" style="width: 155px;">
+                        <option value="EARLY_CAREER" selected>Early Career / Fresher</option>
+                        <option value="DEVELOPING">Developing (1-4 yrs)</option>
+                        <option value="EXPERIENCED">Experienced (5+ yrs)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <span id="scoreDeltaExplanation" class="text-xs text-muted"></span>
                 </div>
-              </div>
 
-              <!-- Top Actionable Improvements -->
-              <div class="mb-4">
-                <div class="flex-row justify-between align-center mb-2">
-                  <h4 style="margin: 0; font-size: 0.95rem;"><i data-lucide="sparkles"></i> Top Priority Improvements (Sorted by Impact)</h4>
+                <!-- What is Helping vs What is Holding Back Grid -->
+                <div class="score-insights-grid mb-3">
+                  <div class="score-insight-card helping">
+                    <h4 style="font-size: 0.88rem;"><i data-lucide="check-circle-2"></i> What is helping:</h4>
+                    <ul class="score-insight-list" id="scoreHelpingList"></ul>
+                  </div>
+                  <div class="score-insight-card holding-back">
+                    <h4 style="font-size: 0.88rem;"><i data-lucide="alert-triangle"></i> What is holding it back:</h4>
+                    <ul class="score-insight-list" id="scoreHoldingBackList"></ul>
+                  </div>
                 </div>
-                <div id="scoreTopImprovementsList"></div>
-              </div>
 
-              <!-- 7 Dimension Breakdown -->
-              <div class="panel p-3 mb-3">
-                <h4 style="margin: 0 0 10px 0; font-size: 0.92rem;"><i data-lucide="bar-chart-2"></i> Transparent Scoring Dimensions</h4>
-                <div id="scoreDimensionsList"></div>
-              </div>
+                <!-- Top Actionable Improvements (Strictly Max 3) -->
+                <div class="mb-3">
+                  <div class="flex-row justify-between align-center mb-2">
+                    <h4 style="margin: 0; font-size: 0.92rem;"><i data-lucide="sparkles"></i> Top Priority Improvements (Sorted by Impact)</h4>
+                  </div>
+                  <div id="scoreTopImprovementsList"></div>
+                </div>
 
-              <!-- Skill Evidence Grounding -->
-              <div id="scoreSkillsGroundingSection" class="panel p-3 mb-3">
-                <h4 style="margin: 0 0 8px 0; font-size: 0.92rem;"><i data-lucide="layers"></i> Skill Evidence & Grounding Verification</h4>
-                <p class="text-xs text-muted mb-3">Skills are verified against work experience, project bullets, and formal credentials to eliminate keyword dumping:</p>
-                <div id="scoreSkillsGroundingList" class="flex-row flex-wrap gap-2"></div>
-              </div>
+                <!-- 7 Compact Dimension Bars -->
+                <div class="panel p-3 mb-3">
+                  <div class="flex-between align-center mb-2">
+                    <h4 style="margin: 0; font-size: 0.92rem;"><i data-lucide="bar-chart-2"></i> Scoring Dimensions</h4>
+                    <span class="text-xs text-muted">Click row for details</span>
+                  </div>
+                  <div id="scoreDimensionsList" class="flex-column gap-2"></div>
+                </div>
 
-              <!-- Skill Proficiency & Credibility Guidance -->
-              <div id="scoreProficiencySection" class="panel p-3 mb-3 hidden">
-                <h4 style="margin: 0 0 8px 0; font-size: 0.92rem; color: var(--primary);"><i data-lucide="shield-alert"></i> Skill Proficiency & Credibility Advisory</h4>
-                <div id="scoreProficiencyList" class="flex-column gap-2"></div>
-              </div>
+                <!-- Collapsible All Insights Accordion -->
+                <div class="panel p-3 mb-3">
+                  <div class="flex-between align-center cursor-pointer" id="scoreAllInsightsHeader">
+                    <h4 style="margin: 0; font-size: 0.92rem;"><i data-lucide="list-checks"></i> <span id="scoreAllInsightsTitle">View all insights</span></h4>
+                    <button class="icon-btn xs" type="button" id="scoreAllInsightsToggleBtn" aria-label="Toggle all insights"><i data-lucide="chevron-down" id="scoreAllInsightsChevron"></i></button>
+                  </div>
+                  <div id="scoreAllInsightsContent" class="hidden mt-3 flex-column gap-3 border-top pt-3">
+                    <!-- Populated dynamically via renderResumeScoreModal() -->
+                  </div>
+                </div>
 
-              <!-- Buzzword & Consistency Checks -->
-              <div id="scoreBuzzwordsSection" class="panel p-3 mb-2 hidden">
-                <h4 style="margin: 0 0 6px 0; font-size: 0.88rem; color: #dc2626;"><i data-lucide="alert-circle"></i> Weak Buzzwords Detected</h4>
-                <p class="text-xs text-muted mb-2">These common subjective phrases add little evidence. Replace them with specific project accomplishments:</p>
-                <div id="scoreBuzzwordsList" class="flex-row flex-wrap"></div>
-              </div>
+                <!-- Skill Evidence Grounding -->
+                <div id="scoreSkillsGroundingSection" class="panel p-3 mb-3">
+                  <h4 style="margin: 0 0 8px 0; font-size: 0.92rem;"><i data-lucide="layers"></i> Skill Evidence & Grounding</h4>
+                  <p class="text-xs text-muted mb-2">Skills verified against work experience, project bullets, and formal credentials:</p>
+                  <div id="scoreSkillsGroundingList" class="flex-row flex-wrap gap-2"></div>
+                </div>
 
-              <!-- Job Eligibility Gaps Notice -->
-              <div id="scoreEligibilityGapsSection" class="panel p-3 hidden" style="border-left: 3px solid #2563eb;">
-                <h4 style="margin: 0 0 4px 0; font-size: 0.88rem; color: var(--primary);"><i data-lucide="info"></i> Job Eligibility Note</h4>
-                <p id="scoreEligibilityGapsText" class="text-xs text-muted mb-0"></p>
+                <!-- Potentially Overstated Claims Section -->
+                <div id="scoreOverstatedClaimsSection" class="panel p-3 mb-3 hidden" style="border-left: 3px solid #f59e0b;">
+                  <h4 style="margin: 0 0 6px 0; font-size: 0.88rem; color: #d97706;"><i data-lucide="alert-triangle"></i> Potentially Overstated Claims</h4>
+                  <p class="text-xs text-muted mb-2">Strong proficiency claims without matching project or work evidence:</p>
+                  <div id="scoreOverstatedClaimsList" class="flex-column gap-2"></div>
+                </div>
+
+                <!-- Skill Proficiency & Credibility Guidance -->
+                <div id="scoreProficiencySection" class="panel p-3 mb-3 hidden">
+                  <h4 style="margin: 0 0 8px 0; font-size: 0.92rem; color: var(--primary);"><i data-lucide="shield-alert"></i> Skill Proficiency & Credibility Advisory</h4>
+                  <div id="scoreProficiencyList" class="flex-column gap-2"></div>
+                </div>
+
+                <!-- Buzzword & Consistency Checks -->
+                <div id="scoreBuzzwordsSection" class="panel p-3 mb-3 hidden">
+                  <h4 style="margin: 0 0 6px 0; font-size: 0.88rem; color: #dc2626;"><i data-lucide="alert-circle"></i> Weak Buzzwords Detected</h4>
+                  <p class="text-xs text-muted mb-2">These common subjective phrases add little evidence. Replace them with specific accomplishments:</p>
+                  <div id="scoreBuzzwordsList" class="flex-row flex-wrap"></div>
+                </div>
+
+                <!-- Job Eligibility Gaps Notice -->
+                <div id="scoreEligibilityGapsSection" class="panel p-3 hidden" style="border-left: 3px solid #2563eb;">
+                  <h4 style="margin: 0 0 4px 0; font-size: 0.88rem; color: var(--primary);"><i data-lucide="info"></i> Job Eligibility Note</h4>
+                  <p id="scoreEligibilityGapsText" class="text-xs text-muted mb-0"></p>
+                </div>
               </div>
             </div>
           </div>
@@ -4346,10 +4392,62 @@
           <input id="renameResumeTitleInput" type="text" placeholder="Enter resume name" required>
         </label>
       </div>
-      <div class="modal-footer flex-end gap-2">
-        <button class="secondary-btn sm" type="button" id="cancelRenameResumeBtn">Cancel</button>
-        <button class="primary-btn sm" type="button" id="submitRenameResumeBtn">Save Name</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SYNC PROFILE DIFF REVIEW -->
+  <div id="syncProfileModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="syncProfileModalTitle">
+    <div class="modal-dialog" style="max-width: 720px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div class="flex-row align-center gap-2">
+          <div class="dash-resume-preview-thumb" style="width: 32px; height: 32px; min-width: 32px; background: rgba(var(--primary-rgb, 14, 165, 233), 0.1); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="refresh-cw" style="width: 18px; height: 18px; color: var(--primary);"></i>
+          </div>
+          <div>
+            <h3 id="syncProfileModalTitle" style="margin: 0;">Sync updates from Career Profile</h3>
+            <p class="text-sm text-muted mb-0">Review profile changes before applying them to this resume.</p>
+          </div>
+        </div>
+        <button id="closeSyncProfileModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 16px 20px;">
+        <!-- Safety Alert -->
+        <div class="p-3 mb-3 border rounded text-xs flex-row align-start gap-2" style="background: rgba(var(--primary-rgb, 14, 165, 233), 0.05); border-color: rgba(var(--primary-rgb, 14, 165, 233), 0.2);">
+          <i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0; margin-top: 1px;"></i>
+          <div>
+            <strong>Independent Resume Protection:</strong> Your resume design settings (template, colors, margins, fonts), section order, and job-specific target fields will never be overwritten. New profile items are selected by default; your custom tailored text is preserved unless you choose to update it.
+          </div>
+        </div>
+
+        <!-- No Differences State -->
+        <div id="syncProfileNoDiff" class="hidden text-center p-4">
+          <i data-lucide="check-circle-2" style="width: 36px; height: 36px; color: #10b981; margin-bottom: 8px;"></i>
+          <h4 style="margin-bottom: 4px;">Resume is fully up-to-date</h4>
+          <p class="text-xs text-muted mb-0">No differences were found between your Career Profile and this resume.</p>
+        </div>
+
+        <!-- Diff Container grouped by section -->
+        <div id="syncProfileDiffContainer" class="flex-column gap-3">
+          <!-- Populated dynamically via renderSyncProfileDiff() -->
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between" style="border-top: 1px solid var(--border); padding: 12px 20px; background: var(--surface);">
+        <button class="secondary-btn sm" type="button" id="cancelSyncProfileBtn">Cancel</button>
+        <div class="flex-row align-center gap-2">
+          <button class="secondary-btn sm" type="button" id="applyAllSafeSyncProfileBtn" title="Apply only new additions, preserving your tailored resume sections">
+            <i data-lucide="shield"></i><span>Apply All Safe Updates</span>
+          </button>
+          <button class="primary-btn sm" type="button" id="applySelectedSyncProfileBtn">
+            <i data-lucide="check"></i><span>Apply Selected Updates</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: JOB WORKSPACE HUB (One Job = One Connected Workspace) -->
   <div id="jobWorkspaceModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="jobWorkspaceModalTitle">
     <div class="modal-dialog" style="max-width: 820px; max-height: 90vh; overflow-y: auto;">

@@ -6081,8 +6081,128 @@ svg {
 
 /* Resume Score Modal */
 .score-modal-dialog {
-  max-width: 840px !important;
-  max-height: 92vh !important;
+  max-width: 720px !important;
+  width: 100% !important;
+  max-height: 90vh !important;
+}
+
+@media (max-width: 768px) {
+  .score-modal-dialog {
+    max-width: 100% !important;
+    margin: 10px !important;
+    max-height: calc(100vh - 20px) !important;
+  }
+}
+
+.score-modal-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.score-circle-display-compact {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--primary, #2563eb);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.score-circle-num-compact {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--primary, #2563eb);
+}
+
+.score-circle-max-compact {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.dim-row-compact {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dim-row-compact:hover {
+  background: var(--surface);
+}
+
+.dim-compact-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: 1;
+  margin: 0 10px;
+}
+
+.dim-compact-fill {
+  height: 100%;
+  background: var(--primary, #2563eb);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.score-accordion-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
+}
+
+.score-accordion-header {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  font-weight: 600;
+  font-size: 0.82rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.score-accordion-body {
+  padding: 10px 12px;
+  background: var(--surface);
+  font-size: 0.8rem;
+}
+
+.sync-diff-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  padding: 12px;
+}
+
+.sync-diff-old {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.sync-diff-new {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.78rem;
 }
 
 .score-hero-banner {
