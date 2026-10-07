@@ -589,13 +589,18 @@
       <section id="tabProfile" class="tab-panel">
         <div class="view-header">
           <div class="view-header-content">
-            <h2>Career Profile</h2>
-            <p>Your verified career foundation. Keep your background accurate so your resumes are always recruiter-ready.</p>
+            <div class="flex-row align-center gap-2 flex-wrap mb-1">
+              <h2 style="margin: 0;">Career Profile</h2>
+              <span id="profileStrengthBadge" class="badge-sub badge-primary font-bold">Profile Strength: 0%</span>
+              <span id="profileLastUpdatedLabel" class="text-xs text-muted">Last Updated: Recently</span>
+            </div>
+            <p>Your verified master career foundation. Capture your accomplishments once, then reuse them effortlessly across resumes and applications.</p>
           </div>
           <div class="view-header-actions">
-            <button class="primary-btn sm" type="button" onclick="$('#saveMasterProfileBtn').click()"><i data-lucide="save"></i><span>Save Profile</span></button>
+            <button class="primary-btn sm" type="button" onclick="openAddEvidenceModal()"><i data-lucide="shield-check"></i><span>+ Add Career Evidence</span></button>
             <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Builder</span></button>
             <button class="secondary-btn sm" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
+            <button class="secondary-btn sm" type="button" id="saveMasterProfileBtn" onclick="saveMasterProfileDetails()"><i data-lucide="save"></i><span>Save Profile</span></button>
           </div>
         </div>
 
@@ -616,16 +621,16 @@
               <span id="completenessPercent">0%</span>
             </div>
             <div>
-              <h3>Master Profile Grounding Score</h3>
-              <p id="completenessSubtitle">Your Single Source of Truth for evidence-grounded resume generation.</p>
+              <h3>Career Profile Strength & Evidence Grounding</h3>
+              <p id="completenessSubtitle">Your single source of truth for evidence-grounded resume generation and verified career growth.</p>
               <div id="missingSectionsList" class="missing-tags"></div>
             </div>
           </div>
           <div class="button-row">
             <button id="openHealthReportBtn" class="secondary-btn" type="button" onclick="openHealthReportModal()"><i data-lucide="activity"></i><span>Resume Health Report</span></button>
             <button id="openRelevanceBtn" class="secondary-btn" type="button" onclick="openRelevanceModal()"><i data-lucide="filter"></i><span>Check Relevance</span></button>
-            <button id="openImportModalBtn" class="secondary-btn" type="button"><i data-lucide="file-up"></i><span>Import Resume</span></button>
-            <button id="saveMasterProfileBtn" class="primary-btn" type="button"><i data-lucide="save"></i><span>Save Master Profile</span></button>
+            <button id="openImportModalBtnTop" class="secondary-btn" type="button" onclick="$('#openImportModalBtn').click()"><i data-lucide="file-up"></i><span>Import Resume</span></button>
+            <button class="primary-btn" type="button" onclick="saveMasterProfileDetails()"><i data-lucide="save"></i><span>Save Profile</span></button>
           </div>
         </div>
 
@@ -733,6 +738,28 @@
                   <h4>No work experience added</h4>
                   <p>Add your past roles, metrics, and achievements to back your resume bullets with verified evidence.</p>
                   <button class="secondary-btn sm" type="button" onclick="$('#addExperienceBtn').click()"><i data-lucide="plus"></i><span>Add Work Experience</span></button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Career Evidence & Achievement Vault -->
+            <section class="panel">
+              <div class="panel-head flex-between align-center">
+                <div>
+                  <h3 class="flex items-center gap-2"><i data-lucide="shield-check" style="color: var(--primary);"></i> Career Evidence & Achievement Vault</h3>
+                  <p class="text-xs text-muted mb-0">Record your measurable or qualitative accomplishments for instant resume grounding.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="secondary-btn xs" type="button" onclick="syncEvidenceFromProfile()"><i data-lucide="refresh-cw"></i><span>Sync from Roles</span></button>
+                  <button class="primary-btn xs" type="button" onclick="openAddEvidenceModal()"><i data-lucide="plus"></i><span>+ Add Evidence</span></button>
+                </div>
+              </div>
+              <div id="profileEvidenceVaultList" class="cards-list">
+                <div class="empty-state-card">
+                  <i data-lucide="shield-check"></i>
+                  <h4>No career evidence logged yet</h4>
+                  <p>Capture your achievements, initiatives led, and quantifiable outcomes so every resume claim is backed by proof.</p>
+                  <button class="primary-btn sm" type="button" onclick="openAddEvidenceModal()"><i data-lucide="plus"></i><span>Log First Achievement</span></button>
                 </div>
               </div>
             </section>
@@ -867,6 +894,19 @@
             </button>
           </div>
         </div>
+
+        <!-- Safe Sync Notice: Profile Update Available -->
+        <div id="builderProfileUpdateNotice" class="panel p-2 mb-3 flex-row align-center justify-between flex-wrap gap-2 hidden" style="background: var(--surface-2); border-left: 3px solid var(--primary); border-radius: var(--radius-sm);">
+          <div class="flex-row align-center gap-2">
+            <i data-lucide="refresh-cw" style="color: var(--primary); width: 16px; height: 16px;"></i>
+            <span class="text-xs font-semibold">Profile update available — Your Career Profile has recent additions.</span>
+          </div>
+          <div class="flex-row align-center gap-2">
+            <button class="primary-btn xs" type="button" id="builderApplyProfileUpdateBtn">Apply to this resume</button>
+            <button class="ghost-btn xs" type="button" id="builderDismissProfileUpdateBtn">Ignore</button>
+          </div>
+        </div>
+
         <!-- Progressive Disclosure Sub-Pills -->
         <div class="subnav-pills-bar">
           <button class="subnav-pill active" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Editor</span></button>
@@ -4284,6 +4324,63 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret</pre>
         <button class="secondary-btn sm" type="button" id="wsCloseFooterBtn">Close</button>
         <button class="primary-btn sm" type="button" id="wsFooterLaunchBtn">
           <i data-lucide="messages-square"></i><span>Practice Interview</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD / EDIT CAREER EVIDENCE MODAL -->
+  <div id="addEvidenceModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="addEvidenceModalTitle">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="addEvidenceModalTitle"><i data-lucide="shield-check" style="color: var(--primary);"></i> Log Career Evidence / Achievement</h3>
+          <p class="text-xs text-muted mb-0">Record your measurable or qualitative career wins for instant resume grounding.</p>
+        </div>
+        <button class="modal-close" type="button" onclick="closeAddEvidenceModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addEvidenceForm" class="column-stack gap-3" onsubmit="event.preventDefault(); submitEvidenceModal();">
+          <input type="hidden" id="evidenceEditId" value="">
+          <div>
+            <label class="form-label text-xs font-semibold mb-1" for="evidenceTitleInput">What did you achieve or deliver? *</label>
+            <input type="text" id="evidenceTitleInput" class="form-control text-sm" placeholder="e.g. Led payment API redesign to reduce failed transactions" required>
+          </div>
+          <div class="grid two gap-2">
+            <div>
+              <label class="form-label text-xs font-semibold mb-1" for="evidenceContextInput">Where / Company / Scope</label>
+              <input type="text" id="evidenceContextInput" class="form-control text-sm" placeholder="e.g. Acme Corp or Open Source">
+            </div>
+            <div>
+              <label class="form-label text-xs font-semibold mb-1" for="evidenceDateInput">When / Date</label>
+              <input type="text" id="evidenceDateInput" class="form-control text-sm" placeholder="e.g. Q3 2024 or May 2024">
+            </div>
+          </div>
+          <div>
+            <label class="form-label text-xs font-semibold mb-1" for="evidenceTypeSelect">Evidence Category</label>
+            <select id="evidenceTypeSelect" class="form-control text-sm">
+              <option value="ACHIEVEMENT">Achievement / Key Milestone</option>
+              <option value="PROJECT">Project Deliverable</option>
+              <option value="EXPERIENCE">Work Experience Win</option>
+              <option value="METRIC">Metric / Quantified Growth</option>
+              <option value="CERTIFICATION">Certification / Credential</option>
+              <option value="SKILL">Demonstrated Skill</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label text-xs font-semibold mb-1" for="evidenceDescInput">Outcome & Impact (Metrics or Qualitative Wins)</label>
+            <textarea id="evidenceDescInput" class="form-control text-sm" rows="3" placeholder="Describe the outcome. Both metric-driven (e.g. 'Reduced latency by 40%') and non-metric achievements (e.g. 'Streamlined onboarding across 4 departments, eliminating confusion') are valued equally."></textarea>
+          </div>
+          <div>
+            <label class="form-label text-xs font-semibold mb-1" for="evidenceNotesInput">Proof / Verification Link or Notes (Optional)</label>
+            <input type="text" id="evidenceNotesInput" class="form-control text-sm" placeholder="e.g. PR #402, GitHub repo, live demo, or manager commendation">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer flex items-center justify-between gap-3">
+        <button class="secondary-btn sm" type="button" onclick="closeAddEvidenceModal()">Cancel</button>
+        <button class="primary-btn sm" type="button" id="saveEvidenceModalBtn" onclick="submitEvidenceModal()">
+          <i data-lucide="check"></i><span>Save to Evidence Vault</span>
         </button>
       </div>
     </div>

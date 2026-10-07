@@ -2319,6 +2319,7 @@ function updateBuilderHeaderUI(resume) {
 
   renderMarketGuidanceDrawer(resume.target_market || "GLOBAL", resume.document_purpose, resume.ats_mode);
   checkAndRenderMarketRecommendation(resume);
+  checkProfileUpdateAvailableForActiveResume(resume);
 }
 
 function renderMarketGuidanceDrawer(marketCode = "GLOBAL", documentPurpose = "Professional Resume", atsMode = "ATS-Safe") {
@@ -3018,6 +3019,8 @@ function wireMultiResumeWorkspace() {
 }
 
 function wireResumeBuilder() {
+  wireProfileUpdateNotice();
+
   // Sync profile button
   $("#builderSyncProfileBtn")?.addEventListener("click", () => {
     if (confirm("Sync will refresh your resume fields with the latest data from your Career Profile. Continue?")) {
@@ -6078,29 +6081,15 @@ function renderMasterProfile() {
   if (p.career_status && $("#profCareerStatus")) $("#profCareerStatus").value = p.career_status;
   if (p.target_market && $("#profTargetMarket")) $("#profTargetMarket").value = p.target_market;
 
-  // Completeness Meter
-  const score = p.completeness_score || 0;
-  $("#completenessPercent").textContent = `${score}%`;
-  const circle = $("#profileMeterCircle");
-  if (score >= 80) circle.style.borderColor = "var(--success)";
-  else if (score >= 50) circle.style.borderColor = "var(--warning)";
-  else circle.style.borderColor = "var(--primary)";
+  // Last updated info
+  if ($("#profileLastUpdatedLabel")) {
+    $("#profileLastUpdatedLabel").textContent = p.updated_at
+      ? "Last Updated: " + new Date(p.updated_at).toLocaleDateString()
+      : "Last Updated: Recently";
+  }
 
-  // Missing sections
-  const missingHost = $("#missingSectionsList");
-  missingHost.innerHTML = "";
-  if (!p.experiences || p.experiences.length === 0) {
-    missingHost.appendChild(createBadge("Missing: Work Experience", "missing-tag"));
-  }
-  if (!p.skills || p.skills.length < 3) {
-    missingHost.appendChild(createBadge("Add at least 3 skills", "missing-tag"));
-  }
-  if (!p.headline) {
-    missingHost.appendChild(createBadge("Missing: Headline", "missing-tag"));
-  }
-  if (!p.education || p.education.length === 0) {
-    missingHost.appendChild(createBadge("Missing: Education", "missing-tag"));
-  }
+  // Calculate & render realistic weighted profile strength
+  updateCareerProfileStrength();
 
   // Render Sub-Lists
   renderExperiencesList(p.experiences || []);
@@ -6108,7 +6097,337 @@ function renderMasterProfile() {
   renderEducationList(p.education || []);
   renderCertificationsList(p.certifications || []);
   renderSkillsList(p.skills || []);
+
+  // Load and render Career Evidence Vault
+  loadAndRenderProfileEvidenceVault();
+
   drawIcons();
+}
+
+function updateCareerProfileStrength() {
+  const p = state.profile || {};
+  const evList = cachedEvidenceItems || [];
+
+  let score = 0;
+  const missing = [];
+
+  // Headline (10%)
+  if (p.headline && p.headline.trim().length >= 5) {
+    score += 10;
+  } else {
+    missing.push("Target Headline");
+  }
+
+  // Summary (10%)
+  if (p.summary && p.summary.trim().length >= 30) {
+    score += 10;
+  } else {
+    missing.push("Summary (30+ chars)");
+  }
+
+  // Contact / Location / Links (10%)
+  if ((p.phone && p.phone.trim()) || (p.location && p.location.trim()) || (p.linkedin_url && p.linkedin_url.trim())) {
+    score += 10;
+  } else {
+    missing.push("Contact / Location");
+  }
+
+  // Work Experience (20%)
+  if (p.experiences && p.experiences.length > 0) {
+    score += 20;
+  } else {
+    missing.push("Work Experience");
+  }
+
+  // Education (10%)
+  if (p.education && p.education.length > 0) {
+    score += 10;
+  } else {
+    missing.push("Education");
+  }
+
+  // Verified Skills (15%)
+  const skillCount = (p.skills || []).length;
+  if (skillCount >= 5) {
+    score += 15;
+  } else if (skillCount >= 3) {
+    score += 10;
+    missing.push("Add 2 more skills");
+  } else {
+    missing.push("At least 3 skills");
+  }
+
+  // Key Projects (10%)
+  if (p.projects && p.projects.length > 0) {
+    score += 10;
+  } else {
+    missing.push("Key Projects");
+  }
+
+  // Career Evidence / Achievement Vault (15%)
+  if (evList.length >= 2) {
+    score += 15;
+  } else if (evList.length === 1) {
+    score += 10;
+    missing.push("1 more achievement in vault");
+  } else {
+    missing.push("Achievement proof in vault");
+  }
+
+  score = Math.min(100, Math.max(0, score));
+
+  // Update DOM elements
+  const badge = $("#profileStrengthBadge");
+  if (badge) {
+    badge.textContent = `Profile Strength: ${score}%`;
+    badge.className = score >= 80 ? "badge-sub badge-success font-bold" : score >= 50 ? "badge-sub badge-primary font-bold" : "badge-sub font-bold";
+  }
+
+  const compPct = $("#completenessPercent");
+  if (compPct) compPct.textContent = `${score}%`;
+
+  const circle = $("#profileMeterCircle");
+  if (circle) {
+    if (score >= 80) circle.style.borderColor = "var(--success)";
+    else if (score >= 50) circle.style.borderColor = "var(--primary)";
+    else circle.style.borderColor = "var(--warning)";
+  }
+
+  const missingHost = $("#missingSectionsList");
+  if (missingHost) {
+    missingHost.innerHTML = "";
+    missing.forEach(tag => {
+      missingHost.appendChild(createBadge(`Missing: ${tag}`, "missing-tag"));
+    });
+  }
+}
+
+async function loadAndRenderProfileEvidenceVault() {
+  const container = $("#profileEvidenceVaultList");
+  if (!container) return;
+  try {
+    const res = await API.request("/evidence-vault");
+    cachedEvidenceItems = Array.isArray(res) ? res : (res?.data || []);
+    renderProfileEvidenceVaultCards(cachedEvidenceItems);
+    updateCareerProfileStrength();
+  } catch (err) {
+    console.warn("Could not load evidence vault:", err);
+  }
+}
+
+function renderProfileEvidenceVaultCards(items) {
+  const container = $("#profileEvidenceVaultList");
+  if (!container) return;
+
+  if (!items || items.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-card">
+        <i data-lucide="shield-check"></i>
+        <h4>No career evidence logged yet</h4>
+        <p>Capture your achievements, initiatives led, and quantifiable outcomes so every resume claim is backed by proof.</p>
+        <button class="primary-btn sm" type="button" onclick="openAddEvidenceModal()"><i data-lucide="plus"></i><span>Log First Achievement</span></button>
+      </div>`;
+    drawIcons();
+    return;
+  }
+
+  container.innerHTML = items.map((item) => {
+    const outcomeText = item.description || item.context || "Verified career accomplishment.";
+    const hasNotes = item.notes && item.notes.trim();
+    const typeLabel = item.type || "ACHIEVEMENT";
+
+    return `
+      <div class="card-item evidence-vault-card" data-evidence-id="${item.id}">
+        <div class="card-item-header">
+          <div>
+            <div class="flex-row align-center gap-2 mb-1 flex-wrap">
+              <span class="badge-sub badge-primary text-xs">${escapeHtml(typeLabel)}</span>
+              <h4 style="margin: 0;">${escapeHtml(item.title)}</h4>
+            </div>
+            <span class="text-xs text-muted">
+              ${item.context ? `<i data-lucide="building" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(item.context)}` : ""}
+              ${item.date ? ` • <i data-lucide="calendar" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(item.date)}` : ""}
+              • <span class="badge-sub text-success" style="font-size: 10px; padding: 1px 5px;">${escapeHtml(item.verification_status || "VERIFIED")}</span>
+            </span>
+          </div>
+          <div class="card-actions">
+            <button class="icon-btn sm" type="button" title="Edit" onclick="editCareerEvidenceItem(${item.id})"><i data-lucide="edit-2"></i></button>
+            <button class="icon-btn sm text-danger" type="button" title="Delete" onclick="deleteCareerEvidenceItem(${item.id})"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+        <p class="text-sm mt-2 mb-1" style="color: var(--text-1); font-weight: 500;">
+          ${escapeHtml(outcomeText)}
+        </p>
+        ${hasNotes ? `<div class="text-xs text-muted mt-1"><i data-lucide="link" style="width: 12px; height: 12px; display: inline;"></i> <strong>Evidence / Link:</strong> ${escapeHtml(item.notes)}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  drawIcons();
+}
+
+window.openAddEvidenceModal = function(item = null) {
+  const modal = $("#addEvidenceModal");
+  if (!modal) return;
+  $("#evidenceEditId").value = item ? item.id : "";
+  $("#evidenceTitleInput").value = item ? item.title : "";
+  $("#evidenceContextInput").value = item ? (item.context || "") : "";
+  $("#evidenceDateInput").value = item ? (item.date || "") : "";
+  $("#evidenceTypeSelect").value = item ? (item.type || "ACHIEVEMENT") : "ACHIEVEMENT";
+  $("#evidenceDescInput").value = item ? (item.description || "") : "";
+  $("#evidenceNotesInput").value = item ? (item.notes || "") : "";
+  $("#addEvidenceModalTitle").innerHTML = item
+    ? `<i data-lucide="edit-2" style="color: var(--primary);"></i> Edit Career Evidence`
+    : `<i data-lucide="shield-check" style="color: var(--primary);"></i> Log Career Evidence / Achievement`;
+  modal.classList.remove("hidden");
+  $("#evidenceTitleInput").focus();
+  drawIcons();
+};
+
+window.closeAddEvidenceModal = function() {
+  $("#addEvidenceModal")?.classList.add("hidden");
+};
+
+window.editCareerEvidenceItem = function(id) {
+  const item = (cachedEvidenceItems || []).find(it => it.id === id);
+  if (item) {
+    window.openAddEvidenceModal(item);
+  }
+};
+
+window.deleteCareerEvidenceItem = async function(id) {
+  if (!confirm("Are you sure you want to delete this career evidence item?")) return;
+  try {
+    await API.request(`/evidence-vault/${id}`, { method: "DELETE" });
+    toast("Career evidence removed.");
+    await loadAndRenderProfileEvidenceVault();
+  } catch (err) {
+    toast(`Failed to delete: ${err.message}`, "error");
+  }
+};
+
+window.syncEvidenceFromProfile = async function() {
+  try {
+    const res = await API.request("/evidence-vault/sync", { method: "POST" });
+    toast(res.message || "Synced career items into Achievement Vault.");
+    await loadAndRenderProfileEvidenceVault();
+  } catch (err) {
+    toast(`Sync failed: ${err.message}`, "error");
+  }
+};
+
+window.submitEvidenceModal = async function() {
+  const title = $("#evidenceTitleInput")?.value.trim();
+  if (!title) {
+    toast("Please enter what you achieved or delivered.", "error");
+    return;
+  }
+  const editId = $("#evidenceEditId")?.value;
+  const payload = {
+    title,
+    context: $("#evidenceContextInput")?.value.trim() || "",
+    date: $("#evidenceDateInput")?.value.trim() || "",
+    type: $("#evidenceTypeSelect")?.value || "ACHIEVEMENT",
+    description: $("#evidenceDescInput")?.value.trim() || "",
+    notes: $("#evidenceNotesInput")?.value.trim() || "",
+    source: "manual",
+    verification_status: "VERIFIED"
+  };
+
+  const btn = $("#saveEvidenceModalBtn");
+  setButtonLoading(btn, true, "Saving...");
+  try {
+    if (editId) {
+      await API.request(`/evidence-vault/${editId}`, {
+        method: "PUT",
+        body: payload
+      });
+      toast("Career evidence updated.");
+    } else {
+      await API.request("/evidence-vault", {
+        method: "POST",
+        body: payload
+      });
+      toast("Career evidence saved to vault.");
+    }
+    closeAddEvidenceModal();
+    localStorage.setItem("sr_profile_last_updated", new Date().toISOString());
+    await loadAndRenderProfileEvidenceVault();
+    checkProfileUpdateAvailableForActiveResume();
+  } catch (err) {
+    toast(`Failed to save evidence: ${err.message}`, "error");
+  } finally {
+    setButtonLoading(btn, false, "Save to Evidence Vault");
+  }
+};
+
+function checkProfileUpdateAvailableForActiveResume(resume = null) {
+  const notice = $("#builderProfileUpdateNotice");
+  if (!notice) return;
+
+  const activeResId = state.activeResumeId;
+  if (!activeResId) {
+    notice.classList.add("hidden");
+    return;
+  }
+
+  const profileUpdated = localStorage.getItem("sr_profile_last_updated");
+  if (!profileUpdated) {
+    notice.classList.add("hidden");
+    return;
+  }
+
+  const dismissedTime = localStorage.getItem("sr_dismiss_profile_sync_" + activeResId);
+  if (dismissedTime && new Date(dismissedTime) >= new Date(profileUpdated)) {
+    notice.classList.add("hidden");
+    return;
+  }
+
+  const curResume = resume || (state.resumes || []).find(r => r.id === activeResId);
+  if (curResume && curResume.updated_at) {
+    const resUpdatedDate = new Date(curResume.updated_at);
+    if (new Date(profileUpdated) <= resUpdatedDate) {
+      notice.classList.add("hidden");
+      return;
+    }
+  }
+
+  notice.classList.remove("hidden");
+}
+
+function wireProfileUpdateNotice() {
+  $("#builderDismissProfileUpdateBtn")?.addEventListener("click", () => {
+    if (state.activeResumeId) {
+      localStorage.setItem("sr_dismiss_profile_sync_" + state.activeResumeId, new Date().toISOString());
+    }
+    $("#builderProfileUpdateNotice")?.classList.add("hidden");
+    toast("Profile sync notice dismissed for this resume.");
+  });
+
+  $("#builderApplyProfileUpdateBtn")?.addEventListener("click", () => {
+    if (!state.activeResumeId) return;
+    if (confirm("Apply updates from your Career Profile to this resume? Your existing tailored sections will be preserved.")) {
+      const p = state.profile || {};
+      if (p.headline && (!resumeBuilderState.header.headline || !resumeBuilderState.header.headline.trim())) {
+        resumeBuilderState.header.headline = p.headline;
+      }
+      if (p.summary && (!resumeBuilderState.summary || !resumeBuilderState.summary.trim())) {
+        resumeBuilderState.summary = p.summary;
+      }
+      if (p.location && !resumeBuilderState.header.location) resumeBuilderState.header.location = p.location;
+      if (p.phone && !resumeBuilderState.header.phone) resumeBuilderState.header.phone = p.phone;
+      if (p.linkedin_url && !resumeBuilderState.header.linkedin) resumeBuilderState.header.linkedin = p.linkedin_url;
+      if (p.github_url && !resumeBuilderState.header.github) resumeBuilderState.header.github = p.github_url;
+      if (p.portfolio_url && !resumeBuilderState.header.website) resumeBuilderState.header.website = p.portfolio_url;
+
+      localStorage.setItem("sr_dismiss_profile_sync_" + state.activeResumeId, new Date().toISOString());
+      $("#builderProfileUpdateNotice")?.classList.add("hidden");
+      triggerBuilderAutosave();
+      renderBuilderEditorFromState();
+      renderResumePreviewCanvas();
+      toast("Applied latest career profile updates to this resume.");
+    }
+  });
 }
 
 function createBadge(text, className) {
@@ -6136,13 +6455,15 @@ async function saveMasterProfileDetails() {
       target_market: $("#profTargetMarket") ? $("#profTargetMarket").value : undefined,
     };
     state.profile = await API.request("/profile", { method: "PUT", body: payload });
-    toast("Master Profile details saved.");
+    localStorage.setItem("sr_profile_last_updated", new Date().toISOString());
+    toast("Career Profile details saved.");
     renderMasterProfile();
     renderDashboard();
+    checkProfileUpdateAvailableForActiveResume();
   } catch (error) {
     toast(error.message, "error");
   } finally {
-    setButtonLoading(btn, false, "Save Master Profile");
+    setButtonLoading(btn, false, "Save Profile");
   }
 }
 
