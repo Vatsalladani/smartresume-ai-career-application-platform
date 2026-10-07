@@ -88,12 +88,19 @@ class ResumeScoreRequest(BaseModel):
 
 class ResumeScoreOut(BaseModel):
     overall_score: int
+    label: str | None = None
+    stage_label: str | None = None
     target_role: str
     target_company: str
     career_level: str
+    career_stage: str | None = None
+    confidence: str | None = None
+    summary: str | None = None
     is_fresher_calibrated: bool
     what_is_helping: list[str] = Field(default_factory=list)
+    helping: list[str] = Field(default_factory=list)
     what_is_holding_back: list[str] = Field(default_factory=list)
+    holding_back: list[str] = Field(default_factory=list)
     top_improvements: list[dict[str, Any]] = Field(default_factory=list)
     dimensions: dict[str, Any] = Field(default_factory=dict)
     buzzwords_detected: list[dict[str, Any]] = Field(default_factory=list)

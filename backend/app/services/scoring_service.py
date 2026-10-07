@@ -467,16 +467,27 @@ def calculate_evidence_based_score(
 
         return {
             "overall_score": 0,
+            "label": "Needs work",
+            "score_label": "Needs work",
+            "stage_label": "Needs work — draft not yet started",
             "target_role": target_role,
             "target_company": target_company or "Target Company",
+            "career_stage": "EARLY_CAREER",
             "career_level": "EARLY_CAREER",
             "is_fresher_calibrated": True,
             "is_scorable": False,
             "empty_state": True,
             "empty_state_message": "Not enough resume information yet. Add a headline, summary, skills, or experience to evaluate your resume score.",
+            "confidence": "Low",
             "score_confidence": "Low",
+            "summary": "Not enough resume information for an accurate evaluation. Add basic sections to see your resume health.",
+            "overall_summary": "Not enough resume information for an accurate evaluation. Add basic sections to see your resume health.",
             "what_is_helping": [],
+            "helping": [],
             "what_is_holding_back": [
+                "Your resume does not yet contain enough content to evaluate. Add a headline, summary, core skills, or work experience to get started."
+            ],
+            "holding_back": [
                 "Your resume does not yet contain enough content to evaluate. Add a headline, summary, core skills, or work experience to get started."
             ],
             "top_improvements": [
@@ -1336,18 +1347,71 @@ def calculate_evidence_based_score(
         },
     }
 
+    # Score Interpretation (Internal diagnostic labels, NOT hiring probabilities)
+    if overall >= 90:
+        score_label = "Very strong"
+    elif overall >= 80:
+        score_label = "Strong"
+    elif overall >= 65:
+        score_label = "Good foundation"
+    elif overall >= 50:
+        score_label = "Developing"
+    else:
+        score_label = "Needs work"
+
+    # Career stage context for human-friendly explanation
+    if level == "EARLY_CAREER":
+        career_stage_description = "early-career resume"
+    elif level == "ACADEMIC" or "academic" in role_low or "research" in role_low:
+        career_stage_description = "academic profile"
+    elif level == "HEALTHCARE" or any(w in role_low for w in ["nurse", "physician", "doctor", "clinical", "hospital", "patient"]):
+        career_stage_description = "healthcare resume"
+    elif level == "FINANCE" or any(w in role_low for w in ["accountant", "financial", "audit", "banking", "treasury"]):
+        career_stage_description = "finance resume"
+    else:
+        career_stage_description = "professional resume"
+
+    stage_label = f"{score_label} for an {career_stage_description}" if career_stage_description.startswith("early") else f"{score_label} {career_stage_description}"
+
+    if overall >= 80:
+        overall_summary = "Most of the resume is already in good shape. The remaining opportunities are refinement rather than major structural problems."
+    elif level == "EARLY_CAREER":
+        overall_summary = "Your resume has a strong foundation for an early-career candidate. The remaining opportunities are mainly around role alignment, evidence, or wording."
+    elif overall >= 65:
+        overall_summary = "Your resume has a good foundation. Addressing the top improvement opportunities will further strengthen your alignment."
+    else:
+        overall_summary = "Your resume provides a starting foundation. Addressing the high-impact recommendations below will improve its effectiveness."
+
+    # Cap holding back to max 3 items; provide positive fallback if none
+    if not what_is_holding_back:
+        what_is_holding_back = ["No major issues found in the current resume."]
+    else:
+        what_is_holding_back = what_is_holding_back[:3]
+
+    what_is_helping = what_is_helping[:4]
+
     return {
         "overall_score": overall,
+        "score_label": score_label,
+        "label": score_label,
+        "stage_label": stage_label,
+        "career_stage": level,
+        "career_level": level,
+        "confidence": score_confidence,
+        "score_confidence": score_confidence,
+        "overall_summary": overall_summary,
+        "summary": overall_summary,
+        "context_explanation": "Based on the information currently present in this resume.",
         "target_role": target_role,
         "target_company": target_company or "Target Company",
-        "career_level": level,
         "is_fresher_calibrated": (level == "EARLY_CAREER"),
         "is_scorable": True,
         "empty_state": False,
         "empty_state_message": None,
-        "score_confidence": score_confidence,
-        "what_is_helping": what_is_helping[:4],
-        "what_is_holding_back": what_is_holding_back[:4],
+        "what_is_helping": what_is_helping,
+        "helping": what_is_helping,
+        "what_is_holding_back": what_is_holding_back,
+        "holding_back": what_is_holding_back,
         "top_improvements": top_improvements,
         "all_insights": all_insights,
         "dimensions": dimensions_dict,

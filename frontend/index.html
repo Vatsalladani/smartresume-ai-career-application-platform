@@ -492,13 +492,23 @@
                 <p id="dashQ1Answer" class="text-xs text-muted mt-1">Foundation In Progress</p>
               </div>
             </div>
+
+            <!-- Best Resume Health on Dashboard (Separated from Profile Completeness) -->
+            <div class="p-2 my-2 border rounded flex-between align-center flex-wrap gap-2" id="dashBestResumeRow" style="background: var(--surface-2); font-size: 0.8rem;">
+              <div class="flex-row align-center gap-2">
+                <i data-lucide="shield-check" style="color: var(--primary); width: 15px; height: 15px; flex-shrink: 0;"></i>
+                <span><strong>Resume Health:</strong> <span id="dashBestResumeScore" class="font-bold text-primary">--/100</span></span>
+              </div>
+              <span class="text-xs text-muted" id="dashBestResumeTitle">Based on: Loading...</span>
+            </div>
+
             <p class="dash-readiness-tip" id="dashReadinessTip">Add your recent work experience and core skills to boost recruiter software readability.</p>
             <div class="button-row mt-auto">
               <button class="primary-btn sm" type="button" onclick="navigateToTab('profile')">
                 <i data-lucide="user-check"></i><span>Complete Profile</span>
               </button>
               <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()">
-                <i data-lucide="activity"></i><span>Strength Audit</span>
+                <i data-lucide="activity"></i><span>Audit Resume Health</span>
               </button>
             </div>
           </div>
@@ -653,8 +663,8 @@
             <button class="secondary-btn sm" type="button" onclick="openHealthReportModal()">
               <i data-lucide="activity"></i><span>Audit Resume Health</span>
             </button>
-            <button class="ghost-btn sm" type="button" onclick="navigateToTab('resume-builder')">
-              <i data-lucide="file-text"></i><span>Open Builder</span>
+            <button class="ghost-btn sm" type="button" id="profileOpenBestResumeBtn" onclick="onProfileOpenBestResumeClick()">
+              <i data-lucide="file-text"></i><span>Open Resume</span>
             </button>
           </div>
         </div>
@@ -3899,22 +3909,31 @@
   </div>
 
   <!-- MODAL: RESUME HEALTH REPORT (10 DIMENSIONS) -->
-  <div id="healthModal" class="modal-overlay hidden">
-    <div class="modal-dialog" style="max-width: 780px; width: 100%; max-height: 90vh; display: flex; flex-direction: column;">
-      <div class="modal-header">
-        <div>
-          <h3><i data-lucide="activity"></i> 10-Dimension Resume Health Report</h3>
-          <p class="text-sm text-muted">Objective, evidence-backed evaluation with clear explanations of WHY each score was assigned.</p>
+  <div id="healthModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="healthModalTitle">
+    <div class="modal-dialog" style="max-width: 800px; width: 100%; height: min(90vh, 860px); max-height: min(90vh, 860px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+      <div class="modal-header flex-between align-center p-3 border-bottom" style="background: var(--surface);">
+        <div class="flex-row align-center gap-2">
+          <i data-lucide="award" style="color: var(--primary); width: 20px; height: 20px;"></i>
+          <div>
+            <h3 id="healthModalTitle" style="margin: 0; font-size: 1.05rem;">Resume Health</h3>
+            <span class="text-xs text-muted">Objective, evidence-grounded career diagnostic</span>
+          </div>
         </div>
-        <button id="closeHealthModalBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+        <div class="flex-row align-center gap-3">
+          <div class="flex-row align-center gap-2">
+            <strong class="font-bold text-base" id="healthStickyScore">--/100</strong>
+            <span class="badge-sub badge-primary text-xs" id="healthStickyLabel">Assessing</span>
+          </div>
+          <button id="closeHealthModalBtn" class="icon-btn xs" type="button" aria-label="Close report"><i data-lucide="x"></i></button>
+        </div>
       </div>
 
       <!-- Sticky Resume Selector & Context Bar -->
-      <div class="health-resume-selector-bar flex-between align-center p-3 border-bottom flex-wrap gap-2" id="healthResumeSelectorBar" style="background: var(--surface-2);">
-        <div class="flex-row align-center gap-2">
-          <i data-lucide="file-text" style="color: var(--primary); width: 16px; height: 16px;"></i>
-          <label for="healthResumeSelector" class="text-xs font-bold text-muted uppercase">Resume Document:</label>
-          <select id="healthResumeSelector" class="form-select sm" style="min-width: 220px; max-width: 340px; font-weight: 600;" onchange="onHealthResumeSelectChange(this.value)"></select>
+      <div class="health-resume-selector-bar flex-between align-center p-2 px-3 border-bottom flex-wrap gap-2" id="healthResumeSelectorBar" style="background: var(--surface-2);">
+        <div class="flex-row align-center gap-2 flex-wrap">
+          <i data-lucide="file-text" style="color: var(--primary); width: 14px; height: 14px; flex-shrink: 0;"></i>
+          <label for="healthResumeSelector" class="text-xs font-bold text-muted uppercase">Resume:</label>
+          <select id="healthResumeSelector" class="form-select xs" style="min-width: 200px; max-width: 320px; font-weight: 600;" onchange="onHealthResumeSelectChange(this.value)"></select>
         </div>
         <div class="flex-row align-center gap-2">
           <span id="healthConfidenceBadge" class="badge-sub badge-primary text-xs">High Confidence</span>
@@ -3922,104 +3941,107 @@
         </div>
       </div>
 
-      <div class="modal-body" style="overflow-y: auto; overflow-x: hidden; padding: 20px;">
+      <div class="modal-body" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 18px 20px; box-sizing: border-box; width: 100%; min-width: 0;">
         <!-- Overall Health Score Banner -->
-        <div class="health-score-header">
-          <div>
-            <span class="eyebrow-text">Overall Resume Health</span>
-            <div class="health-big-score" id="healthOverallScore">--/100</div>
-            <div class="flex-row align-center gap-2 mt-1">
-              <span class="text-xs text-muted" id="healthLevelBadge">Career Level: Assessing...</span>
-              <span class="text-xs font-semibold text-primary" id="healthTargetRoleBadge"></span>
+        <div class="health-score-header p-3 mb-3 border rounded" style="background: var(--surface-2);">
+          <div class="flex-between align-start flex-wrap gap-3">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-muted">Overall Resume Health</span>
+              <div class="health-big-score mt-1" id="healthOverallScore">--/100</div>
+              <div class="text-sm font-semibold mt-1" id="healthStageLabel" style="color: var(--primary);">Assessing...</div>
             </div>
-            <div id="healthDeltaSection" class="hidden text-xs mt-1">
-              <span id="healthDeltaPill" class="font-bold"></span>
-              <span id="healthDeltaExplanation" class="text-muted ml-1"></span>
+            <div style="text-align: right; max-width: 340px;">
+              <span class="text-xs text-muted block" id="healthContextExplanation">Based on the information currently present in this resume.</span>
+              <div class="flex-row align-center justify-end gap-2 mt-2 flex-wrap">
+                <span class="badge-sub text-xs" id="healthCareerStageBadge">Career stage: Early Career</span>
+                <span class="badge-sub text-xs" id="healthTargetRoleBadge">Target role: Not specified</span>
+              </div>
             </div>
           </div>
-          <div style="text-align: right; max-width: 360px;">
-            <p class="text-xs text-muted mb-0" id="healthOverallSummary">SmartResume does not use generic vanity ATS scores. Each dimension below is evaluated independently based on verifiable facts.</p>
+          <div id="healthDeltaSection" class="hidden text-xs mt-2 pt-2 border-top">
+            <span id="healthDeltaPill" class="font-bold"></span>
+            <span id="healthDeltaExplanation" class="text-muted ml-1"></span>
           </div>
+          <p class="text-xs text-muted mt-2 mb-0" id="healthOverallSummary">
+            Most of the resume is already in good shape. The remaining opportunities are refinement rather than major structural problems.
+          </p>
         </div>
 
-        <!-- What is Helping vs Holding Back -->
-        <div class="grid two gap-3 mb-4" id="healthHelpingHoldingSection">
+        <!-- What is Working vs What Could be Stronger -->
+        <div class="grid two gap-3 mb-3" id="healthHelpingHoldingSection">
           <div class="p-3 bg-surface border rounded">
             <span class="text-xs font-bold uppercase tracking-wider text-muted flex-row align-center gap-1 mb-2">
-              <i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px;"></i> What is Helping
+              <i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px;"></i> What is Working
             </span>
             <ul class="score-factors-list helping text-xs" id="healthHelpingList" style="list-style: none; padding: 0; margin: 0;"></ul>
           </div>
           <div class="p-3 bg-surface border rounded">
             <span class="text-xs font-bold uppercase tracking-wider text-muted flex-row align-center gap-1 mb-2">
-              <i data-lucide="alert-triangle" style="color: #f59e0b; width: 14px; height: 14px;"></i> What is Holding Back
+              <i data-lucide="alert-triangle" style="color: #f59e0b; width: 14px; height: 14px;"></i> What Could be Stronger
             </span>
             <ul class="score-factors-list holding text-xs" id="healthHoldingBackList" style="list-style: none; padding: 0; margin: 0;"></ul>
           </div>
         </div>
 
-        <!-- Skill Evidence & Grounding Panel -->
-        <div class="panel mb-4 p-3 border rounded" id="healthGroundingSection" style="background: var(--surface);">
+        <!-- Top Priority Recommendations (Top 3) -->
+        <div class="mb-3" id="healthTopImprovementsSection">
+          <div class="flex-row align-center gap-2 mb-2">
+            <i data-lucide="sparkles" style="color: var(--primary); width: 16px; height: 16px;"></i>
+            <span class="text-xs font-bold uppercase tracking-wider">Top Priority Improvements</span>
+          </div>
+          <div id="healthTopImprovementsList" class="column-stack gap-2"></div>
+        </div>
+
+        <!-- 10-Dimension Health Breakdown (Compact Rows) -->
+        <div class="mb-3" id="healthDimensionsSection">
+          <div class="flex-between align-center mb-2">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="sliders" style="color: var(--primary); width: 16px; height: 16px;"></i>
+              <span class="text-xs font-bold uppercase tracking-wider">Score Breakdown (10 Dimensions)</span>
+            </div>
+            <span class="text-xs text-muted">Click row for details</span>
+          </div>
+          <div id="healthDimensionsList" class="column-stack gap-1"></div>
+        </div>
+
+        <!-- Skill Review Panel -->
+        <div class="panel mb-3 p-3 border rounded" id="healthGroundingSection" style="background: var(--surface);">
           <div class="flex-between align-center mb-2 flex-wrap gap-2">
             <div class="flex-row align-center gap-2">
               <i data-lucide="shield-check" style="color: var(--primary); width: 16px; height: 16px;"></i>
-              <span class="text-xs font-bold uppercase tracking-wider">Skill Evidence Grounding</span>
+              <span class="text-xs font-bold uppercase tracking-wider">Skill Review</span>
             </div>
-            <div class="health-grounding-counters flex-row align-center gap-2 flex-wrap" id="healthGroundingCounters">
-              <!-- Rendered dynamically -->
-            </div>
+            <div class="health-grounding-counters flex-row align-center gap-2 flex-wrap" id="healthGroundingCounters"></div>
           </div>
-          <p class="text-xs text-muted mb-2">Verifies whether cataloged skills are demonstrated in actual projects, work deliverables, credentials, or self-declared facts.</p>
-          <div id="healthSkillsGroundingList" class="flex-row flex-wrap gap-2 mt-2">
-            <!-- Rendered dynamically with human-friendly labels -->
+          <p class="text-xs text-muted mb-2">Grounded against your work history, projects, certifications, and declared competencies.</p>
+          <div class="mb-1">
+            <button class="secondary-btn xs" type="button" id="toggleSkillDetailsBtn" onclick="const el = $('#healthSkillsGroundingContainer'); el.classList.toggle('hidden'); this.querySelector('span').textContent = el.classList.contains('hidden') ? 'View Skill Details' : 'Hide Skill Details';">
+              <i data-lucide="list"></i><span>View Skill Details</span>
+            </button>
           </div>
-        </div>
-
-        <!-- Priority Improvements (Top 3) -->
-        <div class="mb-4" id="healthTopImprovementsSection">
-          <div class="flex-row align-center gap-2 mb-2">
-            <i data-lucide="sparkles" style="color: var(--primary); width: 16px; height: 16px;"></i>
-            <span class="text-xs font-bold uppercase tracking-wider">Priority Recommendations (Top 3)</span>
-          </div>
-          <div id="healthTopImprovementsList" class="column-stack gap-2">
-            <!-- Rendered dynamically -->
-          </div>
-        </div>
-
-        <!-- 10 Independent Health Dimensions -->
-        <div class="mb-4" id="healthDimensionsSection">
-          <div class="flex-row align-center gap-2 mb-2">
-            <i data-lucide="sliders" style="color: var(--primary); width: 16px; height: 16px;"></i>
-            <span class="text-xs font-bold uppercase tracking-wider">10-Dimension Health Breakdown</span>
-          </div>
-          <div id="healthDimensionsList" class="cards-list">
-            <div class="empty-state-card mini">
-              <i data-lucide="loader"></i>
-              <p>Loading resume health evaluation...</p>
-            </div>
+          <div id="healthSkillsGroundingContainer" class="hidden mt-2 p-2 border rounded bg-surface-2">
+            <div id="healthSkillsGroundingList" class="column-stack gap-1"></div>
           </div>
         </div>
 
         <!-- Comprehensive Audit Insights Accordion -->
         <div class="panel p-3 border rounded" id="healthAllInsightsSection" style="background: var(--surface-2);">
-          <div class="flex-between align-center" style="cursor: pointer;" onclick="const el = $('#healthAllInsightsBody'); if (el) el.classList.toggle('hidden');">
+          <div class="flex-between align-center" style="cursor: pointer;" onclick="const el = $('#healthAllInsightsBody'); el.classList.toggle('hidden'); const ic = this.querySelector('.insights-toggle-icon'); if (ic) ic.classList.toggle('rotate-180');">
             <div class="flex-row align-center gap-2">
               <i data-lucide="layers" style="color: var(--primary); width: 16px; height: 16px;"></i>
-              <span class="text-xs font-bold uppercase tracking-wider">Comprehensive Audit Insights</span>
+              <span class="text-xs font-bold uppercase tracking-wider" id="healthAllInsightsHeaderTitle">View all insights (8 groups)</span>
             </div>
-            <button class="icon-btn xs" type="button"><i data-lucide="chevron-down"></i></button>
+            <i data-lucide="chevron-down" class="insights-toggle-icon" style="transition: transform 0.2s;"></i>
           </div>
-          <div id="healthAllInsightsBody" class="mt-3 hidden column-stack gap-2">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="healthAllInsightsBody" class="mt-3 hidden column-stack gap-2"></div>
         </div>
       </div>
 
       <div class="modal-footer flex-between align-center p-3 border-top" style="background: var(--surface);">
-        <button class="secondary-btn sm" type="button" id="healthEditInBuilderBtn" onclick="onHealthEditInBuilderClick()">
-          <i data-lucide="edit-3"></i><span>Edit This Resume in Builder</span>
+        <button class="primary-btn sm" type="button" id="healthImproveResumeBtn" onclick="onHealthEditInBuilderClick()">
+          <i data-lucide="sparkles"></i><span>Improve This Resume</span>
         </button>
-        <button id="dismissHealthModalBtn" class="primary-btn sm" type="button">Close</button>
+        <button id="dismissHealthModalBtn" class="secondary-btn sm" type="button">Close</button>
       </div>
     </div>
   </div>

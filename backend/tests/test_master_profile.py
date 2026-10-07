@@ -261,3 +261,63 @@ def test_profile_health_report_canonical_and_no_nan():
     assert health_by_id.json()["data"]["selected_resume_id"] == created_id
     assert health_by_id.json()["data"]["overall_score"] == h_data["overall_score"]
 
+    # Verify score equality between /resumes/score and /profile/health-report for same data
+    score_res = client.post(
+        "/api/v1/resumes/score",
+        json={
+            "resume_data": {
+                "header": {
+                    "full_name": "Profile User",
+                    "headline": "Senior Backend Developer",
+                    "email": "profileuser@example.com",
+                    "phone": "+91 9988776655",
+                    "location": "Bengaluru, India"
+                },
+                "summary": "Experienced backend developer with 5 years building scalable microservices and APIs.",
+                "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "Git"],
+                "experiences": [
+                    {
+                        "role_title": "Backend Engineer",
+                        "company": "Tech Corp",
+                        "bullet_points": ["Engineered high-scale microservices reducing latency by 40% across 50k users."]
+                    }
+                ],
+                "projects": [
+                    {
+                        "title": "API Gateway",
+                        "bullet_points": ["Designed fast auth and rate-limiting gateway in Python."]
+                    }
+                ],
+                "education": [{"institution": "IIT", "degree": "B.Tech CS"}]
+            },
+            "target_role": "Backend Engineer",
+        },
+        headers=headers,
+    )
+    assert score_res.status_code == 200
+    builder_score = score_res.json()["data"]["overall_score"]
+    assert builder_score == h_data["overall_score"]
+
+    # Verify human-friendly diagnostic labels
+    assert "label" in h_data or "score_label" in h_data
+    label = h_data.get("label") or h_data.get("score_label")
+    assert label in {"Needs work", "Developing", "Good foundation", "Strong", "Very strong"}
+    assert "stage_label" in h_data
+    assert "resume" in h_data["stage_label"].lower() or "foundation" in h_data["stage_label"].lower()
+
+    # Verify holding back is max 3 with positive fallback if empty
+    holding_back = h_data.get("holding_back") or h_data.get("what_is_holding_back")
+    assert isinstance(holding_back, list)
+    assert len(holding_back) <= 3
+    if not holding_back:
+        assert holding_back == ["No major issues found in the current resume."]
+
+    # Verify /profile/health endpoint returns best_resume fields
+    prof_health = client.get("/api/v1/profile/health", headers=headers)
+    assert prof_health.status_code == 200
+    ph_data = prof_health.json()["data"]
+    assert ph_data["best_resume_id"] == created_id
+    assert ph_data["best_resume_title"] == "Backend Lead Resume"
+    assert ph_data["best_resume_score"] == builder_score
+
+

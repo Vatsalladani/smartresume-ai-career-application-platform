@@ -1247,6 +1247,36 @@ function renderDashboard() {
     }
   }
 
+  // Best Resume Health on Dashboard (Separated from Profile Readiness)
+  const dashBestScoreEl = $("#dashBestResumeScore");
+  const dashBestTitleEl = $("#dashBestResumeTitle");
+  if (dashBestScoreEl) {
+    const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+    if (activeResumes.length > 0) {
+      const validResumes = activeResumes.map(r => {
+        let s = 0;
+        if (typeof r.score === "number") s = r.score;
+        else if (typeof r.overall_score === "number") s = r.overall_score;
+        else if (typeof r.ats_score === "number") s = r.ats_score;
+        return { ...r, effective_score: s };
+      });
+      const bestResume = validResumes.reduce((best, curr) => curr.effective_score > best.effective_score ? curr : best, validResumes[0]);
+      if (bestResume.effective_score > 0) {
+        dashBestScoreEl.textContent = `${bestResume.effective_score}/100`;
+        dashBestScoreEl.style.color = bestResume.effective_score >= 80 ? "var(--success)" : bestResume.effective_score >= 60 ? "var(--warning)" : "var(--danger)";
+        if (dashBestTitleEl) dashBestTitleEl.textContent = `Based on: ${bestResume.title || "Untitled Resume"}`;
+      } else {
+        dashBestScoreEl.textContent = "--/100";
+        dashBestScoreEl.style.color = "var(--primary)";
+        if (dashBestTitleEl) dashBestTitleEl.textContent = `Based on: ${bestResume.title || "Untitled Resume"} (Ready to audit)`;
+      }
+    } else {
+      dashBestScoreEl.textContent = "Not available yet";
+      dashBestScoreEl.style.color = "var(--text-muted)";
+      if (dashBestTitleEl) dashBestTitleEl.textContent = "No active resume document created yet";
+    }
+  }
+
   // Hidden compatibility elements
   const q1 = $("#dashQ1Answer");
   if (q1) q1.textContent = score >= 80 ? "Strong evidence across core skills." : "Foundation in progress.";
@@ -4234,8 +4264,16 @@ function wireResumeBuilder() {
   });
 
   // Score Modal Button in Builder
-  $("#builderCheckScoreBtn")?.addEventListener("click", () => {
-    openResumeScoreModal();
+  $("#builderCheckScoreBtn")?.addEventListener("click", async () => {
+    if (typeof flushResumeBuilderSave === "function") {
+      try { await flushResumeBuilderSave(); } catch (e) {}
+    }
+    const resId = state.currentResumeId || state.activeResumeId;
+    if (resId && typeof openHealthReportModal === "function") {
+      openHealthReportModal(resId);
+    } else {
+      openResumeScoreModal();
+    }
   });
 
   // Recalculate Button in Score Modal
@@ -4302,6 +4340,14 @@ function wireResumeBuilder() {
 let lastResumeScore = null;
 
 async function openResumeScoreModal(targetRole, careerLevel) {
+  const resId = state.currentResumeId || state.activeResumeId;
+  if (resId && typeof openHealthReportModal === "function") {
+    if (typeof flushResumeBuilderSave === "function") {
+      try { await flushResumeBuilderSave(); } catch (e) {}
+    }
+    await openHealthReportModal(resId);
+    return;
+  }
   const modal = $("#resumeScoreModal");
   if (!modal) return;
   modal.classList.remove("hidden");
@@ -4318,8 +4364,8 @@ async function openResumeScoreModal(targetRole, careerLevel) {
 window.openResumeScoreModal = openResumeScoreModal;
 
 async function runResumeScoreCalculation() {
-  const targetRole = $("#scoreTargetRoleInput")?.value.trim() || "Software Engineer";
-  const careerLevel = $("#scoreCareerLevelSelect")?.value || "EARLY_CAREER";
+  const targetRole = $("#scoreTargetRoleInput")?.value.trim() || resumeBuilderState.target_role || "Software Engineer";
+  const careerLevel = $("#scoreCareerLevelSelect")?.value || null;
 
   // Gather current resume data
   const resumeData = Object.assign({}, resumeBuilderState);
@@ -7010,6 +7056,7 @@ function updateCareerProfileStrength() {
         let s = 0;
         if (typeof r.score === "number") s = r.score;
         else if (typeof r.overall_score === "number") s = r.overall_score;
+        else if (typeof r.ats_score === "number") s = r.ats_score;
         return { ...r, effective_score: s };
       });
       const bestResume = validResumes.reduce((best, curr) => curr.effective_score > best.effective_score ? curr : best, validResumes[0]);
@@ -7032,7 +7079,7 @@ function updateCareerProfileStrength() {
         if (bestSubtitleEl) bestSubtitleEl.textContent = `Based on: ${bestResume.title || "Untitled Resume"} (Ready to audit)`;
       }
     } else {
-      bestScoreEl.textContent = "--";
+      bestScoreEl.textContent = "Not available yet";
       bestScoreEl.style.color = "var(--text-muted)";
       if (bestBadgeEl) {
         bestBadgeEl.textContent = "No Resumes";
@@ -7040,8 +7087,60 @@ function updateCareerProfileStrength() {
       }
       if (bestSubtitleEl) bestSubtitleEl.textContent = "Create an active resume document in Resume Builder to measure resume health.";
     }
+
+    // Also asynchronously fetch server-evaluated best resume health
+    if (!window._fetchingProfileHealth) {
+      window._fetchingProfileHealth = true;
+      API.request("/profile/health").then((health) => {
+        window._fetchingProfileHealth = false;
+        if (!health) return;
+        if (typeof health.best_resume_score === "number" && health.best_resume_score > 0) {
+          if (bestScoreEl) {
+            bestScoreEl.textContent = `${health.best_resume_score}/100`;
+            bestScoreEl.style.color = health.best_resume_score >= 80 ? "var(--success)" : health.best_resume_score >= 60 ? "var(--warning)" : "var(--danger)";
+          }
+          if (bestBadgeEl) {
+            bestBadgeEl.textContent = health.best_resume_score >= 80 ? "Strong Health" : health.best_resume_score >= 60 ? "Good" : "Action Needed";
+            bestBadgeEl.className = health.best_resume_score >= 80 ? "badge-sub badge-success text-xs" : health.best_resume_score >= 60 ? "badge-sub badge-warning text-xs" : "badge-sub badge-danger text-xs";
+          }
+          if (bestSubtitleEl && health.best_resume_title) {
+            bestSubtitleEl.textContent = `Based on: ${health.best_resume_title}`;
+          }
+        }
+        // Also sync dashboard best resume row if present
+        const dScore = $("#dashBestResumeScore");
+        const dTitle = $("#dashBestResumeTitle");
+        if (dScore && typeof health.best_resume_score === "number" && health.best_resume_score > 0) {
+          dScore.textContent = `${health.best_resume_score}/100`;
+          dScore.style.color = health.best_resume_score >= 80 ? "var(--success)" : health.best_resume_score >= 60 ? "var(--warning)" : "var(--danger)";
+          if (dTitle && health.best_resume_title) dTitle.textContent = `Based on: ${health.best_resume_title}`;
+        }
+      }).catch(() => {
+        window._fetchingProfileHealth = false;
+      });
+    }
   }
 }
+
+window.onProfileOpenBestResumeClick = function() {
+  const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+  if (!activeResumes.length) {
+    navigateToTab("resume-builder");
+    return;
+  }
+  const validResumes = activeResumes.map(r => {
+    let s = 0;
+    if (typeof r.score === "number") s = r.score;
+    else if (typeof r.overall_score === "number") s = r.overall_score;
+    else if (typeof r.ats_score === "number") s = r.ats_score;
+    return { ...r, effective_score: s };
+  });
+  const bestResume = validResumes.reduce((best, curr) => curr.effective_score > best.effective_score ? curr : best, validResumes[0]);
+  if (bestResume && bestResume.id) {
+    loadResumeIntoBuilder(bestResume.id);
+  }
+  navigateToTab("resume-builder");
+};
 
 async function loadAndRenderProfileEvidenceVault() {
   const container = $("#profileEvidenceVaultList");
@@ -9844,6 +9943,19 @@ function wireIntelligenceModals() {
   // Health Report Modal close
   $("#closeHealthModalBtn")?.addEventListener("click", () => $("#healthModal")?.classList.add("hidden"));
   $("#dismissHealthModalBtn")?.addEventListener("click", () => $("#healthModal")?.classList.add("hidden"));
+  $("#healthModal")?.addEventListener("click", (e) => {
+    if (e.target === $("#healthModal")) {
+      $("#healthModal").classList.add("hidden");
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const hm = $("#healthModal");
+      if (hm && !hm.classList.contains("hidden")) {
+        hm.classList.add("hidden");
+      }
+    }
+  });
 
   // Relevance Modal close
   $("#closeRelevanceModalBtn")?.addEventListener("click", () => $("#relevanceModal")?.classList.add("hidden"));
@@ -9919,26 +10031,48 @@ async function openHealthReportModal(resumeId = null) {
     }
 
     // 2. Overall Score & Header
+    const overall = typeof health.overall_score === "number" ? health.overall_score : 0;
+    const stickyScoreEl = $("#healthStickyScore");
+    const stickyLabelEl = $("#healthStickyLabel");
+    if (stickyScoreEl) {
+      stickyScoreEl.textContent = `${overall}/100`;
+      stickyScoreEl.style.color = overall >= 80 ? "var(--success)" : overall >= 60 ? "var(--warning)" : "var(--danger)";
+    }
+    if (stickyLabelEl) {
+      stickyLabelEl.textContent = health.label || health.score_label || (overall >= 80 ? "Strong" : overall >= 65 ? "Good" : "Developing");
+      stickyLabelEl.className = `badge-sub ${overall >= 80 ? "badge-primary" : overall >= 60 ? "badge-warning" : "badge-secondary"} text-xs`;
+    }
+
     const scoreEl = $("#healthOverallScore");
     if (scoreEl) {
-      const overall = typeof health.overall_score === "number" ? health.overall_score : 0;
       scoreEl.textContent = `${overall}/100`;
       scoreEl.style.color = overall >= 80 ? "var(--success)" : overall >= 60 ? "var(--warning)" : "var(--danger)";
     }
 
-    const levelBadge = $("#healthLevelBadge");
-    if (levelBadge) {
-      levelBadge.textContent = `Career Level: ${(health.career_level || "DEVELOPING").replace(/_/g, " ")}`;
+    const stageLabelEl = $("#healthStageLabel");
+    if (stageLabelEl) {
+      stageLabelEl.textContent = health.stage_label || `${health.label || "Strong"} for an early-career resume`;
+    }
+
+    const contextExplanationEl = $("#healthContextExplanation");
+    if (contextExplanationEl) {
+      contextExplanationEl.textContent = health.context_explanation || "Based on the information currently present in this resume.";
+    }
+
+    const stageBadge = $("#healthCareerStageBadge");
+    if (stageBadge) {
+      stageBadge.textContent = `Career stage: ${(health.career_stage || health.career_level || "EARLY_CAREER").replace(/_/g, " ")}`;
     }
 
     const roleBadge = $("#healthTargetRoleBadge");
     if (roleBadge) {
-      roleBadge.textContent = health.selected_resume_target_role || health.target_role || "";
+      const rRole = health.selected_resume_target_role || health.target_role;
+      roleBadge.textContent = `Target role: ${rRole || "Not specified"}`;
     }
 
     const confBadge = $("#healthConfidenceBadge");
     if (confBadge) {
-      const conf = health.score_confidence || "Medium";
+      const conf = health.confidence || health.score_confidence || "Medium";
       confBadge.textContent = `${conf} Confidence`;
       confBadge.className = `badge-sub ${conf === "High" ? "badge-primary" : conf === "Medium" ? "badge-warning" : "badge-secondary"} text-xs`;
     }
@@ -9970,24 +10104,24 @@ async function openHealthReportModal(resumeId = null) {
 
     const summaryEl = $("#healthOverallSummary");
     if (summaryEl) {
-      summaryEl.textContent = health.overall_summary || "Evaluated across 10 deterministic criteria. Every score is explainable with concrete recommendations.";
+      summaryEl.textContent = health.overall_summary || health.summary || "Most of the resume is already in good shape. The remaining opportunities are refinement rather than major structural problems.";
     }
 
     // 3. What is Helping vs Holding Back
     const helpingList = $("#healthHelpingList");
     if (helpingList) {
-      const helping = health.what_is_helping || [];
+      const helping = (health.what_is_helping || health.helping || []).slice(0, 4);
       helpingList.innerHTML = helping.length > 0
         ? helping.map(h => `<li class="flex-row align-start gap-1 mb-1"><i data-lucide="check" style="color: #10b981; width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px;"></i><span>${escapeHtml(h)}</span></li>`).join("")
-        : `<li class="text-muted">No standout positive factors logged yet.</li>`;
+        : `<li class="text-muted"><i data-lucide="info" style="width: 14px; height: 14px; vertical-align: middle;"></i> Core foundation in place.</li>`;
     }
 
     const holdingList = $("#healthHoldingBackList");
     if (holdingList) {
-      const holding = health.what_is_holding_back || [];
+      const holding = (health.what_is_holding_back || health.holding_back || []).slice(0, 3);
       holdingList.innerHTML = holding.length > 0
         ? holding.map(h => `<li class="flex-row align-start gap-1 mb-1"><i data-lucide="alert-triangle" style="color: #f59e0b; width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px;"></i><span>${escapeHtml(h)}</span></li>`).join("")
-        : `<li class="text-muted">No critical blockers identified.</li>`;
+        : `<li class="text-muted"><i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px; vertical-align: middle;"></i> No major issues found in the current resume.</li>`;
     }
 
     // 4. Skill Evidence Grounding
@@ -10018,17 +10152,21 @@ async function openHealthReportModal(resumeId = null) {
     if (skillsHost) {
       const skillsGrounding = health.skills_grounding || [];
       if (skillsGrounding.length === 0) {
-        skillsHost.innerHTML = `<p class="text-xs text-muted">No skills cataloged in this resume.</p>`;
+        skillsHost.innerHTML = `<p class="text-xs text-muted mb-0">No skills cataloged in this resume.</p>`;
       } else {
         skillsHost.innerHTML = skillsGrounding.map((sg) => {
           const status = sg.status || "SELF_REPORTED";
           const statusClass = status === "SUPPORTED" ? "supported" : status === "POTENTIALLY_OVERSTATED" ? "overstated" : "self_reported";
-          const label = sg.status_label || (status === "SUPPORTED" ? "Supported by your resume" : status === "POTENTIALLY_OVERSTATED" ? "Strong claim — review wording" : "Listed by you");
+          const label = sg.status_label || (status === "SUPPORTED" ? "Supported by your resume" : status === "POTENTIALLY_OVERSTATED" ? "Review wording" : "Listed by you");
           const skillName = sg.name || sg.skill || "Skill";
+          const srcMsg = sg.source === "language" ? "Language declaration" : sg.source === "domain_knowledge" ? "General competency" : (sg.message || label);
           return `
-            <div class="health-skill-chip" title="${escapeHtml(sg.message || label)}">
-              <span class="skill-name">${escapeHtml(skillName)}</span>
-              <span class="evidence-status-pill ${statusClass}">${escapeHtml(label)}</span>
+            <div class="health-skill-chip flex-between" style="width: 100%; padding: 6px 10px;" title="${escapeHtml(srcMsg)}">
+              <span class="skill-name font-semibold text-xs">${escapeHtml(skillName)}</span>
+              <div class="flex-row align-center gap-2">
+                <span class="text-xs text-muted">${escapeHtml(srcMsg)}</span>
+                <span class="evidence-status-pill ${statusClass}">${escapeHtml(label)}</span>
+              </div>
             </div>
           `;
         }).join("");
@@ -10077,7 +10215,7 @@ async function openHealthReportModal(resumeId = null) {
           if (imp.example) {
             exHtml = `
               <div class="mt-2 p-2 bg-surface-2 border rounded text-xs">
-                <span class="text-muted font-bold">Suggested Fix:</span>
+                <span class="text-muted font-bold">Suggested Direction:</span>
                 <div class="font-mono text-xs mt-1" style="white-space: pre-wrap;">${escapeHtml(imp.example)}</div>
               </div>
             `;
@@ -10101,7 +10239,7 @@ async function openHealthReportModal(resumeId = null) {
       }
     }
 
-    // 6. 10 Health Dimensions Breakdown
+    // 6. 10 Health Dimensions Breakdown (Compact Rows)
     if (list) {
       list.innerHTML = "";
       const dims = Array.isArray(health.dimensions)
@@ -10109,58 +10247,52 @@ async function openHealthReportModal(resumeId = null) {
         : Object.values(health.dimensions || {});
 
       dims.forEach((d) => {
-        const card = document.createElement("div");
-        card.className = "dimension-card";
+        const row = document.createElement("div");
+        row.className = "health-dimension-row";
         const dimName = d.name || d.dimension || "Dimension";
         const dimType = d.type || (typeof d.score === "number" ? "score" : "status");
 
         let scoreDisplay = "";
-        let barFillHtml = "";
+        let statusBadge = "";
         let statusClass = "supported";
 
         if (dimType === "score") {
           const pct = Math.min(100, Math.max(0, typeof d.score === "number" ? d.score : (d.value || 0)));
           scoreDisplay = `${pct}/100`;
-          statusClass = pct >= 80 ? "supported" : pct >= 50 ? "partial" : "overstated";
-          barFillHtml = `
-            <div class="dimension-bar-track">
-              <div class="dimension-bar-fill" style="width: ${pct}%;"></div>
-            </div>
-          `;
+          statusClass = pct >= 80 ? "supported" : pct >= 65 ? "partial" : "overstated";
+          statusBadge = pct >= 80 ? "STRONG" : pct >= 65 ? "GOOD" : "NEEDS ATTENTION";
         } else if (dimType === "ratio") {
-          scoreDisplay = escapeHtml(d.display || (typeof d.score === "number" ? `${d.score}/100` : String(d.score || "")));
-          const numScore = typeof d.score === "number" ? d.score : 70;
-          statusClass = numScore >= 70 ? "supported" : "partial";
+          scoreDisplay = escapeHtml(d.display || (typeof d.score === "number" ? `${d.score}/100` : String(d.score || "0")));
+          statusClass = (d.status === "STRONG" || (typeof d.score === "number" && d.score >= 70)) ? "supported" : "partial";
+          statusBadge = d.status ? escapeHtml(d.status) : "COVERED";
         } else if (dimType === "metric" || dimType === "status") {
-          scoreDisplay = escapeHtml(d.display || String(d.status || d.score || ""));
-          const numScore = typeof d.score === "number" ? d.score : 80;
-          statusClass = numScore >= 70 ? "supported" : "partial";
+          scoreDisplay = escapeHtml(d.display || String(d.status || d.score || "Present"));
+          statusClass = (d.status === "LOW_RISK" || d.status === "COMPLETE") ? "supported" : "partial";
+          statusBadge = d.status ? escapeHtml(d.status) : "VERIFIED";
         } else {
           scoreDisplay = escapeHtml(d.display || (typeof d.score === "number" ? `${d.score}/100` : String(d.score || "")));
+          statusBadge = d.status ? escapeHtml(d.status) : "EVALUATED";
         }
 
-        const statusBadge = d.status ? escapeHtml(d.status) : (statusClass === "supported" ? "STRONG" : "NEEDS ATTENTION");
-        const weightDisplay = d.weight ? `<span class="badge-sub text-xs text-muted">${escapeHtml(d.weight)}</span>` : "";
-
-        card.innerHTML = `
-          <div class="dimension-header">
-            <div class="dimension-title">
-              <i data-lucide="${statusClass === 'supported' ? 'check-circle-2' : 'alert-circle'}"></i>
-              <span>${escapeHtml(dimName)}</span>
-              ${weightDisplay}
+        row.innerHTML = `
+          <div class="health-dimension-summary" onclick="this.nextElementSibling.classList.toggle('hidden'); const ic = this.querySelector('.dim-chevron'); if(ic) ic.classList.toggle('rotate-180');">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="${statusClass === 'supported' ? 'check-circle-2' : 'alert-circle'}" style="width: 15px; height: 15px; color: ${statusClass === 'supported' ? '#10b981' : '#f59e0b'}; flex-shrink: 0;"></i>
+              <strong class="text-xs">${escapeHtml(dimName)}</strong>
+              ${d.weight ? `<span class="text-xs text-muted">(${escapeHtml(d.weight)})</span>` : ''}
             </div>
             <div class="flex-row align-center gap-2">
-              <strong>${scoreDisplay}</strong>
-              <span class="evidence-status-pill ${statusClass}">${statusBadge}</span>
+              <strong class="text-xs font-mono">${scoreDisplay}</strong>
+              <span class="evidence-status-pill ${statusClass}" style="font-size: 0.68rem; padding: 2px 6px;">${escapeHtml(statusBadge)}</span>
+              <i data-lucide="chevron-down" class="dim-chevron" style="width: 14px; height: 14px; transition: transform 0.2s; color: var(--text-muted);"></i>
             </div>
           </div>
-          ${barFillHtml}
-          <div class="dimension-why">
-            <strong>WHY:</strong> ${escapeHtml(d.reason || d.explanation || "Evaluated against standard career benchmarks.")}
+          <div class="health-dimension-detail hidden">
+            <p class="mb-1 text-xs"><strong>Why:</strong> ${escapeHtml(d.reason || d.explanation || "Evaluated against verified resume facts.")}</p>
+            ${d.recommendation ? `<p class="mb-0 text-xs text-muted"><strong>Could be stronger:</strong> ${escapeHtml(d.recommendation)}</p>` : ''}
           </div>
-          ${d.recommendation ? `<p class="text-xs text-muted mt-1"><strong>Action:</strong> ${escapeHtml(d.recommendation)}</p>` : ""}
         `;
-        list.appendChild(card);
+        list.appendChild(row);
       });
     }
 
