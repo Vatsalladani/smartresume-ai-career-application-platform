@@ -80,3 +80,108 @@ class CoverLetterRequest(InterviewQuestionRequest):
 class LinkedInSummaryRequest(BaseModel):
     resume_id: int | None = None
     resume_text: str | None = Field(default=None, max_length=120_000)
+
+
+# ============================================================
+# IMPROVE RESUME WORKSPACE SCHEMAS
+# ============================================================
+
+class ImprovementSuggestion(BaseModel):
+    id: str
+    section: str  # "summary", "headline", "experience", "projects", "skills", "education"
+    target_id: str | None = None
+    target_index: int | None = None
+    sub_index: int | None = None
+    priority: str = "MEDIUM"  # "HIGH", "MEDIUM", "LOW"
+    problem: str
+    why: str
+    current: str
+    suggested: str
+    evidence: list[str] = []
+    risk: str = "Safe"
+    action: str = "apply"
+    status: str = "pending"  # "pending", "applied", "kept", "undone"
+
+
+class JobRequirementMatch(BaseModel):
+    requirement: str
+    status: str  # "covered", "partial", "not_demonstrated", "eligibility_gap"
+    evidence: str | None = None
+    note: str | None = None
+
+
+class JobAlignmentSummary(BaseModel):
+    covered: list[JobRequirementMatch] = []
+    partial: list[JobRequirementMatch] = []
+    not_demonstrated: list[JobRequirementMatch] = []
+    eligibility_gaps: list[JobRequirementMatch] = []
+
+
+class ImproveResumePayload(BaseModel):
+    resume_id: int
+    mode: str = "general"  # "general" or "job"
+    target_role: str | None = None
+    target_company: str | None = None
+    job_description: str | None = None
+
+
+class ImproveResumeResponse(BaseModel):
+    resume_id: int
+    resume_title: str
+    domain: str
+    career_stage: str
+    target_role: str | None = None
+    target_company: str | None = None
+    canonical_score: int
+    score_label: str
+    stage_label: str
+    overall_summary: str
+    top_improvements: list[dict[str, Any]] = []
+    suggestions: list[ImprovementSuggestion] = []
+    job_alignment: JobAlignmentSummary | None = None
+    active_resumes: list[dict[str, Any]] = []
+
+
+class ApplyImprovementItem(BaseModel):
+    id: str
+    section: str
+    target_id: str | None = None
+    target_index: int | None = None
+    sub_index: int | None = None
+    suggested: str
+    current: str
+
+
+class ApplyImprovementPayload(BaseModel):
+    resume_id: int
+    suggestions: list[ApplyImprovementItem]
+
+
+class ApplyImprovementResponse(BaseModel):
+    resume_id: int
+    applied_count: int
+    version_id: int
+    version_number: int
+    previous_score: int
+    new_score: int
+    score_delta: int
+    what_improved: list[str] = []
+    updated_resume: dict[str, Any]
+
+
+class UndoImprovementPayload(BaseModel):
+    resume_id: int
+    version_id: int | None = None
+    suggestion_id: str | None = None
+    section: str | None = None
+    target_index: int | None = None
+    sub_index: int | None = None
+    original_text: str | None = None
+
+
+class UndoImprovementResponse(BaseModel):
+    resume_id: int
+    restored: bool
+    new_score: int
+    updated_resume: dict[str, Any]
+

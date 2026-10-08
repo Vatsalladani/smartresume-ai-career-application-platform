@@ -32,6 +32,16 @@ const state = {
   },
   resumes: [],
   activeResumeId: localStorage.getItem("smartresume_active_resume_id") || null,
+  improveResume: {
+    selectedResumeId: null,
+    mode: "general",
+    activeFilter: "all",
+    analysis: null,
+    suggestions: [],
+    appliedIds: new Set(),
+    selectedIds: new Set(),
+    lastVersionId: null,
+  },
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -52,6 +62,7 @@ function initializeApp() {
   safeInit("wireMultiResumeWorkspace", wireMultiResumeWorkspace);
   safeInit("wireResumeBuilder", wireResumeBuilder);
   safeInit("wireMasterProfile", wireMasterProfile);
+  safeInit("wireImproveResumeWorkspace", wireImproveResumeWorkspace);
   safeInit("wireJobFit", wireJobFit);
   safeInit("wireTailoringStudio", wireTailoringStudio);
   safeInit("wireApplications", wireApplications);
@@ -884,9 +895,10 @@ const ROUTES = {
   "#/job-match": "fit",
   "#/check-job-fit": "fit",
   "#/fit": "fit",
-  "#/application-builder": "tailor",
-  "#/prepare-application": "tailor",
+  "#/improve-resume": "tailor",
   "#/tailor": "tailor",
+  "#/prepare-application": "prepare-application",
+  "#/application-builder": "prepare-application",
   "#/smartapply": "smartapply",
   "#/applications": "applications",
   "#/application-tracker": "applications",
@@ -905,7 +917,9 @@ const TAB_TO_ROUTE = {
   "templates": "#/templates",
   "job-radar": "#/job-radar",
   "fit": "#/check-job-fit",
-  "tailor": "#/prepare-application",
+  "tailor": "#/improve-resume",
+  "improve-resume": "#/improve-resume",
+  "prepare-application": "#/prepare-application",
   "smartapply": "#/smartapply",
   "applications": "#/application-tracker",
   "interview": "#/interview",
@@ -923,7 +937,9 @@ const TAB_MAP = {
   "templates": "tabTemplates",
   "job-radar": "tabJobRadar",
   "fit": "tabFit",
-  "tailor": "tabApplicationBuilder",
+  "tailor": "tabImproveResume",
+  "improve-resume": "tabImproveResume",
+  "prepare-application": "tabApplicationBuilder",
   "smartapply": "tabSmartApply",
   "applications": "tabApplications",
   "interview": "tabInterview",
@@ -942,7 +958,9 @@ function wireNavigation() {
       "evidence-vault": "profile",
       "templates": "resume-builder",
       "job-radar": "fit",
-      "tailor": "applications",
+      "tailor": "tailor",
+      "improve-resume": "tailor",
+      "prepare-application": "applications",
       "smartapply": "applications",
       "career-insights": "interview",
       "insights": "interview",
@@ -1012,6 +1030,7 @@ function wireNavigation() {
     }
     if (validTab === "dashboard") renderDashboard();
     if (validTab === "settings") loadSettingsUI();
+    if (validTab === "tailor" || validTab === "improve-resume") loadImproveResumeView();
 
     drawIcons();
   }
@@ -8286,6 +8305,702 @@ async function handleDeleteJob() {
   } catch (error) {
     toast(error.message, "error");
   }
+}
+
+// ==========================================================================
+// IMPROVE RESUME AI WORKSPACE
+// ==========================================================================
+
+function wireImproveResumeWorkspace() {
+  // 1. Mode toggling
+  $("#modeImproveGeneral")?.addEventListener("click", () => {
+    state.improveResume.mode = "general";
+    $("#modeImproveGeneral")?.classList.add("active");
+    $("#modeTargetJob")?.classList.remove("active");
+    $("#improveTargetJobPanel")?.classList.add("hidden");
+  });
+
+  $("#modeTargetJob")?.addEventListener("click", () => {
+    state.improveResume.mode = "job";
+    $("#modeTargetJob")?.classList.add("active");
+    $("#modeImproveGeneral")?.classList.remove("active");
+    $("#improveTargetJobPanel")?.classList.remove("hidden");
+  });
+
+  // 2. Resume selector change
+  $("#improveResumeSelector")?.addEventListener("change", (e) => {
+    const newId = parseInt(e.target.value, 10);
+    if (!isNaN(newId)) {
+      onImproveResumeSelectChange(newId);
+    }
+  });
+
+  // 3. Saved jobs select
+  $("#improveSavedJobsSelect")?.addEventListener("change", (e) => {
+    const jobId = parseInt(e.target.value, 10);
+    const job = (state.jobs || []).find(j => j.id === jobId);
+    if (job) {
+      if ($("#improveTargetRole")) $("#improveTargetRole").value = job.title || "";
+      if ($("#improveTargetCompany")) $("#improveTargetCompany").value = job.company || "";
+      if ($("#improveJobDescription")) $("#improveJobDescription").value = job.description || "";
+    }
+  });
+
+  // 4. Primary Analyze Button
+  $("#improveAnalyzeBtn")?.addEventListener("click", runImproveResumeAnalysis);
+
+  // 5. Top 3 apply all
+  $("#improveApplyTop3Btn")?.addEventListener("click", () => {
+    const top3 = (state.improveResume.analysis?.top_improvements || []).map(t => {
+      return state.improveResume.suggestions.find(s => s.id === t.id);
+    }).filter(Boolean);
+    const unapplied = top3.filter(s => !state.improveResume.appliedIds.has(s.id));
+    if (unapplied.length > 0) {
+      applyBatchImprovements(unapplied);
+    } else {
+      toast("Top improvements are already applied.", "info");
+    }
+  });
+
+  // 6. Apply all safe suggestions
+  $("#improveApplyAllSafeBtn")?.addEventListener("click", () => {
+    const safeUnapplied = (state.improveResume.suggestions || [])
+      .filter(s => !state.improveResume.appliedIds.has(s.id) && (s.risk || "").toLowerCase().includes("safe"));
+    if (safeUnapplied.length > 0) {
+      applyBatchImprovements(safeUnapplied);
+    } else {
+      toast("All safe suggestions have already been applied.", "info");
+    }
+  });
+
+  // 7. Apply selected checkboxes
+  $("#improveApplySelectedBtn")?.addEventListener("click", () => {
+    const selected = (state.improveResume.suggestions || [])
+      .filter(s => state.improveResume.selectedIds.has(s.id) && !state.improveResume.appliedIds.has(s.id));
+    if (selected.length > 0) {
+      applyBatchImprovements(selected);
+    } else {
+      toast("No unapplied suggestions selected.", "info");
+    }
+  });
+
+  // 8. Revert all
+  $("#improveRevertAllBtn")?.addEventListener("click", revertAllImprovements);
+
+  // 9. Filter pills
+  $$("#improveFilterPills .filter-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      $$("#improveFilterPills .filter-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      state.improveResume.activeFilter = pill.dataset.filter || "all";
+      renderImproveSuggestionsList();
+    });
+  });
+
+  // 10. Open in builder button
+  $("#improveOpenBuilderBtn")?.addEventListener("click", () => {
+    if (state.improveResume.selectedResumeId) {
+      state.activeResumeId = state.improveResume.selectedResumeId;
+      localStorage.setItem("smartresume_active_resume_id", state.activeResumeId);
+    }
+    navigateToTab("resume-builder");
+  });
+}
+
+function updateImproveHealthBadge(score) {
+  const badge = $("#improveResumeHealthBadge");
+  const scoreNum = $("#improveResumeHealthScore");
+  if (!scoreNum) return;
+  if (typeof score === "number" && score > 0) {
+    scoreNum.textContent = `${score}/100`;
+    if (badge) {
+      badge.className = `improve-health-badge ${score >= 80 ? "good" : score >= 60 ? "moderate" : "needs-work"}`;
+    }
+  } else {
+    scoreNum.textContent = "--/100";
+    if (badge) badge.className = "improve-health-badge";
+  }
+}
+
+async function loadImproveResumeView() {
+  try {
+    if (!state.resumes || state.resumes.length === 0) {
+      const res = await API.request("/resumes");
+      state.resumes = res || [];
+    }
+
+    const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+    const selector = $("#improveResumeSelector");
+
+    if (activeResumes.length === 0) {
+      if (selector) selector.innerHTML = `<option value="">No resumes found. Create one first.</option>`;
+      updateImproveHealthBadge(null);
+      return;
+    }
+
+    let selId = state.improveResume.selectedResumeId;
+    if (!selId || !activeResumes.find(r => r.id === selId)) {
+      selId = (state.activeResumeId && activeResumes.find(r => r.id === state.activeResumeId))
+        ? state.activeResumeId
+        : activeResumes[0].id;
+      state.improveResume.selectedResumeId = selId;
+    }
+
+    if (selector) {
+      selector.innerHTML = activeResumes.map(r => {
+        const score = typeof r.ats_score === "number" ? r.ats_score : "--";
+        return `<option value="${r.id}" ${r.id === selId ? "selected" : ""}>
+          ${escapeHtml(r.title || 'Untitled Resume')} — ${score}/100
+        </option>`;
+      }).join("");
+    }
+
+    const jobSel = $("#improveSavedJobsSelect");
+    if (jobSel && state.jobs && state.jobs.length > 0) {
+      jobSel.classList.remove("hidden");
+      jobSel.innerHTML = `<option value="">Select from saved jobs...</option>` +
+        state.jobs.map(j => `<option value="${j.id}">${escapeHtml(j.title)} @ ${escapeHtml(j.company || 'Company')}</option>`).join("");
+    }
+
+    const currentResume = activeResumes.find(r => r.id === selId);
+    if (currentResume) {
+      updateImproveHealthBadge(currentResume.ats_score);
+      renderImprovePreview(currentResume);
+    }
+
+    if (state.improveResume.analysis && state.improveResume.analysis.resume_id === selId) {
+      $("#improveEmptyState")?.classList.add("hidden");
+      $("#improveLoadingState")?.classList.add("hidden");
+      $("#improveResultsView")?.classList.remove("hidden");
+      renderImproveSuggestionsList();
+    } else {
+      $("#improveResultsView")?.classList.add("hidden");
+      $("#improveLoadingState")?.classList.add("hidden");
+      $("#improveEmptyState")?.classList.remove("hidden");
+    }
+
+    drawIcons();
+  } catch (err) {
+    console.error("Error loading Improve Resume view:", err);
+  }
+}
+
+function onImproveResumeSelectChange(newId) {
+  state.improveResume.selectedResumeId = newId;
+  state.improveResume.analysis = null;
+  state.improveResume.suggestions = [];
+  state.improveResume.appliedIds = new Set();
+  state.improveResume.selectedIds = new Set();
+  state.improveResume.lastVersionId = null;
+
+  $("#improveResultsView")?.classList.add("hidden");
+  $("#improveLoadingState")?.classList.add("hidden");
+  $("#improveEmptyState")?.classList.remove("hidden");
+  $("#improveRevertBar")?.classList.add("hidden");
+
+  const resume = (state.resumes || []).find(r => r.id === newId);
+  if (resume) {
+    updateImproveHealthBadge(resume.ats_score);
+    renderImprovePreview(resume);
+    toast(`Switched to: ${resume.title || 'Selected Resume'}`);
+  }
+}
+
+async function runImproveResumeAnalysis() {
+  const resumeId = state.improveResume.selectedResumeId;
+  if (!resumeId) {
+    return toast("Please select a valid resume to analyze.", "error");
+  }
+
+  const btn = $("#improveAnalyzeBtn");
+  const mode = state.improveResume.mode || "general";
+  const targetRole = $("#improveTargetRole")?.value.trim() || undefined;
+  const targetCompany = $("#improveTargetCompany")?.value.trim() || undefined;
+  const jobDescription = $("#improveJobDescription")?.value.trim() || undefined;
+
+  if (mode === "job" && !targetRole && !jobDescription) {
+    return toast("Please enter a Target Role or Job Description for job tailoring.", "warning");
+  }
+
+  $("#improveEmptyState")?.classList.add("hidden");
+  $("#improveResultsView")?.classList.add("hidden");
+  $("#improveLoadingState")?.classList.remove("hidden");
+  setButtonLoading(btn, true, "Analyzing...");
+
+  try {
+    const payload = {
+      resume_id: resumeId,
+      mode: mode,
+      target_role: targetRole,
+      target_company: targetCompany,
+      job_description: jobDescription,
+    };
+
+    const res = await API.request("/ai/improve-resume", {
+      method: "POST",
+      body: payload,
+    });
+
+    state.improveResume.analysis = res;
+    state.improveResume.suggestions = res.suggestions || [];
+    state.improveResume.appliedIds = new Set();
+    state.improveResume.selectedIds = new Set();
+
+    const currentResume = (state.resumes || []).find(r => r.id === resumeId);
+    if (currentResume) {
+      currentResume.ats_score = res.canonical_score;
+    }
+
+    $("#improveSummaryScoreNum").textContent = res.canonical_score;
+    $("#improveDomainBadge").textContent = res.domain || "General";
+    $("#improveStageBadge").textContent = res.stage_label || res.career_stage || "Professional";
+    $("#improveSummaryTitle").textContent = res.score_label || "Resume Assessment";
+    $("#improveSummaryText").textContent = res.overall_summary || "Review actionable suggestions below.";
+    updateImproveHealthBadge(res.canonical_score);
+
+    const opt = $(`#improveResumeSelector option[value="${resumeId}"]`);
+    if (opt && currentResume) {
+      opt.textContent = `${currentResume.title || 'Untitled Resume'} — ${res.canonical_score}/100`;
+    }
+
+    const jobAlignCard = $("#improveJobAlignmentCard");
+    if (mode === "job" && res.job_alignment) {
+      jobAlignCard?.classList.remove("hidden");
+      const ja = res.job_alignment;
+      const totalReqs = (ja.covered?.length || 0) + (ja.partial?.length || 0) + (ja.not_demonstrated?.length || 0);
+      const coveredCount = ja.covered?.length || 0;
+      $("#improveJobMatchRatio").textContent = `${coveredCount} of ${totalReqs} requirements covered`;
+
+      const gapsNotice = $("#improveEligibilityGapsNotice");
+      const gapsList = $("#improveEligibilityGapsList");
+      if (ja.eligibility_gaps && ja.eligibility_gaps.length > 0) {
+        gapsNotice?.classList.remove("hidden");
+        if (gapsList) {
+          gapsList.innerHTML = ja.eligibility_gaps.map(g => `
+            <span class="gap-pill" title="${escapeHtml(g.note || '')}">
+              <i data-lucide="shield-alert" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(g.requirement)}
+            </span>
+          `).join("");
+        }
+      } else {
+        gapsNotice?.classList.add("hidden");
+      }
+
+      $("#improveCoveredReqs").innerHTML = (ja.covered && ja.covered.length > 0)
+        ? ja.covered.map(c => `<div class="mb-1">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
+        : "None identified";
+      $("#improvePartialReqs").innerHTML = (ja.partial && ja.partial.length > 0)
+        ? ja.partial.map(c => `<div class="mb-1">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
+        : "None identified";
+      $("#improveNotDemoReqs").innerHTML = (ja.not_demonstrated && ja.not_demonstrated.length > 0)
+        ? ja.not_demonstrated.map(c => `<div class="mb-1">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
+        : "None identified";
+    } else {
+      jobAlignCard?.classList.add("hidden");
+    }
+
+    const top3Container = $("#improveTop3List");
+    const top3Section = $("#improveTop3Section");
+    if (top3Container && res.top_improvements && res.top_improvements.length > 0) {
+      top3Section?.classList.remove("hidden");
+      top3Container.innerHTML = res.top_improvements.map((t, idx) => `
+        <div class="top3-item-card" id="top3_card_${t.id}">
+          <div>
+            <div class="flex-row justify-between align-center mb-1">
+              <span class="font-bold text-xs uppercase text-muted">#${idx + 1} ${escapeHtml(t.section)}</span>
+              <span class="priority-tag ${t.priority.toLowerCase()}">${escapeHtml(t.priority)}</span>
+            </div>
+            <strong class="text-xs block mb-1">${escapeHtml(t.title)}</strong>
+            <p class="text-xs text-muted mb-2">${escapeHtml(t.one_liner)}</p>
+          </div>
+          <button class="primary-btn xs improve-apply-top3-single" data-id="${t.id}" type="button">
+            <i data-lucide="check" style="width: 12px; height: 12px;"></i> Apply Change
+          </button>
+        </div>
+      `).join("");
+
+      $$(".improve-apply-top3-single").forEach(b => {
+        b.addEventListener("click", () => {
+          const s = state.improveResume.suggestions.find(item => item.id === b.dataset.id);
+          if (s) applyBatchImprovements([s]);
+        });
+      });
+    } else {
+      top3Section?.classList.add("hidden");
+    }
+
+    updateFilterCounts();
+    renderImproveSuggestionsList();
+
+    if (currentResume) {
+      renderImprovePreview(currentResume);
+    }
+
+    $("#improveLoadingState")?.classList.add("hidden");
+    $("#improveResultsView")?.classList.remove("hidden");
+    toast(`Analysis complete. ${state.improveResume.suggestions.length} actionable suggestions identified.`);
+    drawIcons();
+  } catch (err) {
+    $("#improveLoadingState")?.classList.add("hidden");
+    $("#improveEmptyState")?.classList.remove("hidden");
+    toast(err.message || "Failed to analyze resume.", "error");
+  } finally {
+    setButtonLoading(btn, false, "Analyze Resume");
+  }
+}
+
+function updateFilterCounts() {
+  const suggestions = state.improveResume.suggestions || [];
+  const allEl = $("#countImproveAll");
+  if (allEl) allEl.textContent = suggestions.length;
+  $$("#improveFilterPills .filter-pill").forEach(p => {
+    const f = p.dataset.filter;
+    if (f && f !== "all") {
+      const count = suggestions.filter(s => s.section && s.section.toLowerCase() === f).length;
+      p.textContent = `${capitalize(f)} (${count})`;
+    }
+  });
+}
+
+function renderImproveSuggestionsList() {
+  const container = $("#improveSuggestionsList");
+  if (!container) return;
+
+  const filter = state.improveResume.activeFilter || "all";
+  let items = state.improveResume.suggestions || [];
+  if (filter !== "all") {
+    items = items.filter(s => s.section && s.section.toLowerCase() === filter);
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="panel p-4 text-center">
+        <i data-lucide="check-circle" style="color: #059669; width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+        <h4 class="font-bold text-sm mb-1">No improvements needed for this filter</h4>
+        <p class="text-xs text-muted mb-0">Your content for this section matches evidence guidelines cleanly.</p>
+      </div>
+    `;
+    drawIcons();
+    return;
+  }
+
+  container.innerHTML = items.map(s => {
+    const isApplied = state.improveResume.appliedIds.has(s.id);
+    const isSelected = state.improveResume.selectedIds.has(s.id);
+
+    return `
+      <div class="improve-suggestion-card ${isApplied ? 'is-applied' : ''}" id="card_${s.id}">
+        <div class="flex-row justify-between align-start mb-2 gap-2 flex-wrap">
+          <div class="flex-row align-center gap-2">
+            <input type="checkbox" class="improve-select-checkbox" data-id="${s.id}" ${isSelected ? 'checked' : ''} ${isApplied ? 'disabled' : ''} aria-label="Select suggestion ${s.id}">
+            <span class="font-bold text-xs uppercase text-muted tracking-wider">${escapeHtml(s.section)}</span>
+            <span class="priority-tag ${s.priority.toLowerCase()}">${escapeHtml(s.priority)}</span>
+          </div>
+          <div class="flex-row align-center gap-2">
+            ${isApplied ? `
+              <span class="improve-risk-pill">
+                <i data-lucide="check-check" style="width: 12px; height: 12px;"></i> Applied
+              </span>
+              <button class="secondary-btn xs improve-undo-btn" data-id="${s.id}" type="button">
+                <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i> Undo
+              </button>
+            ` : `
+              <button class="ghost-btn xs improve-keep-btn" data-id="${s.id}" type="button">
+                Keep Current
+              </button>
+              <button class="primary-btn xs improve-apply-btn" data-id="${s.id}" type="button">
+                <i data-lucide="check" style="width: 12px; height: 12px;"></i> Apply
+              </button>
+            `}
+          </div>
+        </div>
+
+        <div class="improvement-problem mb-1">${escapeHtml(s.problem)}</div>
+        <div class="improvement-why text-xs text-muted mb-2">
+          <i data-lucide="info" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(s.why)}
+        </div>
+
+        <div class="improve-diff-box">
+          <div class="diff-col current">
+            <div class="diff-col-head"><i data-lucide="x" style="width: 12px; height: 12px;"></i> Current Text</div>
+            <div>${escapeHtml(s.current || '(Empty)')}</div>
+          </div>
+          <div class="diff-col suggested">
+            <div class="diff-col-head"><i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> Suggested Improvement</div>
+            <div>${escapeHtml(s.suggested)}</div>
+          </div>
+        </div>
+
+        <div class="flex-row justify-between align-center gap-2 mt-2 flex-wrap">
+          <div class="flex-row align-center gap-2 flex-wrap">
+            ${(s.evidence || []).map(e => `
+              <span class="improve-evidence-pill"><i data-lucide="shield-check" style="width: 12px; height: 12px;"></i> ${escapeHtml(e)}</span>
+            `).join("")}
+          </div>
+          <span class="improve-risk-pill"><i data-lucide="lock" style="width: 12px; height: 12px;"></i> ${escapeHtml(s.risk || 'Safe')}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  $$(".improve-apply-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      const s = state.improveResume.suggestions.find(item => item.id === b.dataset.id);
+      if (s) applyBatchImprovements([s]);
+    });
+  });
+
+  $$(".improve-keep-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      const card = $(`#card_${b.dataset.id}`);
+      if (card) {
+        card.style.opacity = "0.5";
+        toast("Kept current text.");
+      }
+    });
+  });
+
+  $$(".improve-undo-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      undoSingleImprovement(b.dataset.id);
+    });
+  });
+
+  $$(".improve-select-checkbox").forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) {
+        state.improveResume.selectedIds.add(cb.dataset.id);
+      } else {
+        state.improveResume.selectedIds.delete(cb.dataset.id);
+      }
+      updateSelectedCountUI();
+    });
+  });
+
+  updateSelectedCountUI();
+  drawIcons();
+}
+
+function updateSelectedCountUI() {
+  const count = state.improveResume.selectedIds.size;
+  const countSpan = $("#improveSelectedCount");
+  const applyBtn = $("#improveApplySelectedBtn");
+  if (countSpan) countSpan.textContent = count;
+  if (applyBtn) {
+    if (count > 0) {
+      applyBtn.classList.remove("hidden");
+    } else {
+      applyBtn.classList.add("hidden");
+    }
+  }
+}
+
+async function applyBatchImprovements(items) {
+  const resumeId = state.improveResume.selectedResumeId;
+  if (!resumeId || !items || items.length === 0) return;
+
+  try {
+    const payload = {
+      resume_id: resumeId,
+      suggestions: items.map(s => ({
+        id: s.id,
+        section: s.section,
+        target_id: s.target_id,
+        target_index: s.target_index,
+        sub_index: s.sub_index,
+        current: s.current,
+        suggested: s.suggested,
+      })),
+    };
+
+    const res = await API.request("/ai/improve-resume/apply", {
+      method: "POST",
+      body: payload,
+    });
+
+    state.improveResume.lastVersionId = res.version_id;
+
+    items.forEach(s => {
+      state.improveResume.appliedIds.add(s.id);
+      state.improveResume.selectedIds.delete(s.id);
+    });
+
+    const resume = (state.resumes || []).find(r => r.id === resumeId);
+    if (resume) {
+      resume.parsed_content = res.updated_resume;
+      resume.ats_score = res.new_score;
+    }
+
+    if (state.activeResumeId === resumeId && typeof resumeBuilderState !== "undefined" && resumeBuilderState) {
+      resumeBuilderState = Object.assign(getCleanResumeBuilderState(), res.updated_resume);
+    }
+
+    syncCanonicalScoreAcrossApp(resumeId, res.new_score, res.score_delta);
+
+    if (resume) {
+      renderImprovePreview(resume);
+    }
+
+    $("#improveRevertBar")?.classList.remove("hidden");
+    renderImproveSuggestionsList();
+
+    items.forEach(s => {
+      const top3Card = $(`#top3_card_${s.id}`);
+      if (top3Card) {
+        top3Card.classList.add("applied");
+        const btn = top3Card.querySelector("button");
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<i data-lucide="check"></i> Applied`;
+        }
+      }
+    });
+
+    const deltaSign = res.score_delta >= 0 ? `+${res.score_delta}` : `${res.score_delta}`;
+    toast(`Applied ${res.applied_count} improvement${res.applied_count > 1 ? 's' : ''}! Resume Health: ${res.new_score}/100 (${deltaSign} pts)`);
+    drawIcons();
+  } catch (err) {
+    toast(err.message || "Failed to apply improvements.", "error");
+  }
+}
+
+async function undoSingleImprovement(suggestionId) {
+  const resumeId = state.improveResume.selectedResumeId;
+  const s = state.improveResume.suggestions.find(item => item.id === suggestionId);
+  if (!resumeId || !s) return;
+
+  try {
+    const payload = {
+      resume_id: resumeId,
+      original_text: s.current,
+      section: s.section,
+      target_index: s.target_index,
+      sub_index: s.sub_index,
+    };
+
+    const res = await API.request("/ai/improve-resume/undo", {
+      method: "POST",
+      body: payload,
+    });
+
+    state.improveResume.appliedIds.delete(suggestionId);
+
+    const resume = (state.resumes || []).find(r => r.id === resumeId);
+    if (resume) {
+      resume.parsed_content = res.updated_resume;
+      resume.ats_score = res.new_score;
+    }
+
+    if (state.activeResumeId === resumeId && typeof resumeBuilderState !== "undefined" && resumeBuilderState) {
+      resumeBuilderState = Object.assign(getCleanResumeBuilderState(), res.updated_resume);
+    }
+
+    syncCanonicalScoreAcrossApp(resumeId, res.new_score, 0);
+
+    if (resume) {
+      renderImprovePreview(resume);
+    }
+
+    renderImproveSuggestionsList();
+    toast(`Change reverted. Health score: ${res.new_score}/100`);
+    drawIcons();
+  } catch (err) {
+    toast(err.message || "Failed to revert change.", "error");
+  }
+}
+
+async function revertAllImprovements() {
+  const resumeId = state.improveResume.selectedResumeId;
+  const versionId = state.improveResume.lastVersionId;
+  if (!resumeId) return;
+
+  try {
+    const payload = {
+      resume_id: resumeId,
+      version_id: versionId,
+    };
+
+    const res = await API.request("/ai/improve-resume/undo", {
+      method: "POST",
+      body: payload,
+    });
+
+    state.improveResume.appliedIds.clear();
+    state.improveResume.selectedIds.clear();
+    state.improveResume.lastVersionId = null;
+
+    const resume = (state.resumes || []).find(r => r.id === resumeId);
+    if (resume) {
+      resume.parsed_content = res.updated_resume;
+      resume.ats_score = res.new_score;
+    }
+
+    if (state.activeResumeId === resumeId && typeof resumeBuilderState !== "undefined" && resumeBuilderState) {
+      resumeBuilderState = Object.assign(getCleanResumeBuilderState(), res.updated_resume);
+    }
+
+    syncCanonicalScoreAcrossApp(resumeId, res.new_score, 0);
+
+    if (resume) {
+      renderImprovePreview(resume);
+    }
+
+    $("#improveRevertBar")?.classList.add("hidden");
+    renderImproveSuggestionsList();
+    toast(`All changes reverted to previous version. Health: ${res.new_score}/100`);
+    drawIcons();
+  } catch (err) {
+    toast(err.message || "Failed to revert changes.", "error");
+  }
+}
+
+function syncCanonicalScoreAcrossApp(resumeId, newScore, scoreDelta) {
+  updateImproveHealthBadge(newScore);
+
+  const summaryScore = $("#improveSummaryScoreNum");
+  if (summaryScore) summaryScore.textContent = newScore;
+
+  const opt = $(`#improveResumeSelector option[value="${resumeId}"]`);
+  const resume = (state.resumes || []).find(r => r.id === resumeId);
+  if (opt && resume) {
+    opt.textContent = `${resume.title || 'Untitled Resume'} — ${newScore}/100`;
+  }
+
+  const bestScoreEl = $("#profileBestResumeScore");
+  const bestBadgeEl = $("#profileBestResumeBadge");
+  const bestSubtitleEl = $("#profileBestResumeSubtitle");
+  if (bestScoreEl && state.resumes) {
+    const activeResumes = state.resumes.filter(r => !r.is_archived);
+    if (activeResumes.length > 0) {
+      const best = activeResumes.reduce((b, c) => (c.ats_score || 0) > (b.ats_score || 0) ? c : b, activeResumes[0]);
+      if (best.ats_score > 0) {
+        bestScoreEl.textContent = `${best.ats_score}/100`;
+        bestScoreEl.style.color = best.ats_score >= 80 ? "var(--success)" : best.ats_score >= 60 ? "var(--warning)" : "var(--danger)";
+        if (bestBadgeEl) {
+          bestBadgeEl.textContent = best.ats_score >= 80 ? "Strong Health" : best.ats_score >= 60 ? "Good" : "Action Needed";
+        }
+        if (bestSubtitleEl) bestSubtitleEl.textContent = `Based on: ${best.title || "Untitled Resume"}`;
+      }
+    }
+  }
+
+  const healthOverall = $("#healthOverallScore");
+  if (healthOverall && state.improveResume.selectedResumeId === resumeId) {
+    healthOverall.textContent = `${newScore}/100`;
+  }
+}
+
+function renderImprovePreview(resume) {
+  const container = $("#improveResumePreviewCanvas");
+  if (!container || !resume) return;
+
+  const parsed = resume.parsed_content || {};
+  const previewState = Object.assign(getCleanResumeBuilderState(), parsed);
+  if (resume.title) previewState.title = resume.title;
+
+  renderResumeDocumentInto(container, previewState);
+  const statusEl = $("#improvePreviewStatus");
+  if (statusEl) statusEl.textContent = "Live Synchronized";
 }
 
 // // TAB 3: TAILORING STUDIO

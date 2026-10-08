@@ -1789,6 +1789,260 @@
         </section>
       </section>
 
+      <!-- TAB: IMPROVE RESUME AI WORKSPACE -->
+      <section id="tabImproveResume" class="tab-panel">
+        <div class="view-header">
+          <div class="view-header-content">
+            <h2 id="improveResumeTitle">Improve Resume</h2>
+            <p>Improve the wording, clarity and relevance of your resume without changing the truth.</p>
+          </div>
+          <div class="view-header-actions">
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('resume-builder')">
+              <i data-lucide="edit-3"></i><span>Resume Builder</span>
+            </button>
+            <button class="secondary-btn sm" type="button" onclick="openHealthReportModal(state.improveResume?.selectedResumeId || state.activeResumeId)">
+              <i data-lucide="activity"></i><span>Health Report</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Top Controls & Selector Bar -->
+        <div class="improve-controls-card mb-4">
+          <div class="improve-controls-grid">
+            <!-- Resume Selector -->
+            <div class="form-group mb-0" style="flex: 1; min-width: 260px;">
+              <label for="improveResumeSelector" class="font-semibold text-xs text-muted mb-1 block">Selected Resume</label>
+              <div class="flex-row align-center gap-2">
+                <select id="improveResumeSelector" class="form-select w-full" aria-label="Selected Resume">
+                  <option value="">Loading active resumes...</option>
+                </select>
+                <div id="improveResumeHealthBadge" class="improve-health-badge good" title="Canonical Resume Health Score">
+                  <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                  <span>Health:</span>
+                  <strong id="improveResumeHealthScore">--/100</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Primary Mode Switcher -->
+            <div class="form-group mb-0">
+              <label class="font-semibold text-xs text-muted mb-1 block">Improvement Mode</label>
+              <div class="improve-mode-pills" role="radiogroup" aria-label="Improvement Mode">
+                <button type="button" class="improve-mode-btn active" id="modeImproveGeneral" data-mode="general">
+                  <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+                  <span>Improve My Resume</span>
+                </button>
+                <button type="button" class="improve-mode-btn" id="modeTargetJob" data-mode="job">
+                  <i data-lucide="target" style="width: 14px; height: 14px;"></i>
+                  <span>Target a Job</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Primary Action Button -->
+            <div class="form-group mb-0 flex-row align-end">
+              <button id="improveAnalyzeBtn" class="primary-btn" type="button" style="white-space: nowrap; height: 40px;">
+                <i data-lucide="sparkles"></i>
+                <span>Analyze Resume</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Collapsible Target Job Panel (shown only when mode is 'job') -->
+          <div id="improveTargetJobPanel" class="target-job-panel mt-3 pt-3 hidden" style="border-top: 1px solid var(--border);">
+            <div class="grid two gap-3 mb-3">
+              <div class="form-group mb-0">
+                <label for="improveTargetRole" class="font-semibold text-xs text-muted mb-1 block">Target Role *</label>
+                <input type="text" id="improveTargetRole" class="form-input" placeholder="e.g. Senior Backend Engineer">
+              </div>
+              <div class="form-group mb-0">
+                <label for="improveTargetCompany" class="font-semibold text-xs text-muted mb-1 block">Target Company (Optional)</label>
+                <input type="text" id="improveTargetCompany" class="form-input" placeholder="e.g. Stripe, Razorpay, or Google">
+              </div>
+            </div>
+            <div class="form-group mb-0">
+              <div class="flex-row justify-between align-center mb-1">
+                <label for="improveJobDescription" class="font-semibold text-xs text-muted block">Job Description</label>
+                <div class="flex-row align-center gap-2">
+                  <select id="improveSavedJobsSelect" class="form-select xs hidden" style="max-width: 200px;">
+                    <option value="">Load from saved jobs...</option>
+                  </select>
+                </div>
+              </div>
+              <textarea id="improveJobDescription" class="form-textarea" rows="4" placeholder="Paste the target job description or requirements here..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Workspace: 2-Column Responsive Layout -->
+        <div class="improve-workspace-layout">
+          <!-- Left Column: Suggestions and Analysis Engine -->
+          <div class="improve-left-col">
+            <!-- Loading State -->
+            <div id="improveLoadingState" class="panel text-center p-5 hidden">
+              <div class="spinner mb-3" style="margin: 0 auto; width: 36px; height: 36px;"></div>
+              <h4 class="font-bold mb-1">Analyzing Resume with Evidence Engine...</h4>
+              <p class="text-xs text-muted mb-0" style="max-width: 440px; margin: 0 auto;">Screening authentic experience, detecting career stage, and checking ATS clarity without fabricating claims.</p>
+            </div>
+
+            <!-- Empty State (before first analysis) -->
+            <div id="improveEmptyState" class="panel text-center p-5">
+              <div class="mb-3" style="width: 56px; height: 56px; border-radius: 50%; background: rgba(2, 132, 199, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                <i data-lucide="sparkles" style="width: 28px; height: 28px;"></i>
+              </div>
+              <h3 class="font-bold mb-2">Ready to Improve Your Resume</h3>
+              <p class="text-sm text-muted mb-4" style="max-width: 460px; margin-left: auto; margin-right: auto;">
+                Select your resume above and click <strong>Analyze Resume</strong>. The AI will evaluate clarity, replace weak buzzwords with evidence-grounded phrasing, and calibrate for your career level.
+              </p>
+              <button type="button" class="primary-btn sm" onclick="$('#improveAnalyzeBtn').click()">
+                <i data-lucide="sparkles"></i><span>Analyze Selected Resume</span>
+              </button>
+            </div>
+
+            <!-- Results View (shown when analysis complete) -->
+            <div id="improveResultsView" class="hidden">
+              <!-- Summary Banner -->
+              <div class="panel p-3 mb-3 improve-summary-banner flex-row justify-between align-center gap-3">
+                <div class="flex-row align-center gap-3">
+                  <div class="improve-score-badge-circle" id="improveSummaryScoreCircle">
+                    <span id="improveSummaryScoreNum">--</span>
+                    <small>/100</small>
+                  </div>
+                  <div>
+                    <div class="flex-row align-center gap-2 mb-1 flex-wrap">
+                      <h4 class="font-bold text-sm mb-0" id="improveSummaryTitle">Resume Assessment</h4>
+                      <span class="improve-badge-pill" id="improveDomainBadge">General</span>
+                      <span class="improve-badge-pill" id="improveStageBadge">Professional</span>
+                    </div>
+                    <p class="text-xs text-muted mb-0" id="improveSummaryText">Suggestions below improve wording and clarity based strictly on your verified background.</p>
+                  </div>
+                </div>
+                <div class="improve-score-delta-wrap text-right" id="improveScoreDeltaWrap" style="min-width: 90px;">
+                  <span class="text-xs text-muted block">Score Potential</span>
+                  <span class="font-bold text-sm" id="improvePotentialDelta" style="color: #059669;">+5 to +8 pts</span>
+                </div>
+              </div>
+
+              <!-- Job Alignment Card (in Target a Job mode) -->
+              <div id="improveJobAlignmentCard" class="panel p-3 mb-3 hidden">
+                <div class="flex-row justify-between align-center mb-2">
+                  <div class="flex-row align-center gap-2">
+                    <i data-lucide="target" style="color: var(--primary); width: 16px; height: 16px;"></i>
+                    <h4 class="font-bold text-sm mb-0">Target Job Alignment</h4>
+                  </div>
+                  <span class="text-xs text-muted" id="improveJobMatchRatio">--</span>
+                </div>
+
+                <!-- Eligibility Gaps Notice -->
+                <div id="improveEligibilityGapsNotice" class="alert-banner mb-3 hidden" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 10px 14px;">
+                  <div class="flex-row align-center gap-2 mb-1">
+                    <i data-lucide="shield-alert" style="color: #d97706; width: 16px; height: 16px;"></i>
+                    <strong class="text-xs" style="color: #b45309;">Honest Eligibility Gaps (Zero Fabrication Guarantee)</strong>
+                  </div>
+                  <p class="text-xs text-muted mb-0" id="improveEligibilityGapsText">Requirements below are not demonstrated in your resume and were strictly NOT fabricated into your text.</p>
+                  <div id="improveEligibilityGapsList" class="flex-row gap-2 mt-2 flex-wrap"></div>
+                </div>
+
+                <!-- Requirement Match Matrix -->
+                <div class="grid three gap-2 text-xs" id="improveJobAlignmentMatrix">
+                  <div class="p-2 border rounded" style="background: var(--surface-2);">
+                    <strong class="text-success block mb-1"><i data-lucide="check-circle-2" style="width: 12px; height: 12px; display: inline;"></i> Covered</strong>
+                    <div id="improveCoveredReqs" class="text-muted text-xs">None identified</div>
+                  </div>
+                  <div class="p-2 border rounded" style="background: var(--surface-2);">
+                    <strong class="text-warning block mb-1"><i data-lucide="alert-circle" style="width: 12px; height: 12px; display: inline;"></i> Partial Match</strong>
+                    <div id="improvePartialReqs" class="text-muted text-xs">None identified</div>
+                  </div>
+                  <div class="p-2 border rounded" style="background: var(--surface-2);">
+                    <strong class="text-danger block mb-1"><i data-lucide="x-circle" style="width: 12px; height: 12px; display: inline;"></i> Not Demonstrated</strong>
+                    <div id="improveNotDemoReqs" class="text-muted text-xs">None identified</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top 3 Priority Improvements -->
+              <div class="panel p-3 mb-3" id="improveTop3Section">
+                <div class="flex-row justify-between align-center mb-2">
+                  <div class="flex-row align-center gap-2">
+                    <i data-lucide="flame" style="color: #ea580c; width: 18px; height: 18px;"></i>
+                    <h4 class="font-bold text-sm mb-0">Top 3 Priority Improvements</h4>
+                  </div>
+                  <button id="improveApplyTop3Btn" class="primary-btn xs" type="button">
+                    <i data-lucide="check-check"></i>
+                    <span>Apply All 3</span>
+                  </button>
+                </div>
+                <p class="text-xs text-muted mb-2">These 3 changes make the biggest immediate impact on clarity, ATS readability, and recruiter impression.</p>
+                <div id="improveTop3List" class="improve-top3-grid"></div>
+              </div>
+
+              <!-- Filter Pills & Bulk Action Toolbar -->
+              <div class="improve-toolbar flex-row justify-between align-center gap-2 mb-3 flex-wrap">
+                <div class="filter-pills flex-row gap-1" id="improveFilterPills">
+                  <button class="filter-pill active" data-filter="all">All (<span id="countImproveAll">0</span>)</button>
+                  <button class="filter-pill" data-filter="headline">Headline</button>
+                  <button class="filter-pill" data-filter="summary">Summary</button>
+                  <button class="filter-pill" data-filter="experience">Experience</button>
+                  <button class="filter-pill" data-filter="projects">Projects</button>
+                  <button class="filter-pill" data-filter="skills">Skills</button>
+                </div>
+
+                <div class="flex-row align-center gap-2">
+                  <button id="improveApplyAllSafeBtn" class="secondary-btn xs" type="button">
+                    <i data-lucide="zap"></i>
+                    <span>Apply All Safe Suggestions</span>
+                  </button>
+                  <button id="improveApplySelectedBtn" class="primary-btn xs hidden" type="button">
+                    <i data-lucide="check"></i>
+                    <span>Apply Selected (<span id="improveSelectedCount">0</span>)</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Suggestions Stack -->
+              <div id="improveSuggestionsList" class="suggestions-stack">
+                <!-- Dynamically populated suggestion cards -->
+              </div>
+
+              <!-- Revert Banner -->
+              <div id="improveRevertBar" class="panel p-2 mt-3 flex-row justify-between align-center hidden" style="background: var(--surface-2); border-radius: var(--radius-sm, 6px);">
+                <span class="text-xs text-muted flex-row align-center gap-1">
+                  <i data-lucide="history" style="width: 14px; height: 14px;"></i>
+                  <span>Applied changes are versioned and can be reverted anytime.</span>
+                </span>
+                <button id="improveRevertAllBtn" class="ghost-btn xs text-danger" type="button">
+                  <i data-lucide="rotate-ccw"></i>
+                  <span>Revert All Changes</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Resume Preview Canvas -->
+          <div class="improve-right-col">
+            <div class="improve-preview-sticky">
+              <div class="improve-preview-header p-3 flex-row justify-between align-center" style="border-bottom: 1px solid var(--border); background: var(--surface);">
+                <div class="flex-row align-center gap-2">
+                  <i data-lucide="eye" style="color: var(--primary); width: 16px; height: 16px;"></i>
+                  <span class="font-bold text-sm">Live Resume Canvas</span>
+                </div>
+                <div class="flex-row align-center gap-2">
+                  <span class="text-xs text-muted" id="improvePreviewStatus">Synchronized</span>
+                  <button type="button" class="ghost-btn xs" id="improveOpenBuilderBtn" title="Open in Resume Builder">
+                    <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="improve-preview-body p-3" style="max-height: calc(100vh - 220px); overflow-y: auto;">
+                <div id="improveResumePreviewCanvas" class="resume-preview-document">
+                  <!-- Live preview rendered here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- TAB 3: APPLICATION BUILDER & TAILORING STUDIO -->
       <section id="tabApplicationBuilder" class="tab-panel">
         <div class="view-header">

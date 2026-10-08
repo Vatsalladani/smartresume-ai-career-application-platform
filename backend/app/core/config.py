@@ -6,7 +6,12 @@ from typing import Literal
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+    root_env = Path(__file__).resolve().parents[3] / ".env"
+    backend_env = Path(__file__).resolve().parents[2] / ".env"
+    if root_env.exists():
+        load_dotenv(root_env)
+    if backend_env.exists():
+        load_dotenv(backend_env)
 except ImportError:
     pass
 
@@ -196,8 +201,8 @@ def get_settings() -> Settings:
         password_reset_minutes=_int("PASSWORD_RESET_MINUTES", 20),
         email_verification_minutes=_int("EMAIL_VERIFICATION_MINUTES", 60 * 24),
         gemini_api_key=_optional("GEMINI_API_KEY"),
-        gemini_model=_str("GEMINI_MODEL_NAME", "gemini-3.6-flash"),
-        gemini_lite_model=_str("GEMINI_FAST_MODEL_NAME", _str("GEMINI_LITE_MODEL_NAME", "gemini-3.5-flash-lite")),
+        gemini_model=_str("GEMINI_MODEL_NAME", _str("GEMINI_MODEL", "gemini-3.6-flash")),
+        gemini_lite_model=_str("GEMINI_FAST_MODEL_NAME", _str("GEMINI_LITE_MODEL_NAME", _str("GEMINI_LITE_MODEL", "gemini-3.5-flash-lite"))),
         gemini_live_model=_str("GEMINI_LIVE_MODEL_NAME", "gemini-2.0-flash-exp"),
         payments_mode=_str("PAYMENTS_MODE", "mock"),
         payment_mode=_str("PAYMENT_MODE", "test"),

@@ -10,9 +10,12 @@ from app.repositories.resume_repository import get_user_resume
 from app.schemas.ai import (
     ATSAnalysisOut,
     ATSAnalysisPayload,
+    ApplyImprovementPayload,
     CoverLetterRequest,
+    ImproveResumePayload,
     InterviewQuestionRequest,
     LinkedInSummaryRequest,
+    UndoImprovementPayload,
 )
 from app.services.ai_service import (
     analyze_resume,
@@ -21,6 +24,11 @@ from app.services.ai_service import (
     generate_linkedin_summary,
 )
 from app.services.audit_service import write_audit_log
+from app.services.improve_service import (
+    apply_improvements,
+    generate_resume_improvements,
+    undo_improvement,
+)
 from app.services.resume_service import add_version
 from app.utils.sanitize import clean_text
 
@@ -128,3 +136,33 @@ def linkedin_summary(
     if len(resume_text) < 20:
         raise AppError("Resume text is required.")
     return success_response({"summary": generate_linkedin_summary(resume_text)})
+
+
+@router.post("/improve-resume")
+def improve_resume_endpoint(
+    payload: ImproveResumePayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    result = generate_resume_improvements(db, current_user.id, payload)
+    return success_response(result.model_dump(), "Resume improvements generated.")
+
+
+@router.post("/improve-resume/apply")
+def apply_improvements_endpoint(
+    payload: ApplyImprovementPayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    result = apply_improvements(db, current_user.id, payload)
+    return success_response(result.model_dump(), "Improvements applied successfully.")
+
+
+@router.post("/improve-resume/undo")
+def undo_improvement_endpoint(
+    payload: UndoImprovementPayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    result = undo_improvement(db, current_user.id, payload)
+    return success_response(result.model_dump(), "Improvement undone.")

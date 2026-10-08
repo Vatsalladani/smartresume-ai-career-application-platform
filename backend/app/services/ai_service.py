@@ -1,9 +1,12 @@
 import json
+import logging
 import re
 from collections import Counter
 from typing import Any
 
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 from app.schemas.ai import ATSAnalysisPayload, ATSAnalysisResult
 from app.utils.sanitize import clean_text, sanitize_ai_output, strip_json_fences
@@ -93,6 +96,7 @@ def _try_provider_analysis(
             response = model.generate_content(
                 prompt + correction,
                 generation_config={"response_mime_type": "application/json"},
+                request_options={"timeout": 30},
             )
             last_text = response.text
             try:
@@ -106,7 +110,8 @@ def _try_provider_analysis(
         return None
     except (ImportError, ValueError, ValidationError, json.JSONDecodeError):
         return None
-    except Exception:
+    except Exception as exc:
+        logger.warning("Gemini AI request unavailable (%s); falling back to local analysis.", type(exc).__name__)
         return None
 
 
