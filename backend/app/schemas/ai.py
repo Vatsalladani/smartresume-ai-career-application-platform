@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class KeywordInsight(BaseModel):
@@ -88,29 +88,70 @@ class LinkedInSummaryRequest(BaseModel):
 
 class ImprovementSuggestion(BaseModel):
     id: str
-    section: str  # "summary", "headline", "experience", "projects", "skills", "education"
+    section: str  # "summary", "headline", "experience", "projects", "skills", "education", "certifications", "header"
     target_id: str | None = None
     target_index: int | None = None
     sub_index: int | None = None
     priority: str = "MEDIUM"  # "HIGH", "MEDIUM", "LOW"
     problem: str
     why: str
-    current: str
-    suggested: str
+    current: str = ""
+    suggested: str = ""
+    before: str = ""
+    after: str = ""
     evidence: list[str] = []
     risk: str = "Safe"
+    change_type: str = "wording"  # "wording", "clarity", "buzzword_removal", "relevance", "formatting", "structure"
+    confidence: float = 0.95
     action: str = "apply"
     status: str = "pending"  # "pending", "applied", "kept", "undone"
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_before_after(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "before" in data and not data.get("current"):
+                data["current"] = data["before"]
+            elif "current" in data and not data.get("before"):
+                data["before"] = data["current"]
+
+            if "after" in data and not data.get("suggested"):
+                data["suggested"] = data["after"]
+            elif "suggested" in data and not data.get("after"):
+                data["after"] = data["suggested"]
+        return data
 
 
 class JobRequirementMatch(BaseModel):
     requirement: str
-    status: str  # "covered", "partial", "not_demonstrated", "eligibility_gap"
+    status: str = "NOT CURRENTLY DEMONSTRATED"  # "CLEARLY DEMONSTRATED", "PARTIALLY DEMONSTRATED", "NOT CURRENTLY DEMONSTRATED", "NOT ENOUGH INFORMATION", or legacy "covered", "partial", "not_demonstrated", "eligibility_gap"
     evidence: str | None = None
+    gap_type: str | None = None  # "wording_issue", "evidence_gap", "eligibility_gap", "missing_skill", "missing_requirement", "insufficient_information"
+    recommendation: str | None = None
     note: str | None = None
 
 
 class JobAlignmentSummary(BaseModel):
+    role: str | None = None
+    seniority: str | None = None
+    years_experience: str | None = None
+    must_have_skills: list[str] = []
+    preferred_skills: list[str] = []
+    responsibilities: list[str] = []
+    tools: list[str] = []
+    technologies: list[str] = []
+    domain: str | None = None
+    education_requirements: list[str] = []
+    certifications: list[str] = []
+    location: str | None = None
+    work_authorization: str | None = None
+    other_constraints: list[str] = []
+    is_role_only: bool = False
+    role_expectations_note: str | None = None
+    potential_concerns: list[str] = []
+    suggested_actions: list[str] = []
+    match_score: int | None = None
+    requirements: list[JobRequirementMatch] = []
     covered: list[JobRequirementMatch] = []
     partial: list[JobRequirementMatch] = []
     not_demonstrated: list[JobRequirementMatch] = []
@@ -133,9 +174,14 @@ class ImproveResumeResponse(BaseModel):
     target_role: str | None = None
     target_company: str | None = None
     canonical_score: int
+    job_match_score: int | None = None
     score_label: str
     stage_label: str
     overall_summary: str
+    analysis_status: str = "completed"  # "completed", "failed", "no_content"
+    state: str = "STATE_1"  # "STATE_1", "STATE_2", "STATE_3", "STATE_4", "STATE_5"
+    status_message: str | None = None
+    analyzed_sections: dict[str, int] = {}
     top_improvements: list[dict[str, Any]] = []
     suggestions: list[ImprovementSuggestion] = []
     job_alignment: JobAlignmentSummary | None = None

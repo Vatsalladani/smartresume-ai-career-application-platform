@@ -8598,9 +8598,27 @@ async function runImproveResumeAnalysis() {
     if (mode === "job" && res.job_alignment) {
       jobAlignCard?.classList.remove("hidden");
       const ja = res.job_alignment;
-      const totalReqs = (ja.covered?.length || 0) + (ja.partial?.length || 0) + (ja.not_demonstrated?.length || 0);
+      const totalReqs = (ja.covered?.length || 0) + (ja.partial?.length || 0) + (ja.not_demonstrated?.length || 0) + (ja.eligibility_gaps?.length || 0);
       const coveredCount = ja.covered?.length || 0;
-      $("#improveJobMatchRatio").textContent = `${coveredCount} of ${totalReqs} requirements covered`;
+      const partialCount = ja.partial?.length || 0;
+      const notDemoCount = ja.not_demonstrated?.length || 0;
+      const eligibilityCount = ja.eligibility_gaps?.length || 0;
+
+      const cardTitle = $("#improveJobAlignmentCard h4");
+      const ratioEl = $("#improveJobMatchRatio");
+
+      if (ja.is_role_only) {
+        if (cardTitle) cardTitle.textContent = "Target Role Analysis";
+        if (ratioEl) {
+          ratioEl.innerHTML = `<span class="badge-sub badge-primary text-xs" style="margin-right: 6px;">Role Expectations</span> ${coveredCount} of ${totalReqs} competencies demonstrated`;
+        }
+      } else {
+        if (cardTitle) cardTitle.textContent = "Job Match";
+        if (ratioEl) {
+          const matchPercent = typeof ja.match_score === "number" ? `${ja.match_score}% Match — ` : "";
+          ratioEl.innerHTML = `<strong>${matchPercent}</strong>${totalReqs} requirements: ${coveredCount} demonstrated, ${eligibilityCount} eligibility gap(s)`;
+        }
+      }
 
       const gapsNotice = $("#improveEligibilityGapsNotice");
       const gapsList = $("#improveEligibilityGapsList");
@@ -8608,7 +8626,7 @@ async function runImproveResumeAnalysis() {
         gapsNotice?.classList.remove("hidden");
         if (gapsList) {
           gapsList.innerHTML = ja.eligibility_gaps.map(g => `
-            <span class="gap-pill" title="${escapeHtml(g.note || '')}">
+            <span class="gap-pill" title="${escapeHtml(g.note || g.recommendation || '')}">
               <i data-lucide="shield-alert" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(g.requirement)}
             </span>
           `).join("");
@@ -8618,16 +8636,22 @@ async function runImproveResumeAnalysis() {
       }
 
       $("#improveCoveredReqs").innerHTML = (ja.covered && ja.covered.length > 0)
-        ? ja.covered.map(c => `<div class="mb-1">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
+        ? ja.covered.map(c => `<div class="mb-1" title="${escapeHtml(c.evidence || c.note || '')}">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
         : "None identified";
       $("#improvePartialReqs").innerHTML = (ja.partial && ja.partial.length > 0)
-        ? ja.partial.map(c => `<div class="mb-1">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
+        ? ja.partial.map(c => `<div class="mb-1" title="${escapeHtml(c.recommendation || c.note || '')}">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
         : "None identified";
       $("#improveNotDemoReqs").innerHTML = (ja.not_demonstrated && ja.not_demonstrated.length > 0)
-        ? ja.not_demonstrated.map(c => `<div class="mb-1">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
+        ? ja.not_demonstrated.map(c => `<div class="mb-1" title="${escapeHtml(c.recommendation || c.note || '')}">&bull; ${escapeHtml(c.requirement)}</div>`).join("")
         : "None identified";
     } else {
       jobAlignCard?.classList.add("hidden");
+      if (mode === "general") {
+        const titleEl = $("#improveSummaryTitle");
+        const textEl = $("#improveSummaryText");
+        if (titleEl && !res.score_label) titleEl.textContent = "Resume-Only Analysis";
+        if (textEl && !res.overall_summary) textEl.textContent = "Suggestions are based on your resume evidence and career stage.";
+      }
     }
 
     const top3Container = $("#improveTop3List");
@@ -8669,12 +8693,17 @@ async function runImproveResumeAnalysis() {
 
     $("#improveLoadingState")?.classList.add("hidden");
     $("#improveResultsView")?.classList.remove("hidden");
-    toast(`Analysis complete. ${state.improveResume.suggestions.length} actionable suggestions identified.`);
+
+    if (res.analysis_status === "failed") {
+      toast("AI analysis could not be completed. Please try again.", "error");
+    } else {
+      toast(`Analysis complete. ${state.improveResume.suggestions.length} actionable suggestions identified.`);
+    }
     drawIcons();
   } catch (err) {
     $("#improveLoadingState")?.classList.add("hidden");
     $("#improveEmptyState")?.classList.remove("hidden");
-    toast(err.message || "Failed to analyze resume.", "error");
+    toast(err.message || "AI analysis could not be completed. Please try again.", "error");
   } finally {
     setButtonLoading(btn, false, "Analyze Resume");
   }
@@ -8682,12 +8711,16 @@ async function runImproveResumeAnalysis() {
 
 function updateFilterCounts() {
   const suggestions = state.improveResume.suggestions || [];
+  const analyzed = state.improveResume.analysis?.analyzed_sections || {};
   const allEl = $("#countImproveAll");
   if (allEl) allEl.textContent = suggestions.length;
   $$("#improveFilterPills .filter-pill").forEach(p => {
     const f = p.dataset.filter;
     if (f && f !== "all") {
-      const count = suggestions.filter(s => s.section && s.section.toLowerCase() === f).length;
+      let count = suggestions.filter(s => s.section && s.section.toLowerCase() === f).length;
+      if (typeof analyzed[f] === "number" && analyzed[f] > count) {
+        count = analyzed[f];
+      }
       p.textContent = `${capitalize(f)} (${count})`;
     }
   });
@@ -8697,83 +8730,147 @@ function renderImproveSuggestionsList() {
   const container = $("#improveSuggestionsList");
   if (!container) return;
 
+  const analysis = state.improveResume.analysis;
   const filter = state.improveResume.activeFilter || "all";
   let items = state.improveResume.suggestions || [];
   if (filter !== "all") {
     items = items.filter(s => s.section && s.section.toLowerCase() === filter);
   }
 
-  if (items.length === 0) {
+  // 1. STATE 3: AI analysis failed
+  if (analysis && (analysis.analysis_status === "failed" || analysis.state === "STATE_3")) {
     container.innerHTML = `
-      <div class="panel p-4 text-center">
-        <i data-lucide="check-circle" style="color: #059669; width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
-        <h4 class="font-bold text-sm mb-1">No improvements needed for this filter</h4>
-        <p class="text-xs text-muted mb-0">Your content for this section matches evidence guidelines cleanly.</p>
+      <div class="panel p-4 text-center" style="border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.04);">
+        <i data-lucide="alert-triangle" style="color: var(--danger); width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+        <h4 class="font-bold text-sm mb-1 text-danger">AI analysis could not be completed</h4>
+        <p class="text-xs text-muted mb-0">AI analysis is temporarily unavailable. Please try again.</p>
       </div>
     `;
     drawIcons();
     return;
   }
 
-  container.innerHTML = items.map(s => {
-    const isApplied = state.improveResume.appliedIds.has(s.id);
-    const isSelected = state.improveResume.selectedIds.has(s.id);
-
-    return `
-      <div class="improve-suggestion-card ${isApplied ? 'is-applied' : ''}" id="card_${s.id}">
-        <div class="flex-row justify-between align-start mb-2 gap-2 flex-wrap">
-          <div class="flex-row align-center gap-2">
-            <input type="checkbox" class="improve-select-checkbox" data-id="${s.id}" ${isSelected ? 'checked' : ''} ${isApplied ? 'disabled' : ''} aria-label="Select suggestion ${s.id}">
-            <span class="font-bold text-xs uppercase text-muted tracking-wider">${escapeHtml(s.section)}</span>
-            <span class="priority-tag ${s.priority.toLowerCase()}">${escapeHtml(s.priority)}</span>
-          </div>
-          <div class="flex-row align-center gap-2">
-            ${isApplied ? `
-              <span class="improve-risk-pill">
-                <i data-lucide="check-check" style="width: 12px; height: 12px;"></i> Applied
-              </span>
-              <button class="secondary-btn xs improve-undo-btn" data-id="${s.id}" type="button">
-                <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i> Undo
-              </button>
-            ` : `
-              <button class="ghost-btn xs improve-keep-btn" data-id="${s.id}" type="button">
-                Keep Current
-              </button>
-              <button class="primary-btn xs improve-apply-btn" data-id="${s.id}" type="button">
-                <i data-lucide="check" style="width: 12px; height: 12px;"></i> Apply
-              </button>
-            `}
-          </div>
-        </div>
-
-        <div class="improvement-problem mb-1">${escapeHtml(s.problem)}</div>
-        <div class="improvement-why text-xs text-muted mb-2">
-          <i data-lucide="info" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(s.why)}
-        </div>
-
-        <div class="improve-diff-box">
-          <div class="diff-col current">
-            <div class="diff-col-head"><i data-lucide="x" style="width: 12px; height: 12px;"></i> Current Text</div>
-            <div>${escapeHtml(s.current || '(Empty)')}</div>
-          </div>
-          <div class="diff-col suggested">
-            <div class="diff-col-head"><i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> Suggested Improvement</div>
-            <div>${escapeHtml(s.suggested)}</div>
-          </div>
-        </div>
-
-        <div class="flex-row justify-between align-center gap-2 mt-2 flex-wrap">
-          <div class="flex-row align-center gap-2 flex-wrap">
-            ${(s.evidence || []).map(e => `
-              <span class="improve-evidence-pill"><i data-lucide="shield-check" style="width: 12px; height: 12px;"></i> ${escapeHtml(e)}</span>
-            `).join("")}
-          </div>
-          <span class="improve-risk-pill"><i data-lucide="lock" style="width: 12px; height: 12px;"></i> ${escapeHtml(s.risk || 'Safe')}</span>
-        </div>
+  // 2. STATE 4: No resume content available
+  if (analysis && (analysis.state === "STATE_4" || analysis.analysis_status === "no_content")) {
+    container.innerHTML = `
+      <div class="panel p-4 text-center">
+        <i data-lucide="file-x" style="color: var(--muted); width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+        <h4 class="font-bold text-sm mb-1">No resume content available</h4>
+        <p class="text-xs text-muted mb-0">Please add your background details in the Resume Builder first.</p>
       </div>
     `;
-  }).join("");
+    drawIcons();
+    return;
+  }
 
+  // 3. Render suggestion cards if present
+  if (items.length > 0) {
+    container.innerHTML = items.map(s => {
+      const isApplied = state.improveResume.appliedIds.has(s.id);
+      const isSelected = state.improveResume.selectedIds.has(s.id);
+
+      return `
+        <div class="improve-suggestion-card ${isApplied ? 'is-applied' : ''}" id="card_${s.id}">
+          <div class="flex-row justify-between align-start mb-2 gap-2 flex-wrap">
+            <div class="flex-row align-center gap-2">
+              <input type="checkbox" class="improve-select-checkbox" data-id="${s.id}" ${isSelected ? 'checked' : ''} ${isApplied ? 'disabled' : ''} aria-label="Select suggestion ${s.id}">
+              <span class="font-bold text-xs uppercase text-muted tracking-wider">${escapeHtml(s.section)}</span>
+              <span class="priority-tag ${s.priority.toLowerCase()}">${escapeHtml(s.priority)}</span>
+            </div>
+            <div class="flex-row align-center gap-2">
+              ${isApplied ? `
+                <span class="improve-risk-pill">
+                  <i data-lucide="check-check" style="width: 12px; height: 12px;"></i> Applied
+                </span>
+                <button class="secondary-btn xs improve-undo-btn" data-id="${s.id}" type="button">
+                  <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i> Undo
+                </button>
+              ` : `
+                <button class="ghost-btn xs improve-keep-btn" data-id="${s.id}" type="button">
+                  Keep Current
+                </button>
+                <button class="primary-btn xs improve-apply-btn" data-id="${s.id}" type="button">
+                  <i data-lucide="check" style="width: 12px; height: 12px;"></i> Apply
+                </button>
+              `}
+            </div>
+          </div>
+
+          <div class="improvement-problem mb-1">${escapeHtml(s.problem)}</div>
+          <div class="improvement-why text-xs text-muted mb-2">
+            <i data-lucide="info" style="width: 12px; height: 12px; display: inline;"></i> ${escapeHtml(s.why)}
+          </div>
+
+          <div class="improve-diff-box mb-2">
+            <div class="diff-col current">
+              <span class="diff-label">Current Text</span>
+              <div class="diff-text">${escapeHtml(s.current || s.before || "(None)")}</div>
+            </div>
+            <div class="diff-arrow"><i data-lucide="arrow-right"></i></div>
+            <div class="diff-col suggested">
+              <span class="diff-label">Suggested Improvement</span>
+              <div class="diff-text">${escapeHtml(s.suggested || s.after || "")}</div>
+            </div>
+          </div>
+
+          <div class="flex-row justify-between align-center text-xs flex-wrap gap-2">
+            <div class="flex-row align-center gap-1 flex-wrap">
+              ${(s.evidence || []).map(e => `
+                <span class="improve-evidence-pill" title="Verified candidate evidence">
+                  <i data-lucide="shield-check" style="width: 11px; height: 11px;"></i> ${escapeHtml(e)}
+                </span>
+              `).join("")}
+            </div>
+            <span class="improve-risk-pill" title="Anti-fabrication safety rating">
+              <i data-lucide="check" style="width: 11px; height: 11px;"></i> ${escapeHtml(s.risk || "Safe")}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    wireSuggestionCardEvents();
+    drawIcons();
+    return;
+  }
+
+  // 4. items.length === 0: Distinguish between State 1, State 2, State 5
+  const totalSuggestions = (state.improveResume.suggestions || []).length;
+
+  if (filter !== "all") {
+    // STATE 1: Analysis completed, no improvements needed for this specific section
+    container.innerHTML = `
+      <div class="panel p-4 text-center">
+        <i data-lucide="check-circle" style="color: var(--success, #059669); width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+        <h4 class="font-bold text-sm mb-1">No improvements needed for ${escapeHtml(capitalize(filter))}</h4>
+        <p class="text-xs text-muted mb-0">Your content for this section matches evidence guidelines cleanly.</p>
+      </div>
+    `;
+  } else if (totalSuggestions === 0) {
+    if (state.improveResume.mode === "job" && (!analysis?.target_role && !analysis?.job_description)) {
+      // STATE 2: Target context missing
+      container.innerHTML = `
+        <div class="panel p-4 text-center">
+          <i data-lucide="info" style="color: var(--primary); width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+          <h4 class="font-bold text-sm mb-1">Target context missing</h4>
+          <p class="text-xs text-muted mb-0">Enter a target role or paste a job description above to evaluate alignment.</p>
+        </div>
+      `;
+    } else {
+      // STATE 5: Resume genuinely needs no improvement
+      container.innerHTML = `
+        <div class="panel p-4 text-center">
+          <i data-lucide="award" style="color: var(--success, #059669); width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+          <h4 class="font-bold text-sm mb-1">Exceptional resume!</h4>
+          <p class="text-xs text-muted mb-0">All evaluated sections meet high recruiter and ATS standards without requiring modifications.</p>
+        </div>
+      `;
+    }
+  }
+  drawIcons();
+}
+
+function wireSuggestionCardEvents() {
   $$(".improve-apply-btn").forEach(b => {
     b.addEventListener("click", () => {
       const s = state.improveResume.suggestions.find(item => item.id === b.dataset.id);
@@ -8809,7 +8906,6 @@ function renderImproveSuggestionsList() {
   });
 
   updateSelectedCountUI();
-  drawIcons();
 }
 
 function updateSelectedCountUI() {

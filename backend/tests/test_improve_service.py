@@ -20,11 +20,15 @@ from app.services.improve_service import (
     apply_improvements,
     undo_improvement,
 )
+from unittest.mock import patch, MagicMock
 from app.schemas.ai import (
     ImproveResumePayload,
     ApplyImprovementPayload,
     ApplyImprovementItem,
     UndoImprovementPayload,
+    ImprovementSuggestion,
+    JobAlignmentSummary,
+    JobRequirementMatch,
 )
 
 TEST_DB_URL = "sqlite:///:memory:"
@@ -50,6 +54,15 @@ def setup_test_db():
     Base.metadata.create_all(bind=test_engine)
     yield
     Base.metadata.drop_all(bind=test_engine)
+
+
+@pytest.fixture(autouse=True)
+def disable_gemini_live_calls(monkeypatch):
+    """By default in unit tests, disable live Gemini calls to prevent hitting external rate limits."""
+    from app.core.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(settings, "gemini_api_key", None)
+
 
 
 client = TestClient(app)
@@ -513,3 +526,658 @@ def test_router_endpoints_e2e():
     assert undo_resp.status_code == 200, undo_resp.text
     undo_data = undo_resp.json()["data"]
     assert undo_data["restored"] is True
+
+
+# ==============================================================================
+# 9. TEST A: IMPROVE MY RESUME — JOB-INDEPENDENT ANALYSIS
+# ==============================================================================
+
+def test_a_improve_my_resume_job_independent():
+    """
+    Improve My Resume mode MUST work with zero target role, company, or JD.
+    Non-technical resume must not receive generic software-engineering suggestions.
+    Every suggestion must contain full structured schema fields.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("nurse_tester@example.com")
+
+    nurse_resume = Resume(
+        user_id=user_id,
+        title="Clinical Nurse Resume",
+        ats_score=70,
+        parsed_content={
+            "header": {"headline": "Registered Nurse"},
+            "summary": "Passionate registered nurse seeking an ICU position in a hospital.",
+            "skills": ["BLS", "ACLS", "Patient Care", "Triage", "Vitals"],
+            "experiences": [
+                {
+                    "title": "Staff Nurse",
+                    "company": "Community Hospital",
+                    "bullets": ["Worked on patient care and vitals checking during triage."]
+                }
+            ],
+            "projects": []
+        }
+    )
+    db.add(nurse_resume)
+    db.commit()
+    db.refresh(nurse_resume)
+
+    payload = ImproveResumePayload(
+        resume_id=nurse_resume.id,
+        mode="general",
+        target_role=None,
+        target_company=None,
+        job_description=None
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.analysis_status == "completed"
+    assert res.state == "STATE_1"
+    assert res.job_alignment is None
+    assert len(res.suggestions) >= 2
+
+    # Verify no software assumptions
+    for s in res.suggestions:
+        assert "software" not in s.suggested.lower()
+        assert "git" not in s.suggested.lower()
+        assert "python" not in s.suggested.lower()
+        # Verify required schema attributes
+        assert s.section in ["header", "headline", "summary", "experience", "projects", "skills", "education"]
+        assert s.priority in ["HIGH", "MEDIUM", "LOW"]
+        assert s.problem and len(s.problem) > 5
+        assert s.why and len(s.why) > 5
+        assert s.before and s.after
+        assert len(s.evidence) > 0
+        assert s.risk in ["Safe", "Review", "Caution"]
+        assert s.action in ["apply", "keep_current"]
+
+    db.close()
+
+
+# ==============================================================================
+# 10. TEST B: TARGET A JOB — ROLE ONLY
+# ==============================================================================
+
+def test_b_target_a_job_role_only():
+    """
+    When only role is provided, analyze against typical industry benchmarks.
+    Must set is_role_only=True and role_expectations_note='Typical expectations for this target role'.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("role_only@example.com")
+
+    resume = Resume(
+        user_id=user_id,
+        title="Developer Resume",
+        ats_score=72,
+        parsed_content={
+            "header": {"headline": "Junior Developer"},
+            "summary": "Junior developer with foundational Python and SQL experience.",
+            "skills": ["Python", "SQL", "Git"],
+            "experiences": [
+                {
+                    "title": "Junior Developer",
+                    "company": "Startup Hub",
+                    "bullets": ["Engineered internal utility tools using Python."]
+                }
+            ]
+        }
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    payload = ImproveResumePayload(
+        resume_id=resume.id,
+        mode="job",
+        target_role="Software Developer",
+        target_company=None,
+        job_description=None
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.job_alignment is not None
+    assert res.job_alignment.is_role_only is True
+    assert res.job_alignment.role_expectations_note == "Typical expectations for this target role"
+    assert len(res.job_alignment.must_have_skills) > 0
+    assert len(res.job_alignment.responsibilities) > 0
+    assert res.job_alignment.match_score is not None
+
+    all_reqs = (
+        res.job_alignment.covered
+        + res.job_alignment.partial
+        + res.job_alignment.not_demonstrated
+        + res.job_alignment.eligibility_gaps
+    )
+    for r in all_reqs:
+        assert r.status in [
+            "CLEARLY DEMONSTRATED",
+            "PARTIALLY DEMONSTRATED",
+            "NOT CURRENTLY DEMONSTRATED",
+            "NOT ENOUGH INFORMATION",
+        ]
+        if r.gap_type:
+            assert r.gap_type in [
+                "wording_issue",
+                "evidence_gap",
+                "eligibility_gap",
+                "missing_skill",
+                "missing_requirement",
+                "insufficient_information",
+            ]
+
+    db.close()
+
+
+# ==============================================================================
+# 11. TEST C: TARGET A JOB — ROLE + COMPANY (NO JD)
+# ==============================================================================
+
+def test_c_target_a_job_role_and_company_no_jd():
+    """
+    Role + Company must retain company name for context without hallucinating internal private company facts.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("amazon_role@example.com")
+
+    resume = Resume(
+        user_id=user_id,
+        title="Amazon Target Resume",
+        ats_score=75,
+        parsed_content={
+            "header": {"headline": "Software Engineer"},
+            "summary": "Software engineer delivering web applications.",
+            "skills": ["Java", "Spring Boot", "SQL"],
+            "experiences": [
+                {
+                    "title": "Software Engineer",
+                    "company": "Tech Corp",
+                    "bullets": ["Engineered customer account APIs in Java."]
+                }
+            ]
+        }
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    payload = ImproveResumePayload(
+        resume_id=resume.id,
+        mode="job",
+        target_role="Software Developer",
+        target_company="Amazon",
+        job_description=None
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.target_company == "Amazon"
+    assert res.job_alignment is not None
+    assert res.job_alignment.is_role_only is True
+    assert res.job_alignment.role_expectations_note == "Typical expectations for this target role"
+    # Ensure no fabricated company claims
+    for s in res.suggestions:
+        assert "worked at amazon" not in s.suggested.lower()
+
+    db.close()
+
+
+# ==============================================================================
+# 12. TEST D: TARGET A JOB — FULL JD STRUCTURED PARSING (ZERO NOISE TOKENS)
+# ==============================================================================
+
+def test_d_target_a_job_full_jd_structured_parsing():
+    """
+    Full JD parsing must extract structured requirements and strictly forbid standalone noise tokens:
+    'Software', 'Developer', 'Year', 'Years'.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("structured_jd@example.com")
+
+    resume = Resume(
+        user_id=user_id,
+        title="Full JD Resume",
+        ats_score=78,
+        parsed_content={
+            "header": {"headline": "Software Developer"},
+            "summary": "Backend developer with Python and PostgreSQL experience.",
+            "skills": ["Python", "FastAPI", "PostgreSQL", "Docker"],
+            "experiences": [
+                {
+                    "title": "Backend Developer",
+                    "company": "API Labs",
+                    "bullets": ["Designed REST APIs using FastAPI and PostgreSQL."]
+                }
+            ]
+        }
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    jd_text = """
+    We are seeking a Software Developer with 2+ years of experience.
+    Must-Have Skills: Python, FastAPI, PostgreSQL, Docker.
+    Responsibilities: Architect backend microservices, optimize database queries.
+    Domain: Cloud Computing.
+    """
+
+    payload = ImproveResumePayload(
+        resume_id=resume.id,
+        mode="job",
+        target_role="Software Developer",
+        target_company="CloudTech",
+        job_description=jd_text
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.job_alignment is not None
+    assert res.job_alignment.is_role_only is False
+
+    # Check that forbidden standalone tokens are NEVER isolated requirement items
+    forbidden_tokens = {"software", "developer", "year", "years", "engineer", "experience"}
+    all_requirements = (
+        res.job_alignment.must_have_skills
+        + res.job_alignment.preferred_skills
+        + res.job_alignment.tools
+        + res.job_alignment.technologies
+        + [r.requirement for r in res.job_alignment.covered]
+        + [r.requirement for r in res.job_alignment.partial]
+        + [r.requirement for r in res.job_alignment.not_demonstrated]
+        + [r.requirement for r in res.job_alignment.eligibility_gaps]
+    )
+
+    for item in all_requirements:
+        stripped = item.strip().lower()
+        assert stripped not in forbidden_tokens, f"Forbidden standalone noise token found: '{item}'"
+
+    # Verify structured fields
+    assert "2+ years of experience" in res.job_alignment.years_experience
+    assert any("Python" in s for s in res.job_alignment.must_have_skills)
+    assert any("PostgreSQL" in s for s in res.job_alignment.must_have_skills)
+
+    db.close()
+
+
+# ==============================================================================
+# 13. TEST E: NON-TECHNICAL RESUME + TECHNICAL JD (HONEST ELIGIBILITY GAPS & SEPARATE SCORES)
+# ==============================================================================
+
+def test_e_non_technical_resume_honest_eligibility_gaps_and_separate_scores():
+    """
+    Non-technical resume targeting a technical JD must show honest eligibility gaps.
+    Zero coding bullets fabricated into the resume.
+    Resume Health (canonical_score) and Target Job Match (job_match_score) must remain separate.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("nurse_to_tech@example.com")
+
+    nurse_resume = Resume(
+        user_id=user_id,
+        title="Clinical Nurse Specialist",
+        ats_score=80,
+        parsed_content={
+            "header": {"headline": "Clinical Nurse Specialist"},
+            "summary": "Registered Nurse with 5 years in intensive care and patient stabilization.",
+            "skills": ["BLS", "ACLS", "Patient Care", "Triage", "Clinical Pharmacology"],
+            "experiences": [
+                {
+                    "title": "Senior Staff Nurse",
+                    "company": "Metro Hospital",
+                    "bullets": ["Administered clinical care to critically ill patients in ICU."]
+                }
+            ]
+        }
+    )
+    db.add(nurse_resume)
+    db.commit()
+    db.refresh(nurse_resume)
+
+    jd_tech = """
+    Staff Software Engineer.
+    Requirements:
+    - 5+ years of experience building distributed systems
+    - Deep expertise in Kubernetes and AWS cloud infrastructure
+    - Advanced proficiency in Go and Python
+    """
+
+    payload = ImproveResumePayload(
+        resume_id=nurse_resume.id,
+        mode="job",
+        target_role="Staff Software Engineer",
+        job_description=jd_tech
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.canonical_score >= 60, "Intrinsic Resume Health must reflect candidate's real nursing qualifications"
+    assert res.job_match_score is not None
+    assert res.job_match_score < res.canonical_score, "Target Job Match must be lower due to domain mismatch"
+    assert res.job_alignment is not None
+
+    # Missing requirements must be identified honestly under not_demonstrated or eligibility_gaps
+    missing_items = [r.requirement.lower() for r in (res.job_alignment.not_demonstrated + res.job_alignment.eligibility_gaps)]
+    assert any("kubernetes" in item or "aws" in item or "distributed" in item for item in missing_items)
+
+    # Suggestions must NOT inject fake coding achievements
+    for s in res.suggestions:
+        assert "kubernetes" not in s.suggested.lower()
+        assert "go developer" not in s.suggested.lower()
+
+    db.close()
+
+
+# ==============================================================================
+# 14. TEST F: PHARMACEUTICAL RESUME + ACCOUNTANT JD (DOMAIN MISMATCH)
+# ==============================================================================
+
+def test_f_pharmaceutical_resume_accountant_domain_mismatch():
+    """
+    Resume in Pharma domain targeting Accountant role must identify domain mismatch.
+    Zero software assumptions.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("pharma_tester@example.com")
+
+    pharma_resume = Resume(
+        user_id=user_id,
+        title="Pharma Scientist Resume",
+        ats_score=75,
+        parsed_content={
+            "header": {"headline": "Pharmaceutical Formulation Scientist"},
+            "summary": "Formulation scientist specialized in solid dosage forms and GMP compliance.",
+            "skills": ["HPLC", "Formulation", "GMP", "Drug Stability", "Dissolution Testing"],
+            "experiences": [
+                {
+                    "title": "Research Scientist",
+                    "company": "Pharma Labs",
+                    "bullets": ["Executed HPLC testing on drug formulation stability batches."]
+                }
+            ]
+        }
+    )
+    db.add(pharma_resume)
+    db.commit()
+    db.refresh(pharma_resume)
+
+    payload = ImproveResumePayload(
+        resume_id=pharma_resume.id,
+        mode="job",
+        target_role="Senior Accountant",
+        job_description="We need a Senior Accountant with CPA certification and audit experience."
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.domain == "Healthcare & Life Sciences"
+    assert res.job_alignment is not None
+    assert len(res.job_alignment.potential_concerns) > 0
+    assert any("domain" in c.lower() or "transition" in c.lower() for c in res.job_alignment.potential_concerns)
+    assert "software" not in res.domain.lower()
+
+    db.close()
+
+
+# ==============================================================================
+# 15. TEST G: STRONG RESUME ALL CHECKS PASSED (STATE 5)
+# ==============================================================================
+
+def test_g_strong_resume_all_checks_passed_state_5():
+    """
+    An exceptional resume with strong action verbs, verified metrics, polished headline and summary
+    must produce STATE_5 ('Exceptional resume! All evaluated sections meet high standards').
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("perfect_resume@example.com")
+
+    strong_resume = Resume(
+        user_id=user_id,
+        title="Polished Executive Resume",
+        ats_score=92,
+        parsed_content={
+            "header": {"headline": "Senior Software Architect | Cloud Platforms"},
+            "summary": "Senior Software Architect with 8+ years leading cloud platforms. Specialized in Python, Go, and distributed systems architecture.",
+            "skills": ["Python", "Go", "PostgreSQL", "Kafka", "Docker", "Kubernetes", "AWS"],
+            "experiences": [
+                {
+                    "title": "Principal Architect",
+                    "company": "Cloud Systems",
+                    "bullets": [
+                        "Architected distributed event-streaming platform using Python and Kafka, reducing latency by 35%.",
+                        "Engineered automated data pipelines processing 2M daily records with 99.99% uptime."
+                    ]
+                }
+            ],
+            "projects": [
+                {
+                    "title": "Cloud Metric Collector",
+                    "bullets": ["Engineered metrics collector with 10ms sampling interval across 50 nodes."]
+                }
+            ]
+        }
+    )
+    db.add(strong_resume)
+    db.commit()
+    db.refresh(strong_resume)
+
+    payload = ImproveResumePayload(
+        resume_id=strong_resume.id,
+        mode="general",
+        target_role="Senior Software Architect"
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.state == "STATE_5"
+    assert "All evaluated sections meet high recruiter and ATS standards without requiring modifications." in res.status_message
+    assert len(res.suggestions) == 0
+    assert res.canonical_score >= 80
+
+    db.close()
+
+
+# ==============================================================================
+# 16. TEST H: GEMINI FAILURE HANDLING (STATE 3, ZERO FAKE SUGGESTIONS)
+# ==============================================================================
+
+def test_h_gemini_failure_handling_state_3(monkeypatch):
+    """
+    When Gemini API fails (rate limit, network timeout, error), UI must receive STATE_3
+    with status_message='AI analysis could not be completed. Please try again.'
+    and NEVER silently substitute fake suggestions.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("gemini_fail@example.com")
+
+    resume = Resume(
+        user_id=user_id,
+        title="Gemini Failure Test Resume",
+        ats_score=70,
+        parsed_content={
+            "header": {"headline": "Software Developer"},
+            "summary": "Passionate developer.",
+            "skills": ["Python"],
+            "experiences": [{"title": "Dev", "company": "Co", "bullets": ["Worked on app."]}]
+        }
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    from app.core.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(settings, "gemini_api_key", "test_gemini_api_key_enabled")
+
+    with patch("app.services.improve_service._try_gemini_improvement", return_value={"failed": True, "error": "AI analysis could not be completed. Please try again."}):
+        payload = ImproveResumePayload(resume_id=resume.id, mode="general")
+        res = generate_resume_improvements(db, user_id, payload)
+
+        assert res.analysis_status == "failed"
+        assert res.state == "STATE_3"
+        assert res.status_message == "AI analysis could not be completed. Please try again."
+        assert len(res.suggestions) == 0, "Must NEVER substitute fake suggestions when AI fails"
+        assert res.job_alignment is None
+
+    db.close()
+
+
+# ==============================================================================
+# 17. REGRESSION TEST: CAMPUS / FRESHER DRAFT SCREENSHOT ISSUE
+# ==============================================================================
+
+def test_screenshot_regression_campus_fresher_amazon():
+    """
+    Reproduces the exact scenario from user's screenshot:
+    - Campus / Fresher Draft
+    - Target Role: Software Developer
+    - Target Company: Amazon
+    - JD: 'We need software developer with 2 year experience'
+
+    Verify:
+    1. Standalone tokens 'Software', 'Developer', 'Year' are NEVER extracted.
+    2. '2+ years experience required' is identified as an eligibility gap.
+    3. Meaningful suggestions generated (Headline, Summary, Project) - NOT 'No improvements needed for this filter'.
+    4. analyzed_sections has non-zero counts for analyzed sections.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("fresher_amazon@example.com")
+
+    fresher_resume = Resume(
+        user_id=user_id,
+        title="Campus / Fresher Draft",
+        ats_score=68,
+        parsed_content={
+            "header": {"headline": "Software Developer"},
+            "summary": "",
+            "skills": ["Python", "HTML", "CSS", "SQL"],
+            "experiences": [],
+            "projects": [
+                {
+                    "title": "Student Portal",
+                    "bullets": ["Created student database website with python."]
+                }
+            ]
+        }
+    )
+    db.add(fresher_resume)
+    db.commit()
+    db.refresh(fresher_resume)
+
+    payload = ImproveResumePayload(
+        resume_id=fresher_resume.id,
+        mode="job",
+        target_role="Software Developer",
+        target_company="Amazon",
+        job_description="We need software developer with 2 year experience"
+    )
+    res = generate_resume_improvements(db, user_id, payload)
+
+    assert res.job_alignment is not None
+    # 1. No standalone noise tokens
+    forbidden = {"software", "developer", "year", "years"}
+    for req in (res.job_alignment.must_have_skills + [r.requirement for r in res.job_alignment.eligibility_gaps]):
+        assert req.strip().lower() not in forbidden, f"Noise token found: {req}"
+
+    # 2. Eligibility gap for 2+ years experience
+    assert len(res.job_alignment.eligibility_gaps) > 0
+    assert any("2" in g.requirement and "experience" in g.requirement for g in res.job_alignment.eligibility_gaps)
+    assert any(g.gap_type == "eligibility_gap" for g in res.job_alignment.eligibility_gaps)
+
+    # 3. Suggestions must be generated
+    assert len(res.suggestions) >= 2
+    assert res.state == "STATE_1"
+
+    # 4. Analyzed sections counts
+    assert res.analyzed_sections["summary"] >= 1
+    assert res.analyzed_sections["projects"] >= 1
+
+    db.close()
+
+
+# ==============================================================================
+# 18. TEST J: GEMINI SEMANTIC AI SUCCESS PATH
+# ==============================================================================
+
+def test_gemini_semantic_ai_success_path(monkeypatch):
+    """
+    Verifies that when Gemini returns structured JSON conforming to the schema,
+    suggestions and job alignment are parsed cleanly and validated for anti-fabrication.
+    """
+    db = TestingSessionLocal()
+    user_id, _ = setup_user_and_token("gemini_success@example.com")
+
+    resume = Resume(
+        user_id=user_id,
+        title="Gemini Success Resume",
+        ats_score=74,
+        parsed_content={
+            "header": {"headline": "Software Developer"},
+            "summary": "Passionate developer.",
+            "skills": ["Python", "React"],
+            "experiences": [{"title": "Dev", "company": "Tech Corp", "bullets": ["Worked on web app."]}]
+        }
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    from app.core.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(settings, "gemini_api_key", "test_gemini_key")
+
+    mock_gemini_response = {
+        "suggestions": [
+            ImprovementSuggestion(
+                id="sugg_mock_1",
+                section="headline",
+                target_id="header_headline",
+                priority="HIGH",
+                problem="Headline is too generic.",
+                why="Adding core specializations improves recruiter interest.",
+                current="Software Developer",
+                suggested="Full-Stack Software Developer | Python & React",
+                before="Software Developer",
+                after="Full-Stack Software Developer | Python & React",
+                evidence=["Based on Python and React skills"],
+                risk="Safe",
+                change_type="wording",
+                confidence=0.95,
+                action="apply"
+            )
+        ],
+        "job_alignment": JobAlignmentSummary(
+            role="Software Developer",
+            match_score=85,
+            must_have_skills=["Python", "React"],
+            covered=[
+                JobRequirementMatch(
+                    requirement="Python",
+                    status="CLEARLY DEMONSTRATED",
+                    evidence="Listed in skills",
+                    note="Verified in technical profile"
+                )
+            ],
+            partial=[],
+            not_demonstrated=[],
+            eligibility_gaps=[]
+        ),
+        "failed": False
+    }
+
+    with patch("app.services.improve_service._try_gemini_improvement", return_value=mock_gemini_response):
+        payload = ImproveResumePayload(
+            resume_id=resume.id,
+            mode="job",
+            target_role="Software Developer",
+            job_description="Looking for Python and React developer."
+        )
+        res = generate_resume_improvements(db, user_id, payload)
+
+        assert res.analysis_status == "completed"
+        assert res.state == "STATE_1"
+        assert len(res.suggestions) == 1
+        assert res.suggestions[0].id == "sugg_mock_1"
+        assert res.suggestions[0].after == "Full-Stack Software Developer | Python & React"
+        assert res.job_alignment is not None
+        assert res.job_alignment.match_score == 85
+        assert len(res.job_alignment.covered) == 1
+
+    db.close()
+
