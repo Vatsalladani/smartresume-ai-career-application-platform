@@ -97,7 +97,7 @@ def get_payment_history(current_user: User = Depends(get_current_user), db: Sess
     events = (
         db.query(PaymentEvent)
         .filter(PaymentEvent.user_id == current_user.id)
-        .order_by(PaymentEvent.created_at.desc())
+        .order_by(PaymentEvent.processed_at.desc())
         .limit(20)
         .all()
     )
@@ -107,7 +107,7 @@ def get_payment_history(current_user: User = Depends(get_current_user), db: Sess
             "provider": e.provider,
             "event_id": e.event_id,
             "event_type": e.event_type,
-            "created_at": e.created_at.isoformat() if e.created_at else None,
+            "created_at": e.processed_at.isoformat() if e.processed_at else None,
             "details": e.payload_json or {},
         }
         for e in events

@@ -101,7 +101,7 @@ def list_resumes(
     if not include_archived:
         query = query.filter(Resume.is_archived.is_(False))
     resumes = query.order_by(Resume.updated_at.desc()).all()
-    return success_response([ResumeOut.model_validate(resume).model_dump() for resume in resumes])
+    return success_response([ResumeDetail.model_validate(resume).model_dump() for resume in resumes])
 
 
 @router.get("/export-profile")

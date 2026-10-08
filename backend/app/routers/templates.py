@@ -55,8 +55,8 @@ def recommend_template(
             target_role = target_role or prof.headline
             domain = domain or prof.target_domain
             career_level = career_level or (prof.career_level.value if hasattr(prof.career_level, "value") else str(prof.career_level))
-            years_experience = years_experience if years_experience is not None else prof.total_experience_years
-            target_country = target_country or prof.target_geography
+            years_experience = years_experience if years_experience is not None else getattr(prof, "total_experience_years", None)
+            target_country = target_country or getattr(prof, "target_geography", None)
 
     rec_response = template_service.recommend_template(
         target_role=target_role,

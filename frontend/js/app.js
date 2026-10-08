@@ -967,11 +967,25 @@ function wireNavigation() {
     };
     const primaryNavTab = TAB_PARENT_MAP[validTab] || validTab;
 
+    const TAB_FULL_TITLES = {
+      "dashboard": "Dashboard",
+      "resume-builder": "Resume Builder",
+      "tailor": "Improve Resume",
+      "improve-resume": "Improve Resume",
+      "job-description": "Target a Job",
+      "applications": "Applications",
+      "fit": "Job Radar",
+      "interview": "Interview Copilot",
+      "profile": "Profile & Experience",
+      "templates": "Resume Templates",
+      "settings": "Settings",
+    };
+
     $$(".nav-tabs button, .nav-groups .nav-item, .mobile-bottom-nav .mobile-nav-item").forEach((item) => {
       if (item.dataset.tab === primaryNavTab) {
         item.classList.add("active");
         item.setAttribute("aria-selected", "true");
-        const label = item.querySelector("span") ? item.querySelector("span").textContent.trim() : item.textContent.trim();
+        const label = TAB_FULL_TITLES[validTab] || (item.querySelector("span") ? item.querySelector("span").textContent.trim() : item.textContent.trim());
         const pageTitleEl = $("#pageTitle");
         if (pageTitleEl && label && label !== "Menu") pageTitleEl.textContent = label;
         document.title = `SmartResume.ai — ${label}`;
@@ -8466,6 +8480,12 @@ async function loadImproveResumeView() {
     if (currentResume) {
       updateImproveHealthBadge(currentResume.ats_score);
       renderImprovePreview(currentResume);
+      if (!currentResume.parsed_content) {
+        API.request(`/resumes/${selId}`).then(full => {
+          currentResume.parsed_content = full.parsed_content;
+          renderImprovePreview(currentResume);
+        }).catch(() => {});
+      }
     }
 
     if (state.improveResume.analysis && state.improveResume.analysis.resume_id === selId) {
@@ -8487,6 +8507,8 @@ async function loadImproveResumeView() {
 
 function onImproveResumeSelectChange(newId) {
   state.improveResume.selectedResumeId = newId;
+  state.activeResumeId = newId;
+  localStorage.setItem("smartresume_active_resume_id", newId);
   state.improveResume.analysis = null;
   state.improveResume.suggestions = [];
   state.improveResume.appliedIds = new Set();
@@ -8500,8 +8522,17 @@ function onImproveResumeSelectChange(newId) {
 
   const resume = (state.resumes || []).find(r => r.id === newId);
   if (resume) {
+    if (typeof getCleanResumeBuilderState === "function") {
+      resumeBuilderState = Object.assign(getCleanResumeBuilderState(), resume.parsed_content || {});
+    }
     updateImproveHealthBadge(resume.ats_score);
     renderImprovePreview(resume);
+    if (!resume.parsed_content) {
+      API.request(`/resumes/${newId}`).then(full => {
+        resume.parsed_content = full.parsed_content;
+        renderImprovePreview(resume);
+      }).catch(() => {});
+    }
     toast(`Switched to: ${resume.title || 'Selected Resume'}`);
   }
 }
