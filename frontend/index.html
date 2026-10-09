@@ -915,6 +915,10 @@
               <i data-lucide="award"></i>
               <span>Score</span>
             </button>
+            <button class="secondary-btn sm" type="button" id="builderAiAssistantToggleBtn" title="Open AI Writing Assistant">
+              <i data-lucide="sparkles"></i>
+              <span>AI Copilot</span>
+            </button>
             <button class="secondary-btn sm" type="button" id="builderSyncProfileBtn" title="Sync data from Career Profile">
               <i data-lucide="refresh-cw"></i>
               <span>Sync Profile</span>
@@ -1607,6 +1611,21 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Contextual AI Writing Assistant Drawer -->
+        <div id="builderAiAssistantDrawer" class="panel hidden" style="position: fixed; right: 24px; bottom: 24px; width: 400px; max-width: calc(100vw - 48px); max-height: 82vh; z-index: 1000; box-shadow: var(--shadow-xl); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+          <div class="panel-head flex-row justify-between align-center p-3 border-bottom" style="background: var(--surface-2);">
+            <div class="flex-row align-center gap-2">
+              <i data-lucide="sparkles" style="color: var(--primary); width: 18px; height: 18px;"></i>
+              <strong style="font-size: 0.95rem;">AI Writing Assistant</strong>
+              <span class="badge-sub badge-primary text-xs" id="builderAiTargetSectionBadge">Active Section</span>
+            </div>
+            <button class="icon-btn xs" type="button" onclick="$('#builderAiAssistantDrawer').classList.add('hidden')"><i data-lucide="x"></i></button>
+          </div>
+          <div class="p-3" style="overflow-y: auto; flex: 1;" id="builderAiAssistantContent">
+            <!-- Populated dynamically via openContextualAiAssistant -->
           </div>
         </div>
       </section>
@@ -4661,26 +4680,70 @@
         <form id="createResumeForm" onsubmit="return false;">
           <label class="font-bold text-xs uppercase tracking-wider mb-2 block">Choose Starting Point:</label>
           <div class="create-resume-source-grid mb-3">
-            <div class="source-card active" data-source="profile" tabindex="0">
-              <div class="source-card-icon"><i data-lucide="user-check"></i></div>
-              <div>
-                <strong>Start from My Profile</strong>
-                <p class="text-xs text-muted mb-0">Prefill with verified experience, education, and skills from your Master Profile.</p>
-              </div>
-            </div>
-            <div class="source-card" data-source="duplicate" tabindex="0">
-              <div class="source-card-icon"><i data-lucide="copy"></i></div>
-              <div>
-                <strong>Duplicate Current Resume</strong>
-                <p class="text-xs text-muted mb-0">Clone content, layout, styling, and order of current resume into an independent document.</p>
-              </div>
-            </div>
-            <div class="source-card" data-source="blank" tabindex="0">
+            <div class="source-card active" data-source="blank" tabindex="0">
               <div class="source-card-icon"><i data-lucide="file"></i></div>
               <div>
-                <strong>Blank Resume</strong>
-                <p class="text-xs text-muted mb-0">Start fresh with empty sections and clean default formatting.</p>
+                <strong>Start Blank</strong>
+                <p class="text-xs text-muted mb-0">Clean empty layout, zero fake data or prefilled sample text.</p>
               </div>
+            </div>
+            <div class="source-card" data-source="profile" tabindex="0">
+              <div class="source-card-icon"><i data-lucide="user-check"></i></div>
+              <div>
+                <strong>Build from Profile</strong>
+                <p class="text-xs text-muted mb-0">Prefill verified background freshly fetched from your Master Profile.</p>
+              </div>
+            </div>
+            <div class="source-card" data-source="import" tabindex="0">
+              <div class="source-card-icon"><i data-lucide="upload-cloud"></i></div>
+              <div>
+                <strong>Import Existing Resume</strong>
+                <p class="text-xs text-muted mb-0">Upload PDF/Word or paste text. Automatically maps sections with review.</p>
+              </div>
+            </div>
+            <div class="source-card" data-source="ai_guided" tabindex="0">
+              <div class="source-card-icon"><i data-lucide="sparkles"></i></div>
+              <div>
+                <strong>Build with AI (5-Min)</strong>
+                <p class="text-xs text-muted mb-0">Conversational 5-minute builder asking simple, friendly questions.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-panel for Import Option -->
+          <div id="newResumeImportPanel" class="panel p-3 mb-3 hidden" style="background: var(--surface-2); border: 1px dashed var(--border);">
+            <div class="flex-column gap-2">
+              <div class="flex-row align-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-muted">Upload Document or Paste Text</span>
+                <div class="segmented-control" id="importTypeSegment">
+                  <button type="button" class="segmented-btn active" id="importTypeFileBtn">File Upload</button>
+                  <button type="button" class="segmented-btn" id="importTypeTextBtn">Paste Text</button>
+                </div>
+              </div>
+              
+              <div id="importFileContainer">
+                <label class="onboarding-dropzone cursor-pointer" style="padding: 16px; margin: 0;">
+                  <i data-lucide="file-up" style="width: 24px; height: 24px; color: var(--primary); margin-bottom: 4px;"></i>
+                  <div class="text-xs font-semibold" id="importFileSelectedText">Click to select PDF or DOCX file</div>
+                  <input type="file" id="importResumeFileInput" accept=".pdf,.docx,.doc,.txt" class="hidden">
+                </label>
+              </div>
+
+              <div id="importTextContainer" class="hidden">
+                <textarea id="importResumeTextInput" class="form-control text-xs" rows="5" placeholder="Paste your existing resume text here..."></textarea>
+              </div>
+
+              <div id="importPreviewNotice" class="hidden p-2 rounded text-xs" style="background: var(--surface); border: 1px solid var(--border);">
+                <div class="flex-row align-center justify-between mb-1">
+                  <strong id="importPreviewTitle">Parsed Resume Preview</strong>
+                  <span class="badge-sub badge-success text-xs" id="importSectionsCountBadge">5 sections detected</span>
+                </div>
+                <p class="text-xs text-muted mb-0" id="importPreviewSummary">Candidate Name: ... | Experience: 3 | Skills: 12</p>
+              </div>
+
+              <button type="button" class="secondary-btn xs" id="importParseBtn">
+                <i data-lucide="file-search"></i><span>Parse & Verify Sections</span>
+              </button>
             </div>
           </div>
 
@@ -4733,6 +4796,192 @@
         <button class="primary-btn sm" type="button" id="submitCreateResumeBtn">
           <i data-lucide="check"></i><span>Create Resume</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AI-GUIDED RESUME BUILDER (5-Minute Workflow) -->
+  <div id="aiGuidedBuilderModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="aiGuidedBuilderModalTitle">
+    <div class="modal-dialog" style="max-width: 640px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div class="flex-row align-center gap-2">
+          <div class="dash-resume-preview-thumb" style="width: 34px; height: 34px; min-width: 34px; background: rgba(var(--primary-rgb, 14, 165, 233), 0.1); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="sparkles" style="width: 20px; height: 20px; color: var(--primary);"></i>
+          </div>
+          <div>
+            <h3 id="aiGuidedBuilderModalTitle" style="margin: 0;">5-Minute AI Guided Resume Builder</h3>
+            <p class="text-xs text-muted mb-0">Answer 7 quick questions to create an authentic, ATS-optimized draft.</p>
+          </div>
+        </div>
+        <button id="closeAiGuidedModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+
+      <!-- Stepper Progress Header -->
+      <div class="p-3 border-bottom bg-surface flex-row align-center justify-between">
+        <div class="flex-row align-center gap-2">
+          <span class="badge-sub badge-primary text-xs font-bold" id="aiGuideStepIndicator">Step 1 of 7</span>
+          <span class="text-xs font-semibold text-muted" id="aiGuideStepTitle">Career Direction</span>
+        </div>
+        <div class="progress-bar-container" style="width: 140px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+          <div id="aiGuideProgressBar" style="width: 14.3%; height: 100%; background: var(--primary); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px;">
+        <!-- Step 1: Career Direction -->
+        <div id="aiGuideStep1" class="ai-guide-step">
+          <h4 class="font-bold text-sm mb-1">What role are you targeting?</h4>
+          <p class="text-xs text-muted mb-3">This anchors your resume structure and ensures high relevance for recruiters.</p>
+          <div class="form-grid gap-3">
+            <label class="span-2">Target Job Title <span class="text-danger">*</span>
+              <input type="text" id="aiGuideTargetRole" placeholder="e.g. Senior Backend Engineer or Product Manager" required>
+            </label>
+            <label>Career Experience Level
+              <select id="aiGuideCareerLevel">
+                <option value="EARLY_CAREER">Early Career / Fresher (0-2 years)</option>
+                <option value="MID_LEVEL" selected>Mid-Level Professional (3-6 years)</option>
+                <option value="SENIOR">Senior Professional (7+ years)</option>
+                <option value="LEAD">Lead / Manager</option>
+              </select>
+            </label>
+            <label>Target Domain / Industry
+              <select id="aiGuideDomain">
+                <option value="Software Engineering" selected>Software Engineering</option>
+                <option value="Data & AI">Data & AI</option>
+                <option value="Product Management">Product Management</option>
+                <option value="Finance & Accounting">Finance & Accounting</option>
+                <option value="Sales & BD">Sales & Business Development</option>
+                <option value="Marketing">Marketing & Growth</option>
+                <option value="Healthcare">Healthcare & Life Sciences</option>
+                <option value="Operations">Operations & HR</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 2: Personal & Contact -->
+        <div id="aiGuideStep2" class="ai-guide-step hidden">
+          <h4 class="font-bold text-sm mb-1">Contact & Identity</h4>
+          <p class="text-xs text-muted mb-3">Recruiters will use these details to contact you directly.</p>
+          <div class="form-grid gap-3">
+            <label class="span-2">Full Name <span class="text-danger">*</span>
+              <input type="text" id="aiGuideFullName" placeholder="e.g. Alex Morgan">
+            </label>
+            <label>Email Address <span class="text-danger">*</span>
+              <input type="email" id="aiGuideEmail" placeholder="alex@domain.com">
+            </label>
+            <label>Phone Number
+              <input type="tel" id="aiGuidePhone" placeholder="+1 (555) 234-5678">
+            </label>
+            <label class="span-2">Location (City, Country)
+              <input type="text" id="aiGuideLocation" placeholder="e.g. Seattle, WA or Remote">
+            </label>
+            <label class="span-2">LinkedIn / Portfolio URL (optional)
+              <input type="text" id="aiGuideUrl" placeholder="linkedin.com/in/alexmorgan">
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 3: Highest Education -->
+        <div id="aiGuideStep3" class="ai-guide-step hidden">
+          <h4 class="font-bold text-sm mb-1">Highest Education</h4>
+          <p class="text-xs text-muted mb-3">Add your most recent degree or academic credential.</p>
+          <div class="form-grid gap-3">
+            <label class="span-2">College / University / School Name
+              <input type="text" id="aiGuideSchool" placeholder="e.g. Stanford University or University of Waterloo">
+            </label>
+            <label>Degree
+              <input type="text" id="aiGuideDegree" placeholder="e.g. Bachelor of Science or B.Tech">
+            </label>
+            <label>Field of Study / Major
+              <input type="text" id="aiGuideMajor" placeholder="e.g. Computer Science or Mechanical Engineering">
+            </label>
+            <label>Graduation Year
+              <input type="text" id="aiGuideGradYear" placeholder="e.g. 2023 or 2025 (Expected)">
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 4: Work Experience -->
+        <div id="aiGuideStep4" class="ai-guide-step hidden">
+          <h4 class="font-bold text-sm mb-1">Recent Work Experience</h4>
+          <p class="text-xs text-muted mb-3">Describe your most significant job, internship, or freelance project.</p>
+          <div class="form-grid gap-3">
+            <label>Role / Job Title
+              <input type="text" id="aiGuideExpTitle" placeholder="e.g. Backend Software Engineer">
+            </label>
+            <label>Company / Organization
+              <input type="text" id="aiGuideExpCompany" placeholder="e.g. Acme Tech Inc.">
+            </label>
+            <label>Dates (Start – End)
+              <input type="text" id="aiGuideExpDates" placeholder="e.g. Jan 2022 – Present">
+            </label>
+            <label class="span-2">Key Accomplishments & Daily Responsibilities
+              <textarea id="aiGuideExpBullets" class="form-control text-xs" rows="4" placeholder="Enter 2-3 key contributions, one per line. E.g.:&#10;• Designed and deployed REST APIs serving 50k daily active users&#10;• Collaborated with frontend team to decrease page load time by 30%"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 5: Skills & Proficiency -->
+        <div id="aiGuideStep5" class="ai-guide-step hidden">
+          <h4 class="font-bold text-sm mb-1">Skills & Tools</h4>
+          <p class="text-xs text-muted mb-3">List technical tools, languages, and core domain competencies (separated by commas).</p>
+          <div class="form-group mb-3">
+            <label>Core Skills (comma separated)
+              <textarea id="aiGuideSkills" class="form-control text-xs" rows="3" placeholder="e.g. Python, FastAPI, Docker, PostgreSQL, React, AWS, Git, REST APIs, CI/CD"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 6: Projects or Certifications -->
+        <div id="aiGuideStep6" class="ai-guide-step hidden">
+          <h4 class="font-bold text-sm mb-1">Key Project or Certification (Optional)</h4>
+          <p class="text-xs text-muted mb-3">Highlight an independent project, open-source work, or professional certificate.</p>
+          <div class="form-grid gap-3">
+            <label class="span-2">Project / Certification Title
+              <input type="text" id="aiGuideProjectTitle" placeholder="e.g. Distributed Task Queue or AWS Certified Solutions Architect">
+            </label>
+            <label class="span-2">Technologies Used / Issuer
+              <input type="text" id="aiGuideProjectTech" placeholder="e.g. Redis, Go, Docker (or Amazon Web Services)">
+            </label>
+            <label class="span-2">Description / Outcome
+              <textarea id="aiGuideProjectDesc" class="form-control text-xs" rows="3" placeholder="Brief 1-2 sentence description of what was built and its purpose."></textarea>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 7: Integrity Review & Generation -->
+        <div id="aiGuideStep7" class="ai-guide-step hidden">
+          <h4 class="font-bold text-sm mb-1">Ready to Generate Your Draft</h4>
+          <p class="text-xs text-muted mb-3">Review your answers before we construct your clean, authentic resume.</p>
+          
+          <div class="panel p-3 mb-3" style="background: var(--surface-2); border-radius: var(--radius-sm);">
+            <div class="text-xs mb-2"><strong>Target Role:</strong> <span id="aiGuideReviewRole">--</span></div>
+            <div class="text-xs mb-2"><strong>Candidate Name:</strong> <span id="aiGuideReviewName">--</span></div>
+            <div class="text-xs mb-2"><strong>Experience:</strong> <span id="aiGuideReviewExp">--</span></div>
+            <div class="text-xs mb-2"><strong>Skills:</strong> <span id="aiGuideReviewSkills">--</span></div>
+            <div class="text-xs"><strong>Education:</strong> <span id="aiGuideReviewEdu">--</span></div>
+          </div>
+
+          <div class="p-3 border rounded text-xs flex-row align-start gap-2" style="background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.3);">
+            <i data-lucide="shield-check" style="width: 18px; height: 18px; color: #10b981; flex-shrink: 0;"></i>
+            <div>
+              <strong>Zero-Fabrication Guarantee:</strong> SmartResume.ai never invents metrics, phantom companies, or fake degrees. Your draft will be grounded 100% in your actual responses.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-between" style="border-top: 1px solid var(--border); padding: 12px 20px; background: var(--surface);">
+        <button class="secondary-btn sm" type="button" id="aiGuideBackBtn" style="visibility: hidden;">
+          <i data-lucide="arrow-left"></i><span>Back</span>
+        </button>
+        <div class="flex-row align-center gap-2">
+          <button class="ghost-btn sm" type="button" id="aiGuideSkipBtn">Skip Step</button>
+          <button class="primary-btn sm" type="button" id="aiGuideNextBtn">
+            <span>Next</span><i data-lucide="arrow-right"></i>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -4828,7 +5077,12 @@
       </div>
 
       <div class="modal-footer flex-between" style="border-top: 1px solid var(--border); padding: 12px 20px; background: var(--surface);">
-        <button class="secondary-btn sm" type="button" id="cancelSyncProfileBtn">Cancel</button>
+        <div class="flex-row align-center gap-2">
+          <button class="secondary-btn sm" type="button" id="cancelSyncProfileBtn">Cancel</button>
+          <button class="ghost-btn sm text-danger" type="button" id="replaceResumeFromProfileBtn" title="Creates a version snapshot and replaces resume content with current profile data">
+            <i data-lucide="alert-triangle"></i><span>Replace with Profile Data</span>
+          </button>
+        </div>
         <div class="flex-row align-center gap-2">
           <button class="secondary-btn sm" type="button" id="applyAllSafeSyncProfileBtn" title="Apply only new additions, preserving your tailored resume sections">
             <i data-lucide="shield"></i><span>Apply All Safe Updates</span>

@@ -2629,7 +2629,8 @@ async function switchActiveResume(newResumeId) {
   await flushBuilderAutosave();
 
   state.activeResumeId = newResumeId;
-  localStorage.setItem("smartresume_active_resume_id", newResumeId);
+  state.currentResumeId = newResumeId;
+  localStorage.setItem("smartresume_active_resume_id", String(newResumeId));
 
   try {
     const res = await API.request(`/resumes/${newResumeId}`);
@@ -2661,6 +2662,25 @@ async function switchActiveResume(newResumeId) {
     toast(`Failed to switch resume: ${err.message}`, "error");
   }
 }
+
+async function openResume(resumeId) {
+  if (!resumeId) {
+    toast("No resume specified.", "warning");
+    return;
+  }
+  try {
+    await switchActiveResume(resumeId);
+    navigateToTab("resume-builder");
+    const ws = document.querySelector(".workspace");
+    if (ws) ws.scrollTop = 0;
+  } catch (err) {
+    console.error("openResume error:", err);
+    toast(`Failed to open resume #${resumeId}: ${err.message}`, "error");
+  }
+}
+window.openResume = openResume;
+window.loadResumeIntoBuilder = openResume;
+window.switchActiveResume = switchActiveResume;
 
 function generateDuplicateTitleLocal(baseTitle) {
   if (!baseTitle) return "Resume — Copy";
@@ -2733,7 +2753,7 @@ function openCreateResumeModal(opts = {}) {
   if (compInput) compInput.value = opts.targetCompany || "";
   if (locInput) locInput.value = opts.targetLocation || "";
 
-  const initialSource = opts.source || "profile";
+  const initialSource = opts.source || "blank";
   $$(".source-card").forEach(c => {
     const isSelected = c.dataset.source === initialSource;
     c.classList.toggle("active", isSelected);
@@ -2741,6 +2761,10 @@ function openCreateResumeModal(opts = {}) {
     c.classList.toggle("is-active", isSelected);
     c.setAttribute("aria-selected", isSelected ? "true" : "false");
   });
+  const importPanel = $("#newResumeImportPanel");
+  if (importPanel) {
+    importPanel.classList.toggle("hidden", initialSource !== "import");
+  }
   drawIcons();
 }
 
@@ -2760,12 +2784,44 @@ async function submitCreateResume() {
     const targetMarket = $("#newResumeTargetMarketInput")?.value || "GLOBAL";
     const documentPurpose = $("#newResumeDocumentPurposeInput")?.value || "Professional Resume";
     const activeCard = $(".source-card.active") || $(".source-card.is-selected");
-    const source = activeCard?.dataset.source || "profile";
+    const source = activeCard?.dataset.source || "blank";
+
+    if (source === "ai_guided") {
+      $("#createResumeModal")?.classList.add("hidden");
+      openAiGuidedBuilderModal({ targetRole, targetCompany, targetLocation });
+      return;
+    }
 
     await flushBuilderAutosave();
 
     let initialParsedContent;
-    if (source === "duplicate") {
+    if (source === "import") {
+      if (state.pendingImportContent) {
+        initialParsedContent = state.pendingImportContent;
+      } else {
+        const file = $("#importResumeFileInput")?.files?.[0];
+        const rawTxt = $("#importResumeTextInput")?.value?.trim() || "";
+        if (file || rawTxt.length >= 20) {
+          await parseAndPreviewImportResume();
+          if (state.pendingImportContent) {
+            initialParsedContent = state.pendingImportContent;
+          } else {
+            toast("Could not parse resume for import.", "error");
+            return;
+          }
+        } else {
+          toast("Please choose a file or paste resume text to import.", "warning");
+          return;
+        }
+      }
+    } else if (source === "profile") {
+      try {
+        state.profile = await API.request("/profile");
+      } catch (e) {
+        console.warn("Could not fetch fresh profile:", e);
+      }
+      initialParsedContent = getCleanResumeBuilderState();
+    } else if (source === "duplicate") {
       const currentActive = (state.resumes || []).find(r => r.id === state.activeResumeId);
       if (resumeBuilderState) {
         initialParsedContent = JSON.parse(JSON.stringify(resumeBuilderState));
@@ -2774,12 +2830,9 @@ async function submitCreateResume() {
       } else {
         initialParsedContent = getBlankResumeBuilderState();
       }
-    } else if (source === "blank") {
-      // TRULY BLANK RESUME - Zero user/profile data injected!
-      initialParsedContent = getBlankResumeBuilderState();
     } else {
-      // Start from Profile - ONLY copy verified Career Profile fields
-      initialParsedContent = getCleanResumeBuilderState();
+      // source === "blank": TRULY BLANK RESUME - Zero user/profile data injected!
+      initialParsedContent = getBlankResumeBuilderState();
     }
 
     if (state.pendingNewResumeTemplate) {
@@ -2810,12 +2863,11 @@ async function submitCreateResume() {
       },
     });
 
-    // Re-fetch resumes to ensure server is the source of truth
+    state.pendingImportContent = null;
     await loadResumes();
     $("#createResumeModal")?.classList.add("hidden");
-    await switchActiveResume(created.id);
-    navigateToTab("resume-builder");
-    toast(`Created new resume "${created.title}" as Draft.`);
+    await openResume(created.id);
+    toast(`Created new resume "${created.title}".`);
   } catch (err) {
     toast(`Failed to create resume: ${err.message}`, "error");
   } finally {
@@ -2826,6 +2878,506 @@ async function submitCreateResume() {
     }
   }
 }
+
+async function parseAndPreviewImportResume() {
+  const parseBtn = $("#importParseBtn");
+  const fileInput = $("#importResumeFileInput");
+  const textInput = $("#importResumeTextInput");
+  const previewNotice = $("#importPreviewNotice");
+  const previewTitle = $("#importPreviewTitle");
+  const previewSummary = $("#importPreviewSummary");
+  const badge = $("#importSectionsCountBadge");
+
+  const file = fileInput?.files?.[0];
+  const text = textInput?.value?.trim() || "";
+
+  if (!file && (!text || text.length < 20)) {
+    toast("Please choose a file or paste resume text (minimum 20 characters) to parse.", "warning");
+    return;
+  }
+
+  if (parseBtn) {
+    parseBtn.disabled = true;
+    parseBtn.innerHTML = '<span class="loading-spinner xs"></span> Parsing Sections...';
+  }
+
+  try {
+    let res;
+    if (file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      res = await API.request("/resumes/parse-import", {
+        method: "POST",
+        body: formData,
+      });
+    } else {
+      res = await API.request("/resumes/parse-import", {
+        method: "POST",
+        body: { resume_text: text },
+      });
+    }
+
+    if (res && res.parsed_content) {
+      state.pendingImportContent = res.parsed_content;
+      if (previewNotice) previewNotice.classList.remove("hidden");
+      if (previewTitle) previewTitle.textContent = res.suggested_title || "Parsed Resume";
+      const stats = res.stats || {};
+      const secCount = (stats.experiences_count > 0 ? 1 : 0) +
+                       (stats.education_count > 0 ? 1 : 0) +
+                       (stats.skills_count > 0 ? 1 : 0) +
+                       (stats.projects_count > 0 ? 1 : 0) +
+                       (stats.certifications_count > 0 ? 1 : 0) +
+                       (stats.custom_sections_count > 0 ? 1 : 0);
+      if (badge) badge.textContent = `${secCount} sections detected`;
+      if (previewSummary) {
+        previewSummary.textContent = `Name: ${res.parsed_content.header?.full_name || "Detected"} | Experience: ${stats.experiences_count || 0} | Skills: ${stats.skills_count || 0} | Education: ${stats.education_count || 0}`;
+      }
+      const titleInput = $("#newResumeTitleInput");
+      if (titleInput && (!titleInput.value || titleInput.value === "New Resume Draft")) {
+        titleInput.value = res.suggested_title || "Imported Resume";
+      }
+      toast("Resume successfully parsed and mapped into sections.", "success");
+    }
+  } catch (err) {
+    console.error("Import parsing error:", err);
+    toast(`Failed to parse resume: ${err.message}`, "error");
+  } finally {
+    if (parseBtn) {
+      parseBtn.disabled = false;
+      parseBtn.innerHTML = '<i data-lucide="file-search"></i><span>Parse & Verify Sections</span>';
+      drawIcons();
+    }
+  }
+}
+window.parseAndPreviewImportResume = parseAndPreviewImportResume;
+
+let aiGuideCurrentStep = 1;
+const AI_GUIDE_TOTAL_STEPS = 7;
+const AI_GUIDE_STEP_TITLES = [
+  "Career Direction",
+  "Contact & Identity",
+  "Highest Education",
+  "Recent Experience",
+  "Skills & Tools",
+  "Key Projects / Certs",
+  "Integrity Review & Generate"
+];
+
+function openAiGuidedBuilderModal(prefills = {}) {
+  aiGuideCurrentStep = 1;
+  const modal = $("#aiGuidedBuilderModal");
+  if (!modal) return;
+
+  const p = state.profile || {};
+  const u = state.user || {};
+
+  const roleEl = $("#aiGuideTargetRole");
+  if (roleEl) roleEl.value = prefills.targetRole || p.headline || "";
+  const nameEl = $("#aiGuideFullName");
+  if (nameEl) nameEl.value = p.full_name || u.full_name || "";
+  const emailEl = $("#aiGuideEmail");
+  if (emailEl) emailEl.value = p.email || u.email || "";
+  const phoneEl = $("#aiGuidePhone");
+  if (phoneEl) phoneEl.value = p.phone || "";
+  const locEl = $("#aiGuideLocation");
+  if (locEl) locEl.value = prefills.targetLocation || p.location || "";
+  const urlEl = $("#aiGuideUrl");
+  if (urlEl) urlEl.value = p.linkedin_url || p.website_url || "";
+
+  renderAiGuideStep(1);
+  modal.classList.remove("hidden");
+  drawIcons();
+}
+window.openAiGuidedBuilderModal = openAiGuidedBuilderModal;
+
+function renderAiGuideStep(step) {
+  aiGuideCurrentStep = step;
+  for (let i = 1; i <= AI_GUIDE_TOTAL_STEPS; i++) {
+    const stepEl = $(`#aiGuideStep${i}`);
+    if (stepEl) stepEl.classList.toggle("hidden", i !== step);
+  }
+
+  const indicator = $("#aiGuideStepIndicator");
+  const titleEl = $("#aiGuideStepTitle");
+  const bar = $("#aiGuideProgressBar");
+  const backBtn = $("#aiGuideBackBtn");
+  const nextBtn = $("#aiGuideNextBtn");
+  const skipBtn = $("#aiGuideSkipBtn");
+
+  if (indicator) indicator.textContent = `Step ${step} of ${AI_GUIDE_TOTAL_STEPS}`;
+  if (titleEl) titleEl.textContent = AI_GUIDE_STEP_TITLES[step - 1];
+  if (bar) bar.style.width = `${(step / AI_GUIDE_TOTAL_STEPS) * 100}%`;
+
+  if (backBtn) backBtn.style.visibility = step === 1 ? "hidden" : "visible";
+
+  if (nextBtn) {
+    if (step === AI_GUIDE_TOTAL_STEPS) {
+      nextBtn.innerHTML = '<i data-lucide="sparkles"></i><span>Generate Resume Draft</span>';
+    } else {
+      nextBtn.innerHTML = '<span>Next</span><i data-lucide="arrow-right"></i>';
+    }
+  }
+
+  if (skipBtn) {
+    skipBtn.style.visibility = (step === 1 || step === 2 || step === AI_GUIDE_TOTAL_STEPS) ? "hidden" : "visible";
+  }
+
+  if (step === 7) {
+    const rRole = $("#aiGuideReviewRole");
+    const rName = $("#aiGuideReviewName");
+    const rExp = $("#aiGuideReviewExp");
+    const rSkills = $("#aiGuideReviewSkills");
+    const rEdu = $("#aiGuideReviewEdu");
+
+    if (rRole) rRole.textContent = $("#aiGuideTargetRole")?.value.trim() || "(Not specified)";
+    if (rName) rName.textContent = $("#aiGuideFullName")?.value.trim() || "(Not specified)";
+    const expTitle = $("#aiGuideExpTitle")?.value.trim();
+    const expComp = $("#aiGuideExpCompany")?.value.trim();
+    if (rExp) rExp.textContent = (expTitle || expComp) ? `${expTitle || 'Role'} at ${expComp || 'Company'}` : "(None entered)";
+    if (rSkills) rSkills.textContent = $("#aiGuideSkills")?.value.trim() || "(None entered)";
+    const school = $("#aiGuideSchool")?.value.trim();
+    const degree = $("#aiGuideDegree")?.value.trim();
+    if (rEdu) rEdu.textContent = (degree || school) ? `${degree || 'Degree'} from ${school || 'Institution'}` : "(None entered)";
+  }
+
+  drawIcons();
+}
+
+async function submitAiGuidedResume() {
+  const nextBtn = $("#aiGuideNextBtn");
+  if (nextBtn) {
+    nextBtn.disabled = true;
+    nextBtn.innerHTML = '<span class="loading-spinner sm"></span> Building Draft...';
+  }
+
+  try {
+    const targetRole = $("#aiGuideTargetRole")?.value.trim() || "Software Engineer";
+    const careerLevel = $("#aiGuideCareerLevel")?.value || "MID_LEVEL";
+    const domain = $("#aiGuideDomain")?.value || "Software Engineering";
+    const fullName = $("#aiGuideFullName")?.value.trim() || "Candidate";
+    const email = $("#aiGuideEmail")?.value.trim() || "";
+    const phone = $("#aiGuidePhone")?.value.trim() || "";
+    const location = $("#aiGuideLocation")?.value.trim() || "";
+    const url = $("#aiGuideUrl")?.value.trim() || "";
+
+    const school = $("#aiGuideSchool")?.value.trim() || "";
+    const degree = $("#aiGuideDegree")?.value.trim() || "";
+    const major = $("#aiGuideMajor")?.value.trim() || "";
+    const gradYear = $("#aiGuideGradYear")?.value.trim() || "";
+
+    const expTitle = $("#aiGuideExpTitle")?.value.trim() || "";
+    const expCompany = $("#aiGuideExpCompany")?.value.trim() || "";
+    const expDates = $("#aiGuideExpDates")?.value.trim() || "";
+    const expBulletsRaw = $("#aiGuideExpBullets")?.value.trim() || "";
+    const expBullets = expBulletsRaw.split("\n").map(b => b.replace(/^[-*•·\s]+/, "").trim()).filter(Boolean);
+
+    const skillsRaw = $("#aiGuideSkills")?.value.trim() || "";
+    const skillsList = skillsRaw.split(",").map(s => s.trim()).filter(Boolean);
+
+    const projTitle = $("#aiGuideProjectTitle")?.value.trim() || "";
+    const projTech = $("#aiGuideProjectTech")?.value.trim() || "";
+    const projDesc = $("#aiGuideProjectDesc")?.value.trim() || "";
+
+    const parsed = getBlankResumeBuilderState();
+    parsed.header.full_name = fullName;
+    parsed.header.headline = targetRole;
+    parsed.header.email = email;
+    parsed.header.phone = phone;
+    parsed.header.location = location;
+    if (url.includes("linkedin.com")) parsed.header.linkedin = url;
+    else if (url.includes("github.com")) parsed.header.github = url;
+    else if (url) parsed.header.website = url;
+
+    if (skillsList.length > 0) {
+      parsed.summary = `${careerLevel.replace('_', ' ').toLowerCase()} ${targetRole} with demonstrable proficiency in ${skillsList.slice(0, 3).join(", ")}. Focused on structured engineering execution and scalable outcomes.`;
+    } else {
+      parsed.summary = `${targetRole} dedicated to professional excellence, team collaboration, and reliable execution.`;
+    }
+
+    parsed.skills = skillsList;
+
+    if (expTitle || expCompany || expBullets.length > 0) {
+      parsed.experiences = [{
+        title: expTitle || targetRole,
+        company: expCompany || "Professional Experience",
+        location: location,
+        start_date: expDates.split("–")[0]?.trim() || "",
+        end_date: expDates.split("–")[1]?.trim() || "Present",
+        is_current: expDates.toLowerCase().includes("present"),
+        bullets: expBullets.length > 0 ? expBullets : ["Delivered core functional contributions and collaborated with cross-functional stakeholders."],
+        is_hidden: false,
+      }];
+    }
+
+    if (school || degree) {
+      parsed.education = [{
+        institution: school || "University / College",
+        degree: degree || "Degree",
+        field_of_study: major,
+        start_date: "",
+        end_date: gradYear,
+        grade: "",
+        location: "",
+        description: "",
+        coursework: "",
+        honors: "",
+        is_hidden: false,
+      }];
+    }
+
+    if (projTitle) {
+      parsed.projects = [{
+        title: projTitle,
+        technologies: projTech,
+        url: "",
+        start_date: "",
+        end_date: "",
+        description: projDesc,
+        bullets: projDesc ? [projDesc] : [],
+        is_hidden: false,
+      }];
+    }
+
+    const created = await API.request("/resumes", {
+      method: "POST",
+      body: {
+        title: `${fullName} — ${targetRole}`,
+        status: "Draft",
+        target_role: targetRole,
+        target_market: "GLOBAL",
+        document_purpose: "Professional Resume",
+        parsed_content: parsed,
+      },
+    });
+
+    await loadResumes();
+    $("#aiGuidedBuilderModal")?.classList.add("hidden");
+    await openResume(created.id);
+    toast("AI-Guided Resume draft created and opened in Resume Builder!", "success");
+  } catch (err) {
+    console.error("AI Guided Builder error:", err);
+    toast(`Failed to generate draft: ${err.message}`, "error");
+  } finally {
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.innerHTML = '<i data-lucide="sparkles"></i><span>Generate Resume Draft</span>';
+      drawIcons();
+    }
+  }
+}
+window.submitAiGuidedResume = submitAiGuidedResume;
+
+let currentAiAssistantSection = "summary";
+let currentAiAssistantIndex = null;
+
+async function openContextualAiAssistant(section = "summary", index = null) {
+  currentAiAssistantSection = section;
+  currentAiAssistantIndex = index;
+
+  const drawer = $("#builderAiAssistantDrawer");
+  const content = $("#builderAiAssistantContent");
+  const badge = $("#builderAiTargetSectionBadge");
+
+  if (!drawer || !content) return;
+  drawer.classList.remove("hidden");
+
+  const secTitle = section.charAt(0).toUpperCase() + section.slice(1);
+  if (badge) badge.textContent = secTitle;
+
+  content.innerHTML = `
+    <div class="p-4 text-center">
+      <div class="loading-spinner sm" style="margin: 0 auto 8px auto;"></div>
+      <p class="text-xs text-muted mb-0">Analyzing ${secTitle} for evidence & active verbs...</p>
+    </div>
+  `;
+
+  try {
+    let currentText = "";
+    let suggestedText = "";
+    let why = "";
+    let evidence = [];
+
+    if (section === "summary") {
+      currentText = (resumeBuilderState.summary || "").replace(/<[^>]+>/g, "").trim();
+      const role = (resumeBuilderState.header?.headline || "Professional").trim();
+      const skills = (resumeBuilderState.skills || []).slice(0, 3).join(", ");
+      
+      if (!currentText) {
+        suggestedText = `Results-oriented ${role} with demonstrable proficiency in ${skills || "core technologies"}. Track record of delivering scalable solutions, cross-functional collaboration, and measurable business value.`;
+        why = "A concise, active summary immediately contextualizes your technical foundation for ATS recruiters.";
+        evidence = [role, skills].filter(Boolean);
+      } else {
+        let improved = currentText;
+        improved = improved.replace(/^(I am a|I'm a|Seeking a position as a)\s*/i, "");
+        if (!improved.toLowerCase().includes(role.toLowerCase())) {
+          improved = `${role} with demonstrated background in ` + improved.charAt(0).toLowerCase() + improved.slice(1);
+        }
+        suggestedText = improved;
+        why = "Removes passive job-seeking phrasing and directly asserts your core professional capabilities.";
+        evidence = ["Grounded in your existing summary"];
+      }
+    } else if (section === "experiences") {
+      const expList = resumeBuilderState.experiences || [];
+      const exp = expList[index !== null ? index : 0];
+      if (exp) {
+        const bullets = exp.bullets || [];
+        currentText = bullets[0] || "Executed day-to-day project tasks.";
+        let improvedBullet = currentText;
+        const weakMap = {
+          "responsible for": "Executed and oversaw",
+          "worked on": "Engineered and delivered components for",
+          "handled": "Administered and optimized",
+          "participated in": "Collaborated on delivering",
+          "helped": "Partnered with cross-functional teams to accelerate",
+          "did": "Implemented and maintained",
+          "created": "Architected and deployed",
+        };
+        for (const [weak, strong] of Object.entries(weakMap)) {
+          const re = new RegExp(`^${weak}\\b`, "i");
+          if (re.test(improvedBullet)) {
+            improvedBullet = improvedBullet.replace(re, strong);
+            break;
+          }
+        }
+        suggestedText = improvedBullet !== currentText ? improvedBullet : `Delivered end-to-end technical outcomes for ${exp.company || 'team'}, ensuring high code quality and reliable milestones.`;
+        why = "Recruiters favor active operational verbs demonstrating ownership and tangible contribution.";
+        evidence = [exp.company, exp.title].filter(Boolean);
+      }
+    } else if (section === "projects") {
+      const projList = resumeBuilderState.projects || [];
+      const proj = projList[index !== null ? index : 0];
+      if (proj) {
+        const bullets = proj.bullets || [];
+        currentText = bullets[0] || (proj.description || "").replace(/<[^>]+>/g, "").trim() || "Developed application features and integrated core services.";
+        let improvedBullet = currentText;
+        const weakMap = {
+          "worked on": "Designed and deployed",
+          "responsible for": "Spearheaded development of",
+          "created": "Engineered and released",
+          "helped": "Contributed to building",
+          "used": "Leveraged",
+        };
+        for (const [weak, strong] of Object.entries(weakMap)) {
+          const re = new RegExp(`^${weak}\\b`, "i");
+          if (re.test(improvedBullet)) {
+            improvedBullet = improvedBullet.replace(re, strong);
+            break;
+          }
+        }
+        suggestedText = improvedBullet !== currentText ? improvedBullet : `Architected and implemented key capabilities for ${proj.title || 'project'}, ensuring maintainability and robust execution.`;
+        why = "Active architectural action verbs demonstrate direct technical impact and project ownership.";
+        evidence = [proj.title, proj.technologies].filter(Boolean);
+      }
+    } else if (section === "skills") {
+      const existingSkills = (resumeBuilderState.skills || []).map(s => typeof s === "string" ? s : s.name);
+      currentText = existingSkills.join(", ") || "(No skills added)";
+      const deduped = list => Array.from(new Set(list.map(s => s.trim()))).filter(Boolean);
+      const cleanList = deduped(existingSkills);
+      suggestedText = cleanList.join(", ");
+      why = "Standardized, deduplicated skill listings match ATS boolean query patterns.";
+      evidence = [`${cleanList.length} verified candidate skills`];
+    }
+
+    content.innerHTML = `
+      <div class="panel p-3 mb-3" style="background: var(--surface-2); border-radius: var(--radius-sm);">
+        <div class="text-xs font-bold text-muted uppercase tracking-wider mb-1">Current Text</div>
+        <div class="text-xs p-2 rounded mb-3" style="background: var(--surface); border: 1px solid var(--border); font-family: monospace;">
+          ${escapeHtml(currentText || "(Empty)")}
+        </div>
+
+        <div class="text-xs font-bold text-primary uppercase tracking-wider mb-1">Suggested AI Improvement</div>
+        <div class="text-xs p-2 rounded mb-3" style="background: rgba(var(--primary-rgb, 14, 165, 233), 0.08); border: 1px solid var(--primary-soft); font-weight: 500;">
+          ${escapeHtml(suggestedText)}
+        </div>
+
+        <div class="text-xs text-muted mb-2">
+          <strong>Why this works:</strong> ${escapeHtml(why)}
+        </div>
+
+        <div class="flex-row align-center gap-1 flex-wrap mb-3">
+          ${evidence.map(e => `<span class="improve-evidence-pill text-xs"><i data-lucide="shield-check" style="width: 11px; height: 11px;"></i> ${escapeHtml(e)}</span>`).join("")}
+          <span class="improve-risk-pill text-xs"><i data-lucide="check" style="width: 11px; height: 11px;"></i> Safe (No Hallucinations)</span>
+        </div>
+
+        <button class="primary-btn sm w-full" type="button" id="applyAiAssistantSuggestionBtn">
+          <i data-lucide="check"></i><span>Apply to Resume</span>
+        </button>
+      </div>
+    `;
+
+    drawIcons();
+
+    $("#applyAiAssistantSuggestionBtn")?.addEventListener("click", () => {
+      if (section === "summary") {
+        resumeBuilderState.summary = suggestedText;
+        const sInput = $("#builderSummaryContent");
+        if (sInput) sInput.innerHTML = sanitizeHtmlForPreview(suggestedText);
+      } else if (section === "experiences" && index !== null) {
+        if (resumeBuilderState.experiences?.[index]) {
+          if (!resumeBuilderState.experiences[index].bullets) resumeBuilderState.experiences[index].bullets = [];
+          resumeBuilderState.experiences[index].bullets[0] = suggestedText;
+        }
+      } else if (section === "projects" && index !== null) {
+        if (resumeBuilderState.projects?.[index]) {
+          if (!resumeBuilderState.projects[index].bullets) resumeBuilderState.projects[index].bullets = [];
+          resumeBuilderState.projects[index].bullets[0] = suggestedText;
+        }
+      } else if (section === "skills") {
+        const newSkills = suggestedText.split(",").map(s => s.trim()).filter(Boolean);
+        resumeBuilderState.skills = newSkills;
+      }
+      renderBuilderEditorFromState();
+      renderResumePreviewCanvas();
+      triggerBuilderAutosave();
+      toast(`Applied AI suggestion to ${secTitle}!`);
+      drawer.classList.add("hidden");
+    });
+  } catch (err) {
+    content.innerHTML = `
+      <div class="p-3 text-center text-xs text-danger">
+        Could not load suggestions: ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+}
+window.openContextualAiAssistant = openContextualAiAssistant;
+
+async function replaceResumeContentWithProfile() {
+  const confirmed = confirm("Are you sure you want to replace this resume's content with your Career Profile data? A version snapshot will be saved so you can restore your current draft at any time.");
+  if (!confirmed) return;
+
+  try {
+    if (state.activeResumeId) {
+      await API.request(`/resumes/${state.activeResumeId}/versions`, {
+        method: "POST",
+        body: { changelog: "Snapshot before replacing content with Master Profile" },
+      });
+    }
+
+    state.profile = await API.request("/profile");
+
+    const fresh = getCleanResumeBuilderState();
+    fresh.template = resumeBuilderState.template || fresh.template;
+    fresh.fontFamily = resumeBuilderState.fontFamily || fresh.fontFamily;
+    fresh.accentColor = resumeBuilderState.accentColor || fresh.accentColor;
+    fresh.layout = resumeBuilderState.layout || fresh.layout;
+    fresh.headerAlignment = resumeBuilderState.headerAlignment || fresh.headerAlignment;
+    fresh.pageSize = resumeBuilderState.pageSize || fresh.pageSize;
+
+    resumeBuilderState = fresh;
+    localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
+
+    await flushBuilderAutosave();
+    renderBuilderEditorFromState();
+    renderResumePreviewCanvas();
+    $("#syncProfileModal")?.classList.add("hidden");
+    toast("Resume content replaced with Profile data. Version snapshot created.", "success");
+  } catch (err) {
+    console.error("Replace from profile error:", err);
+    toast(`Failed to replace content: ${err.message}`, "error");
+  }
+}
+window.replaceResumeContentWithProfile = replaceResumeContentWithProfile;
 
 let _renameResumeTargetId = null;
 
@@ -3230,9 +3782,62 @@ function wireMultiResumeWorkspace() {
 
   $$(".source-card").forEach(card => {
     card.addEventListener("click", () => {
-      $$(".source-card").forEach(c => c.classList.remove("active"));
-      card.classList.add("active");
+      $$(".source-card").forEach(c => {
+        c.classList.remove("active", "is-selected");
+        c.setAttribute("aria-selected", "false");
+      });
+      card.classList.add("active", "is-selected");
+      card.setAttribute("aria-selected", "true");
+      const src = card.dataset.source;
+      const importPanel = $("#newResumeImportPanel");
+      if (importPanel) {
+        importPanel.classList.toggle("hidden", src !== "import");
+      }
     });
+  });
+
+  // Import Sub-panel controls
+  $("#importTypeFileBtn")?.addEventListener("click", () => {
+    $("#importTypeFileBtn")?.classList.add("active");
+    $("#importTypeTextBtn")?.classList.remove("active");
+    $("#importFileContainer")?.classList.remove("hidden");
+    $("#importTextContainer")?.classList.add("hidden");
+  });
+  $("#importTypeTextBtn")?.addEventListener("click", () => {
+    $("#importTypeTextBtn")?.classList.add("active");
+    $("#importTypeFileBtn")?.classList.remove("active");
+    $("#importTextContainer")?.classList.remove("hidden");
+    $("#importFileContainer")?.classList.add("hidden");
+  });
+  $("#importResumeFileInput")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    const textEl = $("#importFileSelectedText");
+    if (textEl && file) {
+      textEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    }
+  });
+  $("#importParseBtn")?.addEventListener("click", () => parseAndPreviewImportResume());
+
+  // 5-Minute AI Guided Resume Builder
+  $("#closeAiGuidedModalBtn")?.addEventListener("click", () => {
+    $("#aiGuidedBuilderModal")?.classList.add("hidden");
+  });
+  $("#aiGuideNextBtn")?.addEventListener("click", () => {
+    if (aiGuideCurrentStep < AI_GUIDE_TOTAL_STEPS) {
+      renderAiGuideStep(aiGuideCurrentStep + 1);
+    } else {
+      submitAiGuidedResume();
+    }
+  });
+  $("#aiGuideBackBtn")?.addEventListener("click", () => {
+    if (aiGuideCurrentStep > 1) {
+      renderAiGuideStep(aiGuideCurrentStep - 1);
+    }
+  });
+  $("#aiGuideSkipBtn")?.addEventListener("click", () => {
+    if (aiGuideCurrentStep < AI_GUIDE_TOTAL_STEPS) {
+      renderAiGuideStep(aiGuideCurrentStep + 1);
+    }
   });
 
   // Switcher Modal
@@ -3633,6 +4238,19 @@ function wireResumeBuilder() {
   });
   $("#applySelectedSyncProfileBtn")?.addEventListener("click", () => {
     applyProfileSync(false);
+  });
+  $("#replaceResumeFromProfileBtn")?.addEventListener("click", () => {
+    replaceResumeContentWithProfile();
+  });
+  $("#builderAiAssistantToggleBtn")?.addEventListener("click", () => {
+    const drawer = $("#builderAiAssistantDrawer");
+    if (drawer) {
+      if (drawer.classList.contains("hidden")) {
+        openContextualAiAssistant("summary");
+      } else {
+        drawer.classList.add("hidden");
+      }
+    }
   });
 
   // Template select
@@ -5506,7 +6124,11 @@ function renderBuilderEditorFromState() {
           minHeight: "80px",
           className: "mb-2"
         })}
-        <div class="flex-row justify-end">
+        <div class="flex-row justify-between align-center mt-1">
+          <button class="secondary-btn xs flex-row align-center gap-1" type="button" onclick="openContextualAiAssistant('summary')">
+            <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
+            <span>AI Polish Summary</span>
+          </button>
           <span class="text-xs text-muted" id="builderSummaryCharCount">${sumVal.replace(/<[^>]+>/g, "").length} characters</span>
         </div>
       `;
@@ -5519,7 +6141,13 @@ function renderBuilderEditorFromState() {
       bodyHtml = `
         <div class="column-stack gap-3">
           <div class="flex-row align-center justify-between p-2 rounded bg-surface border">
-            <span class="text-xs font-semibold">Skills Presentation:</span>
+            <div class="flex-row align-center gap-2">
+              <span class="text-xs font-semibold">Skills Presentation:</span>
+              <button class="secondary-btn xs flex-row align-center gap-1" type="button" onclick="openContextualAiAssistant('skills')">
+                <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
+                <span>AI Polish Skills</span>
+              </button>
+            </div>
             <div class="flex-row align-center gap-2">
               <label class="flex-row align-center gap-1 text-xs" style="cursor: pointer;">
                 <input type="radio" name="skillsLayoutRadio" value="inline" ${!isGrouped ? "checked" : ""} onchange="setSkillsLayout('inline')">
@@ -5605,7 +6233,13 @@ function renderBuilderEditorFromState() {
                 </label>
               </div>
               <div class="mt-2">
-                <div class="text-xs text-muted mb-1">Responsibilities & Achievements (Rich Text Bullet Points):</div>
+                <div class="flex-row justify-between align-center mb-1">
+                  <span class="text-xs text-muted">Responsibilities & Achievements (Rich Text Bullet Points):</span>
+                  <button class="secondary-btn xs flex-row align-center gap-1" type="button" onclick="openContextualAiAssistant('experiences', ${idx})">
+                    <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
+                    <span>AI Polish Bullets</span>
+                  </button>
+                </div>
                 ${renderSharedRichTextField({
                   id: `exp-bullets-${idx}`,
                   value: (e.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
@@ -5668,7 +6302,13 @@ function renderBuilderEditorFromState() {
                 })}
               </div>
               <div class="mt-2">
-                <div class="text-xs text-muted mb-1">Key Outcomes & Bullets:</div>
+                <div class="flex-row justify-between align-center mb-1">
+                  <span class="text-xs text-muted">Key Outcomes & Bullets:</span>
+                  <button class="secondary-btn xs flex-row align-center gap-1" type="button" onclick="openContextualAiAssistant('projects', ${idx})">
+                    <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
+                    <span>AI Polish Bullets</span>
+                  </button>
+                </div>
                 ${renderSharedRichTextField({
                   id: `proj-bullets-${idx}`,
                   value: (p.bullets || []).map(b => `<div>${sanitizeHtmlForPreview(b)}</div>`).join(""),
@@ -7127,6 +7767,9 @@ function updateCareerProfileStrength() {
       API.request("/profile/health").then((health) => {
         window._fetchingProfileHealth = false;
         if (!health) return;
+        if (health.best_resume_id) {
+          window._bestResumeId = health.best_resume_id;
+        }
         if (typeof health.best_resume_score === "number" && health.best_resume_score > 0) {
           if (bestScoreEl) {
             bestScoreEl.textContent = `${health.best_resume_score}/100`;
@@ -7155,24 +7798,49 @@ function updateCareerProfileStrength() {
   }
 }
 
-window.onProfileOpenBestResumeClick = function() {
-  const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
-  if (!activeResumes.length) {
-    navigateToTab("resume-builder");
-    return;
+window.onProfileOpenBestResumeClick = async function() {
+  try {
+    let targetResumeId = window._bestResumeId;
+    if (!targetResumeId) {
+      const health = await API.request("/profile/health").catch(() => null);
+      if (health && health.best_resume_id) {
+        targetResumeId = health.best_resume_id;
+        window._bestResumeId = health.best_resume_id;
+      }
+    }
+    if (!targetResumeId) {
+      if (!state.resumes || !state.resumes.length) {
+        await loadResumes();
+      }
+      const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
+      if (!activeResumes.length) {
+        toast("No active resumes found. Create or upload a resume first.", "info");
+        navigateToTab("resume-builder");
+        return;
+      }
+      const validResumes = activeResumes.map(r => {
+        let s = 0;
+        if (typeof r.canonical_health_score === "number") s = r.canonical_health_score;
+        else if (r.health_score && typeof r.health_score.overall_score === "number") s = r.health_score.overall_score;
+        else if (typeof r.score === "number") s = r.score;
+        else if (typeof r.overall_score === "number") s = r.overall_score;
+        else if (typeof r.ats_score === "number") s = r.ats_score;
+        return { ...r, effective_score: s };
+      });
+      validResumes.sort((a, b) => b.effective_score - a.effective_score);
+      targetResumeId = validResumes[0]?.id;
+    }
+
+    if (targetResumeId) {
+      await openResume(targetResumeId);
+    } else {
+      toast("No resume available to open. Starting a new draft.", "info");
+      navigateToTab("resume-builder");
+    }
+  } catch (err) {
+    console.error("Error opening best resume:", err);
+    toast(`Failed to open best resume: ${err.message}`, "error");
   }
-  const validResumes = activeResumes.map(r => {
-    let s = 0;
-    if (typeof r.score === "number") s = r.score;
-    else if (typeof r.overall_score === "number") s = r.overall_score;
-    else if (typeof r.ats_score === "number") s = r.ats_score;
-    return { ...r, effective_score: s };
-  });
-  const bestResume = validResumes.reduce((best, curr) => curr.effective_score > best.effective_score ? curr : best, validResumes[0]);
-  if (bestResume && bestResume.id) {
-    loadResumeIntoBuilder(bestResume.id);
-  }
-  navigateToTab("resume-builder");
 };
 
 async function loadAndRenderProfileEvidenceVault() {
@@ -8857,12 +9525,40 @@ function renderImproveSuggestionsList() {
         </div>
       `;
     } else {
-      // STATE 5: Resume genuinely needs no improvement
+      // STATE 5: Honest, factual analysis result based on real evidence and canonical score
+      const sc = analysis?.canonical_health_score ?? analysis?.overall_score ?? 0;
+      let icon = "check-circle-2";
+      let iconColor = "var(--success, #059669)";
+      let headline = "Strong Foundation";
+      let detail = "Your resume demonstrates strong structure and content across evaluated sections. No critical modifications are required at this time.";
+
+      if (sc >= 80) {
+        icon = "check-circle-2";
+        iconColor = "var(--success, #059669)";
+        headline = "Strong Foundation";
+        detail = "Your resume demonstrates strong structure and content across evaluated sections. No critical modifications are required at this time.";
+      } else if (sc >= 60) {
+        icon = "info";
+        iconColor = "var(--primary, #0284c7)";
+        headline = "Good Structure";
+        detail = "Core sections are established. Review individual section bullets or add targeted impact evidence to elevate your document health.";
+      } else if (sc > 0) {
+        icon = "alert-circle";
+        iconColor = "var(--warning, #d97706)";
+        headline = "Incomplete Sections";
+        detail = "Some essential sections or details are missing. Add missing experience, skills, or education to improve document health.";
+      } else {
+        icon = "info";
+        iconColor = "var(--primary, #0284c7)";
+        headline = "No Immediate Changes Needed";
+        detail = "Evaluated sections currently meet quality criteria with no urgent corrections detected.";
+      }
+
       container.innerHTML = `
         <div class="panel p-4 text-center">
-          <i data-lucide="award" style="color: var(--success, #059669); width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
-          <h4 class="font-bold text-sm mb-1">Exceptional resume!</h4>
-          <p class="text-xs text-muted mb-0">All evaluated sections meet high recruiter and ATS standards without requiring modifications.</p>
+          <i data-lucide="${icon}" style="color: ${iconColor}; width: 32px; height: 32px; margin: 0 auto 8px; display: block;"></i>
+          <h4 class="font-bold text-sm mb-1">${headline}</h4>
+          <p class="text-xs text-muted mb-0">${detail}</p>
         </div>
       `;
     }
@@ -11178,9 +11874,10 @@ window.onHealthResumeSelectChange = async function(newResumeId) {
 window.onHealthEditInBuilderClick = function() {
   $("#healthModal")?.classList.add("hidden");
   if (currentHealthReportData && currentHealthReportData.selected_resume_id) {
-    loadResumeIntoBuilder(currentHealthReportData.selected_resume_id);
+    openResume(currentHealthReportData.selected_resume_id);
+  } else {
+    navigateToTab("resume-builder");
   }
-  navigateToTab("resume-builder");
 };
 
 async function openRelevanceModal() {

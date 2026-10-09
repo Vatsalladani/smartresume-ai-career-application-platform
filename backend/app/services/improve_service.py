@@ -24,6 +24,7 @@ from app.schemas.ai import (
     UndoImprovementPayload,
     UndoImprovementResponse,
 )
+from app.services.data_quality_service import audit_resume_data_quality
 from app.services.resume_service import add_version
 from app.services.scoring_service import (
     calculate_evidence_based_score,
@@ -677,7 +678,29 @@ def _deterministic_improvements(
     skills = [clean_skill_name(s) for s in resume_data.get("skills") or [] if clean_skill_name(s)]
 
     # 1. Headline Review & Options
-    if not current_headline:
+    candidate_name = (hdr.get("full_name") or "").strip()
+    if candidate_name and current_headline and candidate_name.lower() == current_headline.lower():
+        top_skill = skills[0] if skills else domain
+        suggested_headline = f"{target_role} | {top_skill}"
+        suggestions.append(ImprovementSuggestion(
+            id=f"sugg_{s_idx}",
+            section="headline",
+            target_id="header_headline",
+            priority="HIGH",
+            problem=f"Candidate name ('{current_headline}') is mistakenly repeated as your professional headline.",
+            why="Recruiters require a role-focused headline to immediately recognize your professional specialty.",
+            current=current_headline,
+            suggested=suggested_headline,
+            before=current_headline,
+            after=suggested_headline,
+            evidence=[f"Based on target role '{target_role}' and verified skills: {top_skill}"],
+            risk="Safe",
+            change_type="clarity",
+            action="apply",
+        ))
+        s_idx += 1
+        analyzed_sections["headline"] += 1
+    elif not current_headline:
         top_skill = skills[0] if skills else domain
         suggested_headline = f"{target_role} | {top_skill}"
         suggestions.append(ImprovementSuggestion(

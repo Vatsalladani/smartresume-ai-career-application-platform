@@ -22,6 +22,337 @@ SECTION_HINTS = {
 }
 
 
+def parse_resume_to_builder_format(text: str) -> dict[str, Any]:
+    """Parses raw resume text into the canonical Resume Builder state format."""
+    cleaned = clean_text(text)
+    raw_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    if not raw_lines:
+        return {}
+
+    email_match = re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", cleaned)
+    phone_match = re.search(r"(?:\+?\(?\d[\d\s().-]{6,}\d)", cleaned)
+    linkedin_match = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/([a-zA-Z0-9_\-]+)", cleaned)
+    github_match = re.search(r"(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9_\-]+)", cleaned)
+    website_match = re.search(r"(?:https?://)(?:www\.)?(?!linkedin|github)[a-zA-Z0-9.\-_/]+", cleaned)
+
+    email = email_match.group(0) if email_match else ""
+    phone = phone_match.group(0) if phone_match else ""
+    linkedin = f"https://linkedin.com/in/{linkedin_match.group(1)}" if linkedin_match else ""
+    github = f"https://github.com/{github_match.group(1)}" if github_match else ""
+    website = website_match.group(0) if website_match else ""
+
+    SECTION_MAP = {
+        "summary": ["summary", "professional summary", "about me", "profile", "overview", "career objective"],
+        "experiences": ["experience", "work experience", "professional experience", "employment", "work history"],
+        "education": ["education", "academic background", "academics", "qualifications", "education & credentials"],
+        "skills": ["skills", "technical skills", "core competencies", "skills & tools", "technologies", "expertise"],
+        "projects": ["projects", "personal projects", "academic projects", "key projects", "portfolio"],
+        "certifications": ["certifications", "licenses", "certificates", "credentials"],
+        "languages": ["languages", "language proficiency"],
+    }
+
+    section_blocks: dict[str, list[str]] = {}
+    custom_sections: list[dict[str, Any]] = []
+    current_sec = "header"
+    header_lines: list[str] = []
+
+    for line in raw_lines:
+        norm = line.lower().strip(" :–-—#*")
+        matched_sec = None
+        for sec_key, aliases in SECTION_MAP.items():
+            if norm in aliases or any(norm.startswith(a + " ") or norm.endswith(" " + a) for a in aliases if len(a) > 4):
+                matched_sec = sec_key
+                break
+
+        if matched_sec:
+            current_sec = matched_sec
+            if current_sec not in section_blocks:
+                section_blocks[current_sec] = []
+            continue
+
+        if len(norm) > 3 and (line.isupper() or line.startswith("#") or line.endswith(":")) and len(line.split()) <= 4:
+            clean_title = line.strip(" :#*").title()
+            if clean_title.lower() not in {"phone", "email", "address", "contact", "links", "location"}:
+                current_sec = f"custom::{clean_title}"
+                continue
+
+        if current_sec == "header":
+            header_lines.append(line)
+        elif current_sec.startswith("custom::"):
+            c_title = current_sec.split("custom::", 1)[1]
+            existing = next((cs for cs in custom_sections if cs["title"] == c_title), None)
+            if not existing:
+                existing = {"id": f"custom_{len(custom_sections)+1}", "title": c_title, "content": "", "is_hidden": False}
+                custom_sections.append(existing)
+            existing["content"] = (existing["content"] + "\n" + line).strip()
+        else:
+            section_blocks.setdefault(current_sec, []).append(line)
+
+    full_name = ""
+    headline = ""
+    location = ""
+
+    candidate_name_lines = []
+    for hl in header_lines:
+        segments = [seg.strip() for seg in re.split(r"[|•·]", hl) if seg.strip()]
+        for seg in segments:
+            if email and email in seg:
+                continue
+            if phone and phone in seg:
+                continue
+            if "linkedin.com" in seg.lower() or "github.com" in seg.lower() or seg.startswith("http"):
+                continue
+            if re.search(r"^[a-zA-Z\s.-]+,\s*[a-zA-Z\s.-]+$", seg) and len(seg.split()) <= 5:
+                if not location:
+                    location = seg
+                    continue
+            if not any(k in seg.lower() for k in ["@", "http", "www."]) and len(seg) > 1:
+                candidate_name_lines.append(seg)
+
+    if candidate_name_lines:
+        full_name = candidate_name_lines[0]
+        if len(candidate_name_lines) > 1:
+            possible_hl = candidate_name_lines[1]
+            if len(possible_hl.split()) <= 8 and not re.search(r"\b(street|road|lane|ave|avenue|dr|drive|zip|pin)\b", possible_hl, re.I):
+                headline = possible_hl
+
+    summary_text = " ".join(section_blocks.get("summary", [])).strip()
+
+    skills_list: list[str] = []
+    for s_line in section_blocks.get("skills", []):
+        parts = re.split(r"[,|•·;\t]+", s_line)
+        for part in parts:
+            clean_part = re.sub(r"^[-*•\s]+", "", part).strip()
+            if ":" in clean_part and len(clean_part.split(":")[0].split()) <= 3:
+                clean_part = clean_part.split(":", 1)[1].strip()
+            if clean_part and len(clean_part) <= 40 and clean_part.lower() not in {"skills", "proficiencies", "competencies"}:
+                if clean_part not in skills_list:
+                    skills_list.append(clean_part)
+
+    experiences_list: list[dict[str, Any]] = []
+    exp_lines = section_blocks.get("experiences", [])
+    current_exp: dict[str, Any] | None = None
+
+    date_range_re = re.compile(
+        r"((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)?\s*'?\d{2,4})\s*(?:–|-|to)\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)?\s*'?\d{2,4}|present|current)",
+        re.IGNORECASE,
+    )
+
+    for line in exp_lines:
+        date_match = date_range_re.search(line)
+        is_bullet = bool(re.match(r"^[-*•·]\s*", line))
+
+        if (date_match or (not is_bullet and len(line.split()) <= 7 and (" at " in line.lower() or " - " in line or " | " in line))) and not is_bullet:
+            if current_exp and (current_exp.get("company") or current_exp.get("title")):
+                experiences_list.append(current_exp)
+            
+            clean_heading = line
+            start_date = ""
+            end_date = ""
+            is_current = False
+            if date_match:
+                start_date = date_match.group(1).strip()
+                end_str = date_match.group(2).strip()
+                is_current = end_str.lower() in {"present", "current"}
+                end_date = "Present" if is_current else end_str
+                clean_heading = (line[:date_match.start()] + line[date_match.end():]).strip(" ,|-–")
+
+            title_val = ""
+            comp_val = ""
+            if " at " in clean_heading.lower():
+                parts = re.split(r"\s+at\s+", clean_heading, flags=re.I)
+                title_val = parts[0].strip()
+                comp_val = parts[1].strip()
+            elif " | " in clean_heading:
+                parts = clean_heading.split(" | ")
+                title_val = parts[0].strip()
+                comp_val = parts[1].strip()
+            elif " - " in clean_heading:
+                parts = clean_heading.split(" - ")
+                title_val = parts[0].strip()
+                comp_val = parts[1].strip()
+            else:
+                title_val = clean_heading
+
+            current_exp = {
+                "title": title_val,
+                "company": comp_val,
+                "location": "",
+                "start_date": start_date,
+                "end_date": end_date,
+                "is_current": is_current,
+                "bullets": [],
+                "is_hidden": False,
+            }
+        else:
+            bullet_text = re.sub(r"^[-*•·\s]+", "", line).strip()
+            if bullet_text:
+                if not current_exp:
+                    current_exp = {
+                        "title": "Role Experience",
+                        "company": "",
+                        "location": "",
+                        "start_date": "",
+                        "end_date": "",
+                        "is_current": False,
+                        "bullets": [],
+                        "is_hidden": False,
+                    }
+                current_exp["bullets"].append(bullet_text)
+
+    if current_exp and (current_exp.get("company") or current_exp.get("title")):
+        experiences_list.append(current_exp)
+
+    education_list: list[dict[str, Any]] = []
+    edu_lines = section_blocks.get("education", [])
+    current_edu: dict[str, Any] | None = None
+
+    for line in edu_lines:
+        date_match = re.search(r"\b(19\d\d|20\d\d)\b", line)
+        grad_year = date_match.group(1) if date_match else ""
+        deg_match = re.search(r"\b(bachelor|master|b\.?s\.?|m\.?s\.?|b\.?tech|m\.?tech|ph\.?d|associate|diploma)\b", line, re.I)
+        if deg_match or "university" in line.lower() or "college" in line.lower() or "institute" in line.lower() or not current_edu:
+            if current_edu:
+                education_list.append(current_edu)
+            
+            if deg_match:
+                degree_val = line
+                inst_val = ""
+            else:
+                degree_val = ""
+                inst_val = line
+
+            current_edu = {
+                "institution": inst_val,
+                "degree": degree_val,
+                "field_of_study": "",
+                "start_date": "",
+                "end_date": grad_year,
+                "grade": "",
+                "location": "",
+                "description": "",
+                "coursework": "",
+                "honors": "",
+                "is_hidden": False,
+            }
+        else:
+            if current_edu:
+                if not current_edu["degree"]:
+                    current_edu["degree"] = line
+                elif not current_edu["institution"]:
+                    current_edu["institution"] = line
+                else:
+                    current_edu["description"] = (current_edu["description"] + " " + line).strip()
+
+    if current_edu:
+        education_list.append(current_edu)
+
+    projects_list: list[dict[str, Any]] = []
+    proj_lines = section_blocks.get("projects", [])
+    current_proj: dict[str, Any] | None = None
+
+    for line in proj_lines:
+        is_bullet = bool(re.match(r"^[-*•·]\s*", line))
+        if not is_bullet and len(line.split()) <= 8:
+            if current_proj:
+                projects_list.append(current_proj)
+            tech_match = re.search(r"\(([^)]+)\)", line)
+            title_p = line
+            techs = ""
+            if tech_match:
+                techs = tech_match.group(1)
+                title_p = re.sub(r"\([^)]+\)", "", line).strip()
+            current_proj = {
+                "title": title_p,
+                "technologies": techs,
+                "url": "",
+                "start_date": "",
+                "end_date": "",
+                "description": "",
+                "bullets": [],
+                "is_hidden": False,
+            }
+        else:
+            bullet_text = re.sub(r"^[-*•·\s]+", "", line).strip()
+            if bullet_text:
+                if not current_proj:
+                    current_proj = {
+                        "title": "Project",
+                        "technologies": "",
+                        "url": "",
+                        "start_date": "",
+                        "end_date": "",
+                        "description": "",
+                        "bullets": [],
+                        "is_hidden": False,
+                    }
+                current_proj["bullets"].append(bullet_text)
+
+    if current_proj:
+        projects_list.append(current_proj)
+
+    certs_list: list[dict[str, Any]] = []
+    for line in section_blocks.get("certifications", []):
+        clean_c = re.sub(r"^[-*•·\s]+", "", line).strip()
+        if clean_c:
+            certs_list.append({
+                "name": clean_c,
+                "issuer": "",
+                "date": "",
+                "description": "",
+                "is_hidden": False,
+            })
+
+    langs_list: list[dict[str, Any]] = []
+    for line in section_blocks.get("languages", []):
+        clean_l = re.sub(r"^[-*•·\s]+", "", line).strip()
+        if clean_l:
+            parts = re.split(r"[:\-(]", clean_l)
+            l_name = parts[0].strip()
+            prof = parts[1].strip(" )") if len(parts) > 1 else "Proficient"
+            langs_list.append({
+                "language": l_name,
+                "proficiency": prof,
+                "is_hidden": False,
+            })
+
+    return {
+        "template": "classic_ats",
+        "fontFamily": "inter",
+        "fontSize": "medium",
+        "spacing": "standard",
+        "accentColor": "#1e3a8a",
+        "secondaryColor": "#475569",
+        "layout": "single",
+        "headerAlignment": "left",
+        "header": {
+            "full_name": full_name,
+            "headline": headline,
+            "email": email,
+            "phone": phone,
+            "location": location,
+            "linkedin": linkedin,
+            "github": github,
+            "website": website,
+        },
+        "summary": summary_text,
+        "skills": skills_list,
+        "skillCategories": [],
+        "experiences": experiences_list,
+        "education": education_list,
+        "projects": projects_list,
+        "certifications": certs_list,
+        "achievements": [],
+        "awards": [],
+        "languages": langs_list,
+        "volunteer": [],
+        "leadership": [],
+        "publications": [],
+        "courses": [],
+        "customSections": custom_sections,
+    }
+
+
 def parse_resume_text(text: str) -> dict[str, Any]:
     cleaned = clean_text(text)
     lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
@@ -90,7 +421,7 @@ def create_resume(
     if parsed_content is not None:
         parsed = parsed_content
     elif raw_text:
-        parsed = parse_resume_text(raw_text)
+        parsed = parse_resume_to_builder_format(raw_text)
     else:
         parsed = {}
 

@@ -27,12 +27,14 @@ from app.services.export_service import generate_professional_filename, generate
 from app.services.profile_service import get_or_create_profile
 from app.services.scoring_service import calculate_evidence_based_score
 
+from app.services.data_quality_service import audit_resume_data_quality
 from app.services.resume_service import (
     compare_with_version,
     create_resume,
     duplicate_resume,
     export_resume_docx,
     export_resume_pdf,
+    parse_resume_to_builder_format,
     restore_version,
     update_resume,
 )
@@ -558,3 +560,89 @@ def export_resume(
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/parse-import")
+async def parse_resume_import_endpoint(
+    request: Request,
+    file: UploadFile | None = File(None),
+    resume_text: str = Form(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    ct = request.headers.get("content-type", "")
+    text = ""
+    if "application/json" in ct:
+        body = await request.json()
+        text = body.get("resume_text") or body.get("raw_text") or ""
+    elif file:
+        text = await extract_upload_text(file)
+    else:
+        text = resume_text or ""
+
+    cleaned = clean_text(text)
+    if len(cleaned) < 20:
+        raise AppError("Provided resume content is too short to parse.")
+
+    parsed = parse_resume_to_builder_format(cleaned)
+    profile = get_or_create_profile(db, current_user.id)
+    profile_data = {
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "headline": profile.headline if profile else None,
+    }
+    dq_issues = audit_resume_data_quality(parsed, profile_data=profile_data)
+
+    stats = {
+        "experiences_count": len(parsed.get("experiences") or []),
+        "education_count": len(parsed.get("education") or []),
+        "skills_count": len(parsed.get("skills") or []),
+        "projects_count": len(parsed.get("projects") or []),
+        "certifications_count": len(parsed.get("certifications") or []),
+        "custom_sections_count": len(parsed.get("customSections") or []),
+    }
+    candidate_name = parsed.get("header", {}).get("full_name") or "Imported Resume"
+    suggested_title = f"{candidate_name} Resume" if candidate_name != "Imported Resume" else "Imported Resume"
+
+    return success_response({
+        "parsed_content": parsed,
+        "suggested_title": suggested_title,
+        "stats": stats,
+        "raw_text": cleaned,
+        "data_quality_issues": dq_issues,
+    }, "Resume parsed successfully.")
+
+
+@router.post("/audit-quality")
+def audit_resume_quality_payload(
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    parsed_content = payload.get("parsed_content") or payload
+    profile = get_or_create_profile(db, current_user.id)
+    profile_data = {
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "headline": profile.headline if profile else None,
+    }
+    issues = audit_resume_data_quality(parsed_content, profile_data=profile_data)
+    return success_response({"issues": issues, "issue_count": len(issues)}, "Resume data quality audit completed.")
+
+
+@router.post("/{resume_id}/audit-quality")
+def audit_resume_quality_by_id(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    resume = get_user_resume(db, resume_id, current_user.id)
+    profile = get_or_create_profile(db, current_user.id)
+    profile_data = {
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "headline": profile.headline if profile else None,
+    }
+    issues = audit_resume_data_quality(resume.parsed_content, profile_data=profile_data)
+    return success_response({"resume_id": resume.id, "issues": issues, "issue_count": len(issues)}, "Resume data quality audit completed.")
+
