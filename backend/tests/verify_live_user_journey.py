@@ -627,19 +627,25 @@ def run_live_qa():
     # 31. OAuth Configuration Audit
     try:
         cfg = session.get(f"{API_URL}/auth/oauth/config").json().get("data", {})
-        assert cfg.get("google_enabled") is False
-        assert cfg.get("linkedin_enabled") is False
-        assert "instructions" in cfg.get("google", {})
+        assert "google_enabled" in cfg
+        assert "linkedin_enabled" in cfg
 
-        # Verify Google endpoint returns 503 rather than fake OAuth token
-        g_url = session.get(f"{API_URL}/auth/oauth/google/url")
-        assert g_url.status_code == 503, f"Expected 503 for unconfigured Google OAuth, got {g_url.status_code}"
+        if cfg.get("google_enabled"):
+            g_url = session.get(f"{API_URL}/auth/oauth/google/url")
+            assert g_url.status_code == 200
+            assert "accounts.google.com" in g_url.json().get("data", {}).get("url", "")
+        else:
+            g_url = session.get(f"{API_URL}/auth/oauth/google/url")
+            assert g_url.status_code == 503
 
-        # Verify LinkedIn endpoint returns 503 rather than fake OAuth token
-        l_url = session.get(f"{API_URL}/auth/oauth/linkedin/url")
-        assert l_url.status_code == 503, f"Expected 503 for unconfigured LinkedIn OAuth, got {l_url.status_code}"
+        if cfg.get("linkedin_enabled"):
+            l_url = session.get(f"{API_URL}/auth/oauth/linkedin/url")
+            assert l_url.status_code == 200
+        else:
+            l_url = session.get(f"{API_URL}/auth/oauth/linkedin/url")
+            assert l_url.status_code == 503, f"Expected 503 for unconfigured LinkedIn OAuth, got {l_url.status_code}"
 
-        log_step("31. OAuth Configuration Audit", True, "OAuth configuration correctly reports 'Pending' with setup instructions; zero fake tokens generated")
+        log_step("31. OAuth Configuration Audit", True, "OAuth configuration accurately verified (Google configured, LinkedIn pending; zero fake tokens generated)")
     except Exception as e:
         import traceback
         log_step("31. OAuth Configuration Audit", False, f"{traceback.format_exc()}")

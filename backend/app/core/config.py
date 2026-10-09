@@ -200,7 +200,7 @@ def get_settings() -> Settings:
         lockout_minutes=_int("LOCKOUT_MINUTES", 15),
         password_reset_minutes=_int("PASSWORD_RESET_MINUTES", 20),
         email_verification_minutes=_int("EMAIL_VERIFICATION_MINUTES", 60 * 24),
-        gemini_api_key=_optional("GEMINI_API_KEY"),
+        gemini_api_key=None if os.environ.get("TESTING") == "1" else _optional("GEMINI_API_KEY"),
         gemini_model=_str("GEMINI_MODEL_NAME", _str("GEMINI_MODEL", "gemini-3.6-flash")),
         gemini_lite_model=_str("GEMINI_FAST_MODEL_NAME", _str("GEMINI_LITE_MODEL_NAME", _str("GEMINI_LITE_MODEL", "gemini-3.5-flash-lite"))),
         gemini_live_model=_str("GEMINI_LIVE_MODEL_NAME", "gemini-2.0-flash-exp"),

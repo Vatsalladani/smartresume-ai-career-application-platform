@@ -1,0 +1,74 @@
+{
+  "sections": {
+    "Auth": {
+      "Login": {
+        "status": "PASS",
+        "details": "Logged in successfully as browser_overhaul_5f85c1a1@example.com"
+      }
+    },
+    "Navigation": {
+      "Profile Open Resume": {
+        "status": "PASS",
+        "details": "Loaded resume #554 into Builder: 'Lead Platform Architect'"
+      },
+      "Tab Switching & Active Resume Persistence": {
+        "status": "PASS",
+        "details": "Active resume preserved across Profile, Improve, and Builder"
+      }
+    },
+    "Layout": {
+      "Fixed Desktop Sidebar (1366x768 & 1920x1080)": {
+        "status": "PASS",
+        "details": "Sidebar fixed, workspace scrolls independently, Logout accessible, zero horizontal overflow"
+      },
+      "Mobile Navigation Drawer (375x667)": {
+        "status": "PASS",
+        "details": "Drawer opens/closes cleanly, zero desktop interference, zero horizontal overflow"
+      }
+    },
+    "Contextual AI": {
+      "AI Polish Summary": {
+        "status": "PASS",
+        "details": "Generated and applied active summary: 'Lead Platform Architect with demonstrated background in spec...'"
+      },
+      "AI Polish Skills": {
+        "status": "PASS",
+        "details": "Deduplicated and standardized skills via contextual assistant"
+      },
+      "AI Polish Experience Bullets": {
+        "status": "PASS",
+        "details": "Upgraded weak action verbs to operational delivery verbs"
+      }
+    },
+    "Profile Sync": {
+      "Update from Profile (Safe Diff)": {
+        "status": "PASS",
+        "details": "Updated empty resume fields from profile without destroying custom bullets"
+      },
+      "Replace Content Safety & Confirmation Prompt": {
+        "status": "PASS",
+        "details": "Displayed safety warning with cancel rollback guarantee"
+      }
+    },
+    "Creation": {
+      "4-Card Creation Modal Options": {
+        "status": "PASS",
+        "details": "Start Blank, Build from Profile, Import Existing Resume, and Build with AI present"
+      },
+      "AI Guided Wizard Completion": {
+        "status": "PASS",
+        "details": "Completed 7-step wizard: loaded grounded draft 'Cloud Infrastructure Engineer' without hallucinations"
+      }
+    },
+    "Health & Honesty": {
+      "Honest Assessment & Score Equality": {
+        "status": "PASS",
+        "details": "Score: 73/100 ('Good foundation'). Zero misleading exceptional praise."
+      }
+    }
+  },
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "network_errors": []
+}
