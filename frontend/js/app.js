@@ -2773,6 +2773,18 @@ function openCreateResumeModal(opts = {}) {
     c.classList.toggle("is-selected", isSelected);
     c.classList.toggle("is-active", isSelected);
     c.setAttribute("aria-selected", isSelected ? "true" : "false");
+    c.onclick = () => {
+      $$(".source-card").forEach(other => {
+        other.classList.remove("active", "is-selected", "is-active");
+        other.setAttribute("aria-selected", "false");
+      });
+      c.classList.add("active", "is-selected", "is-active");
+      c.setAttribute("aria-selected", "true");
+      const ip = $("#newResumeImportPanel");
+      if (ip) {
+        ip.classList.toggle("hidden", c.dataset.source !== "import");
+      }
+    };
   });
   const importPanel = $("#newResumeImportPanel");
   if (importPanel) {
@@ -2891,6 +2903,8 @@ async function submitCreateResume() {
     }
   }
 }
+window.submitCreateResume = submitCreateResume;
+window.openCreateResumeModal = openCreateResumeModal;
 
 async function parseAndPreviewImportResume() {
   const parseBtn = $("#importParseBtn");

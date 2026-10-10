@@ -4820,7 +4820,7 @@
           <h3 id="createResumeModalTitle"><i data-lucide="file-plus"></i> Create New Resume</h3>
           <p class="text-sm text-muted">Create an independent resume with its own content, design, and target role.</p>
         </div>
-        <button id="closeCreateResumeModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog"><i data-lucide="x"></i></button>
+        <button id="closeCreateResumeModalBtn" class="icon-btn xs" type="button" aria-label="Close dialog" onclick="$('#createResumeModal')?.classList.add('hidden')"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
         <form id="createResumeForm" onsubmit="return false;">
@@ -4938,8 +4938,8 @@
         </form>
       </div>
       <div class="modal-footer flex-between">
-        <button class="secondary-btn sm" type="button" id="cancelCreateResumeBtn">Cancel</button>
-        <button class="primary-btn sm" type="button" id="submitCreateResumeBtn">
+        <button class="secondary-btn sm" type="button" id="cancelCreateResumeBtn" onclick="$('#createResumeModal')?.classList.add('hidden')">Cancel</button>
+        <button class="primary-btn sm" type="button" id="submitCreateResumeBtn" onclick="submitCreateResume()">
           <i data-lucide="check"></i><span>Create Resume</span>
         </button>
       </div>

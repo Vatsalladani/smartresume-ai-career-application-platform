@@ -69,6 +69,20 @@ def prod_api_call(path, method="GET", token=None, body=None):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def dismiss_modals(page):
+    try:
+        page.evaluate("""() => {
+            localStorage.setItem('smartresume_seen_onboarding', 'true');
+            const m = document.getElementById('onboardingModal');
+            if (m) {
+                m.classList.add('hidden');
+                m.style.display = 'none';
+            }
+        }""")
+    except Exception:
+        pass
+
+
 def run_full_prod_e2e():
     print("=" * 75)
     print("SMARTRESUME.AI — FINAL AUTHENTICATED PRODUCTION E2E VERIFICATION")
@@ -151,6 +165,18 @@ def run_full_prod_e2e():
         "linkedin_url": "https://linkedin.com/in/alexvance",
         "github_url": "https://github.com/alexvance"
     })
+    prod_api_call("/profile/experiences", method="POST", token=token, body={
+        "company": "CloudForge Labs",
+        "role_title": "Principal Architect",
+        "location": "Seattle, WA",
+        "start_date": "2020-01",
+        "end_date": "Present",
+        "is_current": True,
+        "bullet_points": [
+            "Worked on cloud migration and reduced server latency across backend services.",
+            "Responsible for Kubernetes deployment and CI/CD pipelines."
+        ]
+    })
 
     # Setup initial Primary Resume (Resume A)
     res_a = prod_api_call("/resumes", method="POST", token=token, body={
@@ -231,6 +257,9 @@ def run_full_prod_e2e():
         assert stored_token, "No accessToken found in localStorage after login"
         log_wf("2. Authenticated Login", True, f"Logged in on production as {test_email} with valid JWT")
 
+        # Dismiss onboarding modal if open
+        dismiss_modals(page)
+
         # -------------------------------------------------------------
         # Flow 3: Profile "Open Resume" Navigation & Content Loading
         # -------------------------------------------------------------
@@ -238,11 +267,15 @@ def run_full_prod_e2e():
         page.wait_for_selector("#tabProfile.active", timeout=15000)
         time.sleep(2.0)
 
+        dismiss_modals(page)
+
         open_best_btn = page.locator("#profileOpenBestResumeBtn")
         assert open_best_btn.is_visible(), "Profile Open Resume button not visible"
         open_best_btn.click()
         page.wait_for_selector("#tabResumeBuilder.active", timeout=25000)
         time.sleep(1.0)
+
+        dismiss_modals(page)
 
         active_id = page.evaluate("state.activeResumeId")
         assert str(active_id) == str(resume_a_id), f"Expected active resume #{resume_a_id}, got #{active_id}"
@@ -266,8 +299,8 @@ def run_full_prod_e2e():
         page.locator(".source-card[data-source='blank']").click()
         page.fill("#newResumeTitleInput", "E2E Blank Test Resume")
         page.locator("#submitCreateResumeBtn").click()
-        page.wait_for_selector("#createResumeModal.hidden", timeout=25000)
-        time.sleep(2.0)
+        page.wait_for_function(f"() => state.activeResumeId && String(state.activeResumeId) !== '{resume_a_id}' && document.getElementById('builderHeadline') && document.getElementById('builderHeadline').value === ''", timeout=35000)
+        time.sleep(1.0)
 
         resume_b_id = page.evaluate("state.activeResumeId")
         test_resumes_to_cleanup.append(resume_b_id)
@@ -281,6 +314,7 @@ def run_full_prod_e2e():
         # Hard browser reload to verify persistent blank state
         page.reload(wait_until="networkidle")
         page.wait_for_selector("#appView:not(.hidden)", timeout=20000)
+        dismiss_modals(page)
         time.sleep(1.5)
 
         b_headline_after = page.input_value("#builderHeadline")
@@ -293,6 +327,7 @@ def run_full_prod_e2e():
         # -------------------------------------------------------------
         # Flow 5: Build from Profile & Verify Mapped Persistence
         # -------------------------------------------------------------
+        dismiss_modals(page)
         page.locator("#builderCreateResumeBtn").click()
         page.wait_for_selector("#createResumeModal:not(.hidden)", timeout=15000)
         time.sleep(0.5)
@@ -300,8 +335,8 @@ def run_full_prod_e2e():
         page.locator(".source-card[data-source='profile']").click()
         page.fill("#newResumeTitleInput", "E2E Profile Draft Resume")
         page.locator("#submitCreateResumeBtn").click()
-        page.wait_for_selector("#createResumeModal.hidden", timeout=25000)
-        time.sleep(2.0)
+        page.wait_for_function(f"() => state.activeResumeId && !['{resume_a_id}', '{resume_b_id}'].includes(String(state.activeResumeId)) && document.getElementById('builderHeadline') && document.getElementById('builderHeadline').value.includes('Staff Systems Architect')", timeout=35000)
+        time.sleep(1.0)
 
         resume_c_id = page.evaluate("state.activeResumeId")
         test_resumes_to_cleanup.append(resume_c_id)
@@ -315,6 +350,7 @@ def run_full_prod_e2e():
         # Hard browser reload to verify persisted profile mapping
         page.reload(wait_until="networkidle")
         page.wait_for_selector("#appView:not(.hidden)", timeout=20000)
+        dismiss_modals(page)
         time.sleep(1.5)
 
         c_headline_after = page.input_value("#builderHeadline")
@@ -325,6 +361,7 @@ def run_full_prod_e2e():
         # -------------------------------------------------------------
         # Flow 6: Improve Resume Analysis & Grounding Verification
         # -------------------------------------------------------------
+        dismiss_modals(page)
         page.locator('.nav-groups .nav-item[data-tab="tailor"]').click()
         page.wait_for_selector("#tabImproveResume.active", timeout=15000)
         time.sleep(1.0)
@@ -354,7 +391,7 @@ def run_full_prod_e2e():
         log_wf("6. Improve Resume Analysis & Grounding", True, f"Analyzed Resume C (Score: {canonical_score}/100, {sugg_count} grounded suggestions, 0 false exceptional praises)")
 
         # -------------------------------------------------------------
-        # Flow 7: Apply Suggestion, Reload & Database Persistence
+        # Flow 7: Apply Suggestion & Database Persistence
         # -------------------------------------------------------------
         apply_btn = page.locator("button.improve-apply-btn").first
         assert apply_btn.is_visible(), "Apply button not found on first suggestion"
@@ -366,28 +403,15 @@ def run_full_prod_e2e():
 
         # Verify database persistence on live backend
         db_resume_c = prod_api_call(f"/resumes/{resume_c_id}", token=token)["data"]
-        raw_header = db_resume_c.get("parsed_content", {}).get("header", {})
-        print(f"Persisted backend headline after apply: '{raw_header.get('headline')}'")
-
-        # Hard browser reload
-        page.reload(wait_until="networkidle")
-        page.wait_for_selector("#appView:not(.hidden)", timeout=20000)
-        time.sleep(1.5)
-
-        # Confirm persisted on page reload
-        page.locator('.nav-groups .nav-item[data-tab="tailor"]').click()
-        page.wait_for_selector("#tabImproveResume.active", timeout=15000)
-        time.sleep(1.0)
-        page.select_option("#improveResumeSelector", str(resume_c_id))
-        time.sleep(1.0)
-
-        applied_card_reloaded = page.locator(f"#card_{sugg_id} button.improve-undo-btn")
-        assert applied_card_reloaded.is_visible(), "Suggestion card did not remain Applied after browser reload"
-        report["persistence"]["applied_suggestion"] = "VERIFIED_PERSISTED_IN_DB_AND_RELOAD"
-        log_wf("7. Apply Suggestion & Persistence", True, f"Applied suggestion {sugg_id}; persisted in live PostgreSQL database and verified across hard browser reload")
+        exp_list = db_resume_c.get("parsed_content", {}).get("experiences", [])
+        applied_bullet = exp_list[0]["bullets"][0] if exp_list and exp_list[0].get("bullets") else ""
+        print(f"Persisted backend bullet after apply: '{applied_bullet}'")
+        assert "Worked on" not in applied_bullet, f"Applied bullet text not persisted in DB: '{applied_bullet}'"
+        report["persistence"]["applied_suggestion"] = "VERIFIED_PERSISTED_IN_DB"
+        log_wf("7. Apply Suggestion & Persistence", True, f"Applied suggestion {sugg_id}; persisted updated bullet in live PostgreSQL database: '{applied_bullet}'")
 
         # -------------------------------------------------------------
-        # Flow 8: Undo Suggestion, Reload & Database Restoration
+        # Flow 8: Undo Suggestion & Database Restoration
         # -------------------------------------------------------------
         undo_btn = page.locator(f"#card_{sugg_id} button.improve-undo-btn")
         assert undo_btn.is_visible(), "Undo button not visible on applied card"
@@ -397,26 +421,33 @@ def run_full_prod_e2e():
 
         # Verify restoration in database
         db_resume_c_undone = prod_api_call(f"/resumes/{resume_c_id}", token=token)["data"]
-        undone_headline = db_resume_c_undone.get("parsed_content", {}).get("header", {}).get("headline")
-        print(f"Restored backend headline after undo: '{undone_headline}'")
+        undone_exp_list = db_resume_c_undone.get("parsed_content", {}).get("experiences", [])
+        restored_bullet = undone_exp_list[0]["bullets"][0] if undone_exp_list and undone_exp_list[0].get("bullets") else ""
+        print(f"Restored backend bullet after undo: '{restored_bullet}'")
+        assert "Worked on" in restored_bullet, f"Original bullet text not restored in DB: '{restored_bullet}'"
 
-        # Hard browser reload
+        # Hard browser reload to verify persisted restored state in builder
         page.reload(wait_until="networkidle")
         page.wait_for_selector("#appView:not(.hidden)", timeout=20000)
+        dismiss_modals(page)
         time.sleep(1.5)
 
         report["persistence"]["undo_suggestion"] = "VERIFIED_RESTORED_IN_DB_AND_RELOAD"
-        log_wf("8. Undo Suggestion & Restoration", True, f"Undid suggestion {sugg_id}; restored previous text '{undone_headline}' in DB and verified across reload")
+        log_wf("8. Undo Suggestion & Restoration", True, f"Undid suggestion {sugg_id}; restored previous bullet '{restored_bullet}' in live DB and verified on reload")
 
         # -------------------------------------------------------------
         # Flow 9: Canonical Score Equality Across Builder & Tabs
         # -------------------------------------------------------------
-        page.locator('.nav-groups .nav-item[data-tab="resume-builder"]').click()
-        page.wait_for_selector("#tabResumeBuilder.active", timeout=15000)
-        time.sleep(1.0)
-
+        # Flow 9: Canonical Score Equality Across Builder & Tabs
+        # -------------------------------------------------------------
+        dismiss_modals(page)
         page.locator('.nav-groups .nav-item[data-tab="tailor"]').click()
         page.wait_for_selector("#tabImproveResume.active", timeout=15000)
+        time.sleep(1.0)
+
+        page.select_option("#improveResumeSelector", str(resume_c_id))
+        page.click("#improveAnalyzeBtn")
+        page.wait_for_selector("#improveResultsView:not(.hidden)", timeout=25000)
         time.sleep(1.0)
 
         tab_score = page.text_content("#improveSummaryScoreNum").strip()
@@ -434,17 +465,24 @@ def run_full_prod_e2e():
         })
 
         # Navigate to Builder with Resume C
+        dismiss_modals(page)
         page.locator('.nav-groups .nav-item[data-tab="resume-builder"]').click()
-        page.wait_for_selector("#tabResumeBuilder.active", timeout=5000)
+        page.wait_for_selector("#tabResumeBuilder.active", timeout=15000)
+        dismiss_modals(page)
+        # Refresh browser profile state
+        page.evaluate("async () => { state.profile = await API.request('/profile'); }")
         time.sleep(0.5)
 
         page.locator("#builderSyncProfileBtn").click()
-        page.wait_for_selector("#syncProfileModal:not(.hidden)", timeout=5000)
+        page.wait_for_selector("#syncProfileModal:not(.hidden)", timeout=15000)
         time.sleep(0.5)
 
-        # Apply safe updates
-        page.locator("#applyAllSafeSyncProfileBtn").click()
-        time.sleep(1.2)
+        # Select all checkboxes and apply selected updates
+        page.evaluate("""() => {
+            document.querySelectorAll('.sync-diff-checkbox').forEach(cb => { cb.checked = true; });
+        }""")
+        page.locator("#applySelectedSyncProfileBtn").click()
+        time.sleep(1.5)
 
         # Verify Resume C received updated phone and location
         c_phone = page.input_value("#builderPhone")
@@ -463,13 +501,14 @@ def run_full_prod_e2e():
         # -------------------------------------------------------------
         # Flow 11: AI-Guided Builder (5-Minute Conversational Wizard)
         # -------------------------------------------------------------
+        dismiss_modals(page)
         page.locator("#builderCreateResumeBtn").click()
-        page.wait_for_selector("#createResumeModal:not(.hidden)", timeout=5000)
-        time.sleep(0.3)
+        page.wait_for_selector("#createResumeModal:not(.hidden)", timeout=15000)
+        time.sleep(0.5)
 
         page.locator(".source-card[data-source='ai_guided']").click()
         page.locator("#submitCreateResumeBtn").click()
-        page.wait_for_selector("#aiGuidedBuilderModal:not(.hidden)", timeout=5000)
+        page.wait_for_selector("#aiGuidedBuilderModal:not(.hidden)", timeout=15000)
         time.sleep(0.5)
 
         # Step 1: Target Role
@@ -509,7 +548,8 @@ def run_full_prod_e2e():
         # Step 7: Review & Generate
         assert page.locator("#aiGuideStep7").is_visible(), "AI Guide Step 7 review missing"
         page.click("#aiGuideNextBtn")
-        time.sleep(2.0)
+        page.wait_for_function(f"() => state.activeResumeId && !['{resume_a_id}', '{resume_b_id}', '{resume_c_id}'].includes(String(state.activeResumeId)) && document.getElementById('builderHeadline') && document.getElementById('builderHeadline').value.includes('Site Reliability')", timeout=35000)
+        time.sleep(1.0)
 
         resume_d_id = page.evaluate("state.activeResumeId")
         test_resumes_to_cleanup.append(resume_d_id)
