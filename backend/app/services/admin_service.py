@@ -133,9 +133,18 @@ def list_admin_users(
     }
 
 
-def update_user_role(db: Session, target_user_id: int, new_role: str, admin_actor: User) -> dict[str, Any]:
+def update_user_role(
+    db: Session,
+    user_id: int | None = None,
+    target_user_id: int | None = None,
+    new_role: str = "USER",
+    admin_actor: User | None = None,
+) -> dict[str, Any]:
     """Updates a user's role (ADMIN or USER) with security audit logging."""
-    target_user = db.get(User, target_user_id)
+    target_id = user_id or target_user_id
+    if not target_id:
+        raise AppError("Target user ID is required.", 400)
+    target_user = db.get(User, target_id)
     if not target_user:
         raise AppError("User not found.", 404)
 
