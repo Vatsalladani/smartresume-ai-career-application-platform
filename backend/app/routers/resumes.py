@@ -2,7 +2,7 @@ import io
 import re
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -420,6 +420,60 @@ def patch_resume(
     db.commit()
     db.refresh(resume)
     return success_response(ResumeDetail.model_validate(resume).model_dump(), "Resume updated.")
+
+
+@router.post("/{resume_id}/sync-profile")
+def sync_profile_to_resume_endpoint(
+    resume_id: int,
+    payload: dict[str, Any] = Body(default={}),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    resume = get_user_resume(db, resume_id, current_user.id)
+    profile = get_or_create_profile(db, current_user.id)
+    mode = payload.get("mode", "safe_update")
+
+    pc = dict(resume.parsed_content or {})
+    header = dict(pc.get("header") or {})
+
+    # In safe_update mode, update empty fields from master profile
+    if mode == "safe_update":
+        if not header.get("phone") and profile.phone:
+            header["phone"] = profile.phone
+        if not header.get("location") and profile.location:
+            header["location"] = profile.location
+        if not header.get("email") and (getattr(profile, "email", None) or current_user.email):
+            header["email"] = getattr(profile, "email", None) or current_user.email
+        if not header.get("full_name") and (getattr(profile, "full_name", None) or current_user.full_name):
+            header["full_name"] = getattr(profile, "full_name", None) or current_user.full_name
+        if not header.get("headline") and profile.headline:
+            header["headline"] = profile.headline
+        if not header.get("linkedin") and profile.linkedin_url:
+            header["linkedin"] = profile.linkedin_url
+        if not header.get("github") and profile.github_url:
+            header["github"] = profile.github_url
+        if not header.get("website") and profile.website_url:
+            header["website"] = profile.website_url
+
+        if not pc.get("summary") and profile.summary:
+            pc["summary"] = profile.summary
+    else:
+        # Full overwrite mode
+        if profile.phone:
+            header["phone"] = profile.phone
+        if profile.location:
+            header["location"] = profile.location
+        if profile.headline:
+            header["headline"] = profile.headline
+        if profile.summary:
+            pc["summary"] = profile.summary
+
+    pc["header"] = header
+    resume.parsed_content = pc
+    write_audit_log(db, action="resume.sync_profile", user_id=current_user.id, entity_type="resume", entity_id=str(resume.id))
+    db.commit()
+    db.refresh(resume)
+    return success_response(ResumeDetail.model_validate(resume).model_dump(), "Resume synchronized from profile.")
 
 
 @router.delete("/{resume_id}")

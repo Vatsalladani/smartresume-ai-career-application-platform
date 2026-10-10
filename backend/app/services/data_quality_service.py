@@ -1,7 +1,8 @@
 """Data Quality Audit Service for SmartResume.ai.
 
 Audits resumes for structural anomalies, data duplications, misplaced contact details,
-name-as-headline mistakes, malformed skill entries, and profile discrepancies.
+name-as-headline mistakes, repeated employer/date headers in experience entries,
+malformed skill entries, and profile discrepancies.
 Provides structured diagnostic issues with clear remediation proposals rather than
 silently mutating candidate data.
 """
@@ -10,6 +11,49 @@ from __future__ import annotations
 
 import re
 from typing import Any
+
+from app.services.skills_taxonomy import (
+    classify_skills_list,
+    is_noise_token,
+)
+
+
+def normalize_experience_heading(title: str, company: str, start_date: str = "", end_date: str = "") -> dict[str, str]:
+    """Cleans up accidental duplicate company or date strings embedded inside role titles or company names."""
+    clean_title = (title or "").strip()
+    clean_company = (company or "").strip()
+    clean_start = (start_date or "").strip()
+    clean_end = (end_date or "").strip()
+
+    # 1. Clean dates embedded in company name, e.g. "Acme Corp (2020-2021)" -> "Acme Corp"
+    date_in_comp = re.search(r"\s*\((?:19|20)\d{2}\s*[-–]\s*(?:(?:19|20)\d{2}|present|current)\)\s*$", clean_company, re.I)
+    if date_in_comp:
+        clean_company = clean_company[:date_in_comp.start()].strip()
+    clean_company = re.sub(r"\s*(?:19|20)\d{2}\s*[-–]\s*(?:(?:19|20)\d{2}|present|current)\s*$", "", clean_company, flags=re.I).strip()
+
+    # 2. Clean repeated company in company name, e.g. "Acme Corp - Acme Corp" -> "Acme Corp"
+    if " - " in clean_company:
+        parts = [p.strip() for p in clean_company.split(" - ") if p.strip()]
+        if len(parts) == 2 and parts[0].lower() == parts[1].lower():
+            clean_company = parts[0]
+
+    # 3. Clean dates embedded in title, e.g. "Software Engineer (2020 - 2021) 2020-2021"
+    clean_title = re.sub(r"\s*\((?:19|20)\d{2}\s*[-–]\s*(?:(?:19|20)\d{2}|present|current)\)", "", clean_title, flags=re.I).strip()
+    clean_title = re.sub(r"\s*(?:19|20)\d{2}\s*[-–]\s*(?:(?:19|20)\d{2}|present|current)", "", clean_title, flags=re.I).strip()
+
+    # 4. Clean company name duplicated inside title, e.g. "Software Engineer at Acme Corp" when company is "Acme Corp"
+    if clean_company and f" at {clean_company.lower()}" in clean_title.lower():
+        clean_title = re.sub(rf"\s+at\s+{re.escape(clean_company)}", "", clean_title, flags=re.I).strip()
+
+    clean_title = re.sub(r"[\s\-|@,]+$", "", clean_title).strip()
+    clean_company = re.sub(r"[\s\-|@,]+$", "", clean_company).strip()
+
+    return {
+        "title": clean_title,
+        "company": clean_company,
+        "start_date": clean_start,
+        "end_date": clean_end,
+    }
 
 
 def audit_resume_data_quality(
@@ -43,7 +87,7 @@ def audit_resume_data_quality(
     education = parsed_content.get("education") or []
     skills = parsed_content.get("skills") or []
 
-    # 1. Check: Name mistakenly copied as Headline
+    # 1. Check: Name mistakenly copied as Headline or Contact Info as Headline
     if full_name and headline and full_name.lower() == headline.lower():
         issues.append({
             "id": "dq_name_as_headline",
@@ -52,13 +96,24 @@ def audit_resume_data_quality(
             "field": "header.headline",
             "message": "Your candidate name is repeated as your professional headline.",
             "current_value": headline,
-            "suggested_fix": "Replace with your target role title (e.g., 'Senior Software Engineer' or 'Full Stack Developer').",
+            "suggested_fix": "Replace with your target role title (e.g., 'Senior Software Engineer' or 'Quality Control Chemist').",
             "can_auto_fix": True,
             "fix_action": {"type": "clear_or_replace_headline", "suggested_value": ""},
         })
+    elif headline and ("@" in headline or re.search(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", headline)):
+        issues.append({
+            "id": "dq_contact_in_headline",
+            "category": "headline",
+            "severity": "warning",
+            "field": "header.headline",
+            "message": "Your headline contains contact details instead of a professional job title.",
+            "current_value": headline,
+            "suggested_fix": "Replace with your target role title and place contact information in the contact header.",
+            "can_auto_fix": False,
+        })
 
     # 2. Check: Contact information or dates mistakenly placed in header location or phone
-    if location and re.search(r"\b(engineer|developer|manager|specialist|analyst)\b", location, re.I):
+    if location and re.search(r"\b(engineer|developer|manager|specialist|analyst|chemist|consultant)\b", location, re.I):
         issues.append({
             "id": "dq_role_in_location",
             "category": "contact",
@@ -114,10 +169,10 @@ def audit_resume_data_quality(
     for idx, exp in enumerate(experiences):
         if not isinstance(exp, dict):
             continue
-        comp = str(exp.get("company") or "").strip().lower()
-        title = str(exp.get("title") or exp.get("role_title") or "").strip().lower()
-        start = str(exp.get("start_date") or "").strip().lower()
-        end = str(exp.get("end_date") or "").strip().lower()
+        comp = str(exp.get("company") or "").strip()
+        title = str(exp.get("title") or exp.get("role_title") or "").strip()
+        start = str(exp.get("start_date") or "").strip()
+        end = str(exp.get("end_date") or "").strip()
 
         # Check empty required experience fields
         if not comp and not title:
@@ -133,8 +188,33 @@ def audit_resume_data_quality(
             })
             continue
 
-        if comp and title:
-            fp = f"{comp}::{title}"
+        # Check repeated employer / dates in title or company string
+        normalized = normalize_experience_heading(title, comp, start, end)
+        if normalized["title"] != title or normalized["company"] != comp:
+            issues.append({
+                "id": f"dq_repeated_exp_heading_{idx}",
+                "category": "experience",
+                "severity": "warning",
+                "field": f"experiences[{idx}]",
+                "message": f"Experience entry #{idx+1} has duplicated employer or date text in its title/company field ('{title}' at '{comp}').",
+                "current_value": f"{title} at {comp}",
+                "suggested_fix": f"Clean heading to '{normalized['title']}' at '{normalized['company']}'.",
+                "can_auto_fix": True,
+                "fix_action": {
+                    "type": "clean_experience_heading",
+                    "index": idx,
+                    "suggested_title": normalized["title"],
+                    "suggested_company": normalized["company"],
+                }
+            })
+
+        comp_lower = comp.lower()
+        title_lower = title.lower()
+        start_lower = start.lower()
+        end_lower = end.lower()
+
+        if comp_lower and title_lower:
+            fp = f"{comp_lower}::{title_lower}"
             if fp in seen_exp_fingerprints:
                 first_idx = seen_exp_fingerprints[fp]
                 issues.append({
@@ -150,8 +230,8 @@ def audit_resume_data_quality(
             else:
                 seen_exp_fingerprints[fp] = idx
 
-        if comp and (start or end):
-            cd_fp = f"{comp}::{start}::{end}"
+        if comp_lower and (start_lower or end_lower):
+            cd_fp = f"{comp_lower}::{start_lower}::{end_lower}"
             if cd_fp in seen_company_dates:
                 first_idx = seen_company_dates[cd_fp]
                 issues.append({
@@ -167,15 +247,20 @@ def audit_resume_data_quality(
             else:
                 seen_company_dates[cd_fp] = idx
 
-    # 5. Check: Duplicate and malformed skills
+    # 5. Check: Duplicate and malformed skills & noise tokens
     seen_skills: set[str] = set()
     dup_skills: list[str] = []
     malformed_skills: list[str] = []
+    noise_skills: list[str] = []
+
     for s in skills:
         s_str = (s if isinstance(s, str) else str((s or {}).get("name") or "")).strip()
         if not s_str:
             continue
         lower_s = s_str.lower()
+        if is_noise_token(s_str):
+            noise_skills.append(s_str)
+
         if lower_s in seen_skills:
             dup_skills.append(s_str)
         else:
@@ -219,6 +304,18 @@ def audit_resume_data_quality(
             "message": f"Malformed skill entries found ({len(malformed_skills)} items, e.g. '{malformed_skills[0]}'). Items with commas should be split into individual tags.",
             "current_value": malformed_skills[:5],
             "suggested_fix": "Split comma-separated skill lists into distinct standalone skills.",
+            "can_auto_fix": True,
+        })
+
+    if noise_skills:
+        issues.append({
+            "id": "dq_noise_skills",
+            "category": "skills",
+            "severity": "warning",
+            "field": "skills",
+            "message": f"Generic stopword skills found ({len(noise_skills)} items, e.g. '{noise_skills[0]}'). Generic terms like 'software' or 'experience' do not convey specific qualifications.",
+            "current_value": noise_skills[:5],
+            "suggested_fix": "Remove generic stopwords from skills and keep concrete competencies.",
             "can_auto_fix": True,
         })
 

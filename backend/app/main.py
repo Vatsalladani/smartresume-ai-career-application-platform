@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.middleware.security import RequestSizeLimitMiddleware, SecurityHeadersMiddleware, SimpleRateLimitMiddleware
 from app.routers import (
+    admin,
     ai,
     application_pack,
     applications,
@@ -55,6 +56,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(admin.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(profile.router, prefix=settings.api_prefix)
 app.include_router(evidence_vault.router, prefix=settings.api_prefix)
