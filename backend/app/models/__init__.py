@@ -1,3 +1,4 @@
+from app.models.admin import AdminAccount, AdminInvitation
 from app.models.application import JobApplication
 from app.models.audit import AuditLog
 from app.models.job_fit import (
@@ -26,6 +27,8 @@ from app.models.usage_counter import UsageCounter
 from app.models.user import User
 
 __all__ = [
+    "AdminAccount",
+    "AdminInvitation",
     "ApplicationVersion",
     "ATSAnalysis",
     "ATSCheck",

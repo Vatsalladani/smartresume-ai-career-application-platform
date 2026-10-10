@@ -13,6 +13,8 @@ from app.core.responses import error_response
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        if request.method == "OPTIONS":
+            return await call_next(request)
         settings = get_settings()
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > settings.max_request_size_bytes:

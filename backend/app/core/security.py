@@ -54,6 +54,11 @@ def create_jwt_token(
 def decode_jwt_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:
-        return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        return jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+            options={"verify_aud": False},
+        )
     except JWTError as exc:
         raise ValueError("Invalid or expired token.") from exc

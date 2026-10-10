@@ -8,6 +8,7 @@ from app.core.errors import register_exception_handlers
 from app.middleware.security import RequestSizeLimitMiddleware, SecurityHeadersMiddleware, SimpleRateLimitMiddleware
 from app.routers import (
     admin,
+    admin_auth,
     ai,
     application_pack,
     applications,
@@ -48,6 +49,7 @@ app.add_middleware(SimpleRateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +58,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(admin_auth.router, prefix=settings.api_prefix)
 app.include_router(admin.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(profile.router, prefix=settings.api_prefix)
