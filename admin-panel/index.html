@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartResume.ai — Dedicated Admin Console</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- AUTH / LOGIN VIEW -->
+  <div id="adminAuthView" class="admin-auth-wrapper">
+    <div class="admin-auth-card">
+      <div class="auth-header">
+        <div class="admin-badge-icon">
+          <i data-lucide="shield-alert"></i>
+        </div>
+        <h1>SmartResume.ai</h1>
+        <h2>Admin Management Portal</h2>
+        <p class="auth-subtitle">Restricted to authorized system administrators only. All access attempts are monitored and logged.</p>
+      </div>
+
+      <form id="adminLoginForm" class="admin-form">
+        <div class="form-group">
+          <label for="adminApiUrlInput">Backend API Target</label>
+          <div class="input-with-icon">
+            <i data-lucide="server"></i>
+            <input type="url" id="adminApiUrlInput" class="form-input" placeholder="http://127.0.0.1:8000" required>
+          </div>
+          <div class="api-target-presets">
+            <button type="button" class="preset-pill" onclick="setApiTarget('http://127.0.0.1:8000')">Local (8000)</button>
+            <button type="button" class="preset-pill" onclick="setApiTarget('https://smartresume-ai-career-application-p.vercel.app')">Production (Vercel)</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="adminEmailInput">Administrator Email</label>
+          <div class="input-with-icon">
+            <i data-lucide="mail"></i>
+            <input type="email" id="adminEmailInput" class="form-input" placeholder="admin@smartresume.ai" required autocomplete="username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="adminPasswordInput">Password</label>
+          <div class="input-with-icon">
+            <i data-lucide="lock"></i>
+            <input type="password" id="adminPasswordInput" class="form-input" placeholder="••••••••••••" required autocomplete="current-password">
+          </div>
+        </div>
+
+        <div id="authErrorMessage" class="auth-error-banner hidden"></div>
+
+        <button type="submit" id="adminLoginBtn" class="btn btn-primary btn-block">
+          <i data-lucide="log-in"></i>
+          <span>Authenticate Administrator</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span class="security-indicator">
+          <i data-lucide="lock"></i> 256-bit Encrypted Session · Strict Server-Side RBAC
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN ADMIN CONSOLE APP -->
+  <div id="adminAppView" class="admin-layout hidden">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <i data-lucide="shield-check"></i>
+        </div>
+        <div class="brand-text">
+          <strong>SmartResume.ai</strong>
+          <span class="badge-env" id="activeEnvBadge">LOCAL DEV</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">ADMINISTRATION</div>
+        <button class="nav-btn active" data-tab="overview">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Overview & Health</span>
+        </button>
+        <button class="nav-btn" data-tab="users">
+          <i data-lucide="users"></i>
+          <span>User Directory & RBAC</span>
+        </button>
+        <button class="nav-btn" data-tab="ai-ops">
+          <i data-lucide="cpu"></i>
+          <span>AI Ops & Telemetry</span>
+        </button>
+        <button class="nav-btn" data-tab="feature-flags">
+          <i data-lucide="sliders"></i>
+          <span>Feature Flags</span>
+        </button>
+        <button class="nav-btn" data-tab="audit-logs">
+          <i data-lucide="shield"></i>
+          <span>Security Audit Trail</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="admin-user-info">
+          <div class="user-avatar" id="adminAvatarInitials">AD</div>
+          <div class="user-details">
+            <strong id="adminUserFullName">Administrator</strong>
+            <span id="adminUserEmail" class="text-truncate">admin@smartresume.ai</span>
+          </div>
+        </div>
+        <button id="adminLogoutBtn" class="btn btn-ghost btn-sm" title="Sign Out">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="admin-main">
+      <!-- TOPBAR -->
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <h1 id="viewTitle">Overview & Health</h1>
+          <span class="api-connection-status" id="apiConnectionStatus">
+            <span class="status-dot healthy"></span> Connected: <code id="apiBaseDisplay">http://127.0.0.1:8000</code>
+          </span>
+        </div>
+        <div class="topbar-right">
+          <button id="refreshCurrentViewBtn" class="btn btn-secondary btn-sm" title="Refresh View Data">
+            <i data-lucide="refresh-cw"></i>
+            <span>Refresh</span>
+          </button>
+          <button id="switchApiTargetBtn" class="btn btn-ghost btn-sm" title="Change API Base">
+            <i data-lucide="settings"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: OVERVIEW & HEALTH -->
+      <section id="panelOverview" class="tab-panel active">
+        <div class="metrics-grid">
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Registered Users</span>
+              <i data-lucide="users" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="kpiTotalUsers">--</div>
+            <div class="stat-subtitle text-success" id="kpiActiveUsers">-- active users</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Active Resumes</span>
+              <i data-lucide="file-text" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="kpiTotalResumes">--</div>
+            <div class="stat-subtitle" id="kpiTotalVersions">-- versions recorded</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Mock Interviews</span>
+              <i data-lucide="video" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="kpiTotalInterviews">--</div>
+            <div class="stat-subtitle text-primary" id="kpiCompletedInterviews">-- completed sessions</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">AI Ops & Fallback</span>
+              <i data-lucide="activity" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="kpiAiOpsStatus">Operational</div>
+            <div class="stat-subtitle" id="kpiAiOpsLatency">Avg Latency: -- ms</div>
+          </div>
+        </div>
+
+        <div class="content-split-grid">
+          <!-- System Status Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i data-lucide="check-circle-2" class="text-success"></i> Subsystem Health</h3>
+            </div>
+            <div class="card-body">
+              <div class="health-item">
+                <span>FastAPI Application Backend</span>
+                <span class="badge badge-success">ONLINE</span>
+              </div>
+              <div class="health-item">
+                <span>PostgreSQL Database Pool</span>
+                <span class="badge badge-success">CONNECTED</span>
+              </div>
+              <div class="health-item">
+                <span>Gemini API / Deterministic Fallback</span>
+                <span class="badge badge-success" id="subsystemAiBadge">ACTIVE</span>
+              </div>
+              <div class="health-item">
+                <span>JWT Authentication & RBAC</span>
+                <span class="badge badge-success">ENFORCED</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions & Configuration -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i data-lucide="sliders"></i> Quick Feature Toggles</h3>
+            </div>
+            <div class="card-body" id="quickFlagsList">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: USER DIRECTORY & RBAC -->
+      <section id="panelUsers" class="tab-panel">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3><i data-lucide="users"></i> User Directory & Access Control</h3>
+              <p class="text-sm text-muted">Inspect registered accounts, verify roles, and promote/demote administrative permissions with audit logging.</p>
+            </div>
+            <div class="table-search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="userSearchInput" class="form-input sm" placeholder="Search by name or email...">
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>User / Account</th>
+                    <th>Role</th>
+                    <th>Resumes</th>
+                    <th>Verified</th>
+                    <th>Registered</th>
+                    <th class="text-right">Privilege Action</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <tr><td colspan="6" class="text-center p-4 text-muted">Loading user directory...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer flex-between">
+            <span class="text-sm text-muted" id="userCountSummary">Showing users</span>
+            <div class="pagination-controls" id="userPaginationControls"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: AI OPS & TELEMETRY -->
+      <section id="panelAiOps" class="tab-panel">
+        <div class="metrics-grid">
+          <div class="stat-card">
+            <span class="stat-title">Primary Model</span>
+            <div class="stat-value text-sm" id="aiPrimaryModel">gemini-2.5-flash</div>
+            <div class="stat-subtitle text-success">Google GenAI Live</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">Fallback Engine</span>
+            <div class="stat-value text-sm" id="aiFallbackEngine">deterministic-v2</div>
+            <div class="stat-subtitle">Zero Hallucination Rules Engine</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">24h AI Requests</span>
+            <div class="stat-value" id="aiTotalRequests">--</div>
+            <div class="stat-subtitle text-success" id="aiFallbackRate">Fallback: 0.0%</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">Response Latency (p50 / p99)</span>
+            <div class="stat-value text-sm" id="aiLatencyMetric">-- ms / -- ms</div>
+            <div class="stat-subtitle text-primary">Sub-second execution</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i data-lucide="bar-chart-2"></i> Feature-Level AI Telemetry Breakdown</h3>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Feature Workflow</th>
+                    <th>24h Request Volume</th>
+                    <th>Fallback Activation Rate</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="aiFeatureBreakdownBody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: FEATURE FLAGS -->
+      <section id="panelFeatureFlags" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <h3><i data-lucide="sliders"></i> System Feature Flags & Platform Controls</h3>
+            <p class="text-sm text-muted">Dynamically enable or disable platform capabilities in real time. Changes are persisted on the backend and recorded in the audit log.</p>
+          </div>
+          <div class="card-body">
+            <div class="flags-grid" id="fullFlagsContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: SECURITY AUDIT TRAIL -->
+      <section id="panelAuditLogs" class="tab-panel">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3><i data-lucide="shield"></i> Security & Administrative Audit Log</h3>
+              <p class="text-sm text-muted">Immutable event records capturing administrative actions, role modifications, and system configuration updates.</p>
+            </div>
+            <button id="refreshAuditLogsBtn" class="btn btn-secondary btn-sm">
+              <i data-lucide="refresh-cw"></i>
+              <span>Refresh Log</span>
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table font-mono-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                    <th>Severity</th>
+                  </tr>
+                </thead>
+                <tbody id="auditLogsTableBody">
+                  <tr><td colspan="5" class="text-center p-4 text-muted">Loading audit trail...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

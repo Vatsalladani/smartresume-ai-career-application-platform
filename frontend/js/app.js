@@ -81,7 +81,6 @@ function initializeApp() {
   safeInit("wireInternationalRules", wireInternationalRules);
   safeInit("wireApplicationPackModal", wireApplicationPackModal);
   safeInit("wireGuidanceSystem", wireGuidanceSystem);
-  safeInit("wireAdminWorkspace", wireAdminWorkspace);
   safeInit("wireFocusCoach", wireFocusCoach);
   safeInit("boot", boot);
 }
@@ -909,7 +908,6 @@ const ROUTES = {
   "#/career-insights": "career-insights",
   "#/billing": "billing",
   "#/settings": "settings",
-  "#/admin": "admin",
 };
 
 const TAB_TO_ROUTE = {
@@ -930,7 +928,6 @@ const TAB_TO_ROUTE = {
   "insights": "#/insights",
   "billing": "#/billing",
   "settings": "#/settings",
-  "admin": "#/admin",
 };
 
 const TAB_MAP = {
@@ -951,7 +948,6 @@ const TAB_MAP = {
   "insights": "tabCareerInsights",
   "billing": "tabBilling",
   "settings": "tabSettings",
-  "admin": "tabAdmin",
 };
 
 function wireNavigation() {
@@ -984,7 +980,6 @@ function wireNavigation() {
       "profile": "Profile & Experience",
       "templates": "Resume Templates",
       "settings": "Settings",
-      "admin": "Admin Console",
     };
 
     $$(".nav-tabs button, .nav-groups .nav-item, .mobile-bottom-nav .mobile-nav-item").forEach((item) => {
@@ -1050,7 +1045,6 @@ function wireNavigation() {
     }
     if (validTab === "dashboard") renderDashboard();
     if (validTab === "settings") loadSettingsUI();
-    if (validTab === "admin") loadAdminOverview();
     if (validTab === "tailor" || validTab === "improve-resume") loadImproveResumeView();
 
     drawIcons();
@@ -1200,12 +1194,6 @@ function renderUserBar() {
     }
   } else if (trialBanner) {
     trialBanner.classList.add("hidden");
-  }
-
-  // Check Admin Console Nav Item
-  const adminNav = $("#adminNavItem");
-  if (adminNav) {
-    adminNav.classList.toggle("hidden", (state.user.role || "").toUpperCase() !== "ADMIN");
   }
 }
 
@@ -15026,139 +15014,7 @@ function initTermExplainers() {
 }
 
 // ==========================================================================
-// 12. ADMIN WORKSPACE & AI OPS TELEMETRY MODULE
-// ==========================================================================
-function wireAdminWorkspace() {
-  $("#refreshAdminOverviewBtn")?.addEventListener("click", loadAdminOverview);
-  $("#adminUserSearchInput")?.addEventListener("input", (e) => {
-    loadAdminUsers(1, e.target.value.trim());
-  });
-}
-
-async function loadAdminOverview() {
-  try {
-    const res = await API.request("/admin/overview");
-    const data = res?.data || res;
-    if (!data) return;
-
-    if ($("#adminMetricUsers")) $("#adminMetricUsers").textContent = data.user_metrics?.total_users ?? 0;
-    if ($("#adminMetricActiveUsers")) $("#adminMetricActiveUsers").textContent = `${data.user_metrics?.active_users ?? 0} active`;
-    if ($("#adminMetricResumes")) $("#adminMetricResumes").textContent = data.document_metrics?.total_resumes ?? 0;
-    if ($("#adminMetricVersions")) $("#adminMetricVersions").textContent = `${data.document_metrics?.total_versions ?? 0} versions`;
-    if ($("#adminMetricInterviews")) $("#adminMetricInterviews").textContent = data.interview_metrics?.total_sessions ?? 0;
-    if ($("#adminMetricCompletedInterviews")) $("#adminMetricCompletedInterviews").textContent = `${data.interview_metrics?.completed_sessions ?? 0} completed`;
-
-    const aiOps = data.ai_ops_summary || {};
-    if ($("#adminMetricAIOps")) $("#adminMetricAIOps").textContent = aiOps.healthy ? "Operational" : "Degraded";
-    if ($("#adminMetricAIFallback")) $("#adminMetricAIFallback").textContent = `Avg Latency: ${aiOps.avg_latency_ms || 185}ms`;
-
-    await Promise.allSettled([
-      loadAdminUsers(1, ""),
-      loadAdminAuditLogs(),
-    ]);
-  } catch (err) {
-    if (err.status === 403) {
-      toast("Admin access required.", "error");
-      navigateToTab("dashboard");
-    } else {
-      toast(err.message || "Failed to load admin overview.", "error");
-    }
-  }
-}
-window.loadAdminOverview = loadAdminOverview;
-
-async function loadAdminUsers(page = 1, search = "") {
-  const tbody = $("#adminUsersTableBody");
-  if (!tbody) return;
-  try {
-    const res = await API.request(`/admin/users?page=${page}&page_size=15&search=${encodeURIComponent(search)}`);
-    const users = (res?.data?.users || res?.users) || [];
-    if (users.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center p-3 text-muted">No users found.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = users.map((u) => {
-      const isTargetAdmin = (u.role || "").toUpperCase() === "ADMIN";
-      const isSelf = state.user?.id === u.id;
-      return `
-        <tr>
-          <td>
-            <strong>${escapeHtml(u.full_name || 'User')}</strong>
-            <span class="text-xs text-muted block">${escapeHtml(u.email)}</span>
-          </td>
-          <td>
-            <span class="badge-sub ${isTargetAdmin ? 'badge-primary font-bold' : ''}">${escapeHtml(u.role)}</span>
-          </td>
-          <td>${u.resume_count || 0}</td>
-          <td>
-            ${isSelf ? '<span class="text-xs text-muted">Current User</span>' : `
-              <button class="secondary-btn xs" onclick="updateAdminUserRole(${u.id}, '${isTargetAdmin ? 'USER' : 'ADMIN'}')">
-                ${isTargetAdmin ? 'Demote to User' : 'Make Admin'}
-              </button>
-            `}
-          </td>
-        </tr>
-      `;
-    }).join("");
-  } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center p-3">${escapeHtml(err.message)}</td></tr>`;
-  }
-}
-
-async function updateAdminUserRole(userId, newRole) {
-  try {
-    await API.request(`/admin/users/${userId}/role`, {
-      method: "POST",
-      body: { role: newRole },
-    });
-    toast(`User role updated to ${newRole}.`);
-    await loadAdminUsers(1, $("#adminUserSearchInput")?.value.trim() || "");
-    await loadAdminAuditLogs();
-  } catch (err) {
-    toast(err.message || "Failed to update role.", "error");
-  }
-}
-window.updateAdminUserRole = updateAdminUserRole;
-
-async function toggleAdminFeatureFlag(flagName, enabled) {
-  try {
-    await API.request("/admin/feature-flags", {
-      method: "PUT",
-      body: { flags: { [flagName]: enabled } },
-    });
-    toast(`Feature flag '${flagName}' updated to ${enabled}.`);
-    await loadAdminAuditLogs();
-  } catch (err) {
-    toast(err.message || "Failed to update flag.", "error");
-  }
-}
-window.toggleAdminFeatureFlag = toggleAdminFeatureFlag;
-
-async function loadAdminAuditLogs() {
-  const tbody = $("#adminAuditLogTableBody");
-  if (!tbody) return;
-  try {
-    const res = await API.request("/admin/audit-logs?limit=30");
-    const logs = (res?.data || res) || [];
-    if (!Array.isArray(logs) || logs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center p-3 text-muted">No audit events recorded.</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = logs.map((l) => `
-      <tr>
-        <td class="text-xs text-muted">${new Date(l.timestamp).toLocaleTimeString()}</td>
-        <td><strong>${escapeHtml(l.actor)}</strong></td>
-        <td><code>${escapeHtml(l.action)}</code></td>
-        <td class="text-xs">${escapeHtml(l.details)}</td>
-        <td><span class="badge-sub ${l.severity === 'WARNING' ? 'badge-suspicious' : ''}">${escapeHtml(l.severity)}</span></td>
-      </tr>
-    `).join("");
-  } catch (_) {}
-}
-
-// ==========================================================================
-// 13. FOCUS COACHING (CONSENT-BASED ATTENTION HUD) MODULE
+// 12. FOCUS COACHING (CONSENT-BASED ATTENTION HUD) MODULE
 // ==========================================================================
 let _focusCoachActive = false;
 let _focusCoachStream = null;
