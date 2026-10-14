@@ -3233,6 +3233,18 @@
                 <option value="FULL_PRESSURE">Full Pressure (Maximum Rigor)</option>
               </select>
             </label>
+            <label>Session Duration
+              <select id="interviewDurationSelect">
+                <option value="15">15 Minutes (Express)</option>
+                <option value="30">30 Minutes (Targeted)</option>
+                <option value="60" selected>60 Minutes (Full Standard)</option>
+                <option value="90">90 Minutes (Deep Comprehensive)</option>
+              </select>
+            </label>
+            <label class="flex-row align-center gap-2" style="cursor: pointer; margin-top: 24px;">
+              <input type="checkbox" id="interviewStrictFocusCheckbox" style="width: auto;">
+              <span class="text-xs font-semibold">Strict Focus Mode (3 warnings)</span>
+            </label>
             <label class="span-2">Job Description (optional text snippet)
               <textarea id="interviewJobDescriptionInput" rows="2" placeholder="Paste job description or requirements to ground interview questions..."></textarea>
             </label>
@@ -3413,9 +3425,17 @@
             <div class="panel-head border-b pb-2 flex-between">
               <div>
                 <h4 id="activeInterviewTitle">Text Interview Session</h4>
-                <span id="interviewStatusPill" class="badge-sub">Level 1: Warm-up</span>
+                <div class="flex-row align-center gap-2 mt-1">
+                  <span id="interviewStatusPill" class="badge-sub">Level 1: Warm-up</span>
+                  <span id="interviewSessionTimer" class="badge-sub" style="font-variant-numeric: tabular-nums;"><i data-lucide="clock" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i><span id="interviewTimerDisplay">00:00</span></span>
+                  <button id="pauseResumeInterviewBtn" class="secondary-btn xs" type="button" title="Pause / Resume Timer" style="padding: 2px 8px; font-size: 11px;"><i data-lucide="pause" style="width:12px; height:12px;"></i><span id="pauseResumeBtnText">Pause</span></button>
+                  <span id="strictFocusWarningBadge" class="badge-sub hidden" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);"><i data-lucide="alert-triangle" style="width:12px; height:12px;"></i> Warnings: <span id="strictFocusCountDisplay">0</span>/3</span>
+                </div>
               </div>
               <div class="flex-row align-center gap-2">
+                <button id="toggleInterviewTtsBtn" class="secondary-btn xs" type="button" title="Toggle AI voice spoken audio readout">
+                  <i data-lucide="volume-2"></i><span id="interviewTtsBtnText">AI Voice: On</span>
+                </button>
                 <button id="toggleFocusCoachBtn" class="secondary-btn xs" type="button" title="Enable consent-based webcam attention coaching">
                   <i data-lucide="eye"></i><span>Focus Coach: Off</span>
                 </button>
@@ -3433,9 +3453,17 @@
             <div id="interviewChatBox" class="chat-messages-box">
               <p class="text-muted text-center py-4 text-sm">Session initialized. Answer questions using the STAR method.</p>
             </div>
-            <form id="interviewTurnForm" class="chat-input-row">
-              <textarea id="candidateAnswerInput" rows="3" placeholder="Type your answer using Situation, Task, Action, Result..." required></textarea>
-              <button class="primary-btn sm" type="submit"><i data-lucide="send"></i><span>Submit Turn</span></button>
+            <div class="interview-quick-actions flex-row align-center gap-2 mb-2 px-2" style="padding-top: 4px;">
+              <button id="repeatInterviewBtn" class="secondary-btn xs" type="button" title="Repeat or clarify the question"><i data-lucide="repeat" style="width:12px; height:12px;"></i><span>Repeat</span></button>
+              <button id="hintInterviewBtn" class="secondary-btn xs" type="button" title="Request a guiding hint"><i data-lucide="lightbulb" style="width:12px; height:12px;"></i><span>Hint</span></button>
+              <button id="skipInterviewBtn" class="ghost-btn xs" type="button" title="Skip this question" style="color: #f59e0b;"><i data-lucide="skip-forward" style="width:12px; height:12px;"></i><span>Skip</span></button>
+            </div>
+            <form id="interviewTurnForm" class="chat-input-row" style="display:flex; gap:8px; align-items:flex-end;">
+              <textarea id="candidateAnswerInput" rows="3" placeholder="Type or speak your answer using Situation, Task, Action, Result..." required style="flex:1;"></textarea>
+              <div class="flex-column gap-2" style="display:flex; flex-direction:column; gap:6px;">
+                <button id="interviewVoiceDictateBtn" class="secondary-btn sm" type="button" title="Speak your answer (Speech-to-Text)"><i data-lucide="mic"></i><span>Voice</span></button>
+                <button class="primary-btn sm" type="submit"><i data-lucide="send"></i><span>Submit</span></button>
+              </div>
             </form>
             <div id="turnEvaluationDrawer" class="turn-eval-drawer hidden">
               <div class="turn-eval-header">

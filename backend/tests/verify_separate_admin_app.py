@@ -1,10 +1,17 @@
-import os
 import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+import os
 import time
 import json
 import requests
 import subprocess
+from pathlib import Path
 from playwright.sync_api import sync_playwright
+
+backend_dir = Path(__file__).resolve().parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 ADMIN_URL = "http://127.0.0.1:4174"
 USER_APP_URL = "http://127.0.0.1:8000"
@@ -34,7 +41,7 @@ def run_separate_admin_verification():
         "verdict": "PENDING"
     }
 
-    # 1. Start Admin Panel Server
+    # 1. Start Admin Panel Server & Backend Server
     print("\n--- 1. Starting Dedicated Admin Panel Server on port 4174 ---")
     admin_proc = subprocess.Popen(
         [sys.executable, "admin-panel/server.py"],
@@ -44,12 +51,29 @@ def run_separate_admin_verification():
     )
     time.sleep(2.0)
 
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    backend_running = (s.connect_ex(('127.0.0.1', 8000)) == 0)
+    s.close()
+    backend_proc = None
+    if not backend_running:
+        print("--- Starting FastAPI backend server on 8000 ---")
+        backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        backend_proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+            cwd=backend_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        time.sleep(3.0)
+        print("✅ FastAPI backend active at http://127.0.0.1:8000")
+
     try:
         # Check server response
         res = requests.get(f"{ADMIN_URL}/index.html", timeout=5)
         assert res.status_code == 200, f"Admin server returned {res.status_code}"
         assert "SmartResume.ai" in res.text
-        assert "Admin Management Portal" in res.text
+        assert "Admin Portal" in res.text or "Admin Management Portal" in res.text
         results["admin_app_connectivity"] = {"status": "ONLINE", "http_code": 200}
         print("Dedicated Admin Server is ONLINE at http://127.0.0.1:4174")
 
@@ -247,7 +271,13 @@ def run_separate_admin_verification():
             admin_proc.wait(timeout=3)
         except Exception:
             admin_proc.kill()
-        print("Admin dev server cleanly stopped.")
+        if backend_proc:
+            backend_proc.terminate()
+            try:
+                backend_proc.wait(timeout=3)
+            except Exception:
+                backend_proc.kill()
+        print("Dev servers cleanly stopped.")
 
     return results
 

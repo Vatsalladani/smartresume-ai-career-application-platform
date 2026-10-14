@@ -24,9 +24,27 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, expire_on_commit=False)
 
 
+def get_session() -> Session:
+    import os
+    if os.environ.get("TESTING") == "1":
+        import sys
+        for mod_name in ("tests.conftest", "backend.tests.conftest", "conftest"):
+            if mod_name in sys.modules:
+                mod = sys.modules[mod_name]
+                if hasattr(mod, "TestingSessionLocal"):
+                    return mod.TestingSessionLocal()
+        try:
+            from tests.conftest import TestingSessionLocal
+            return TestingSessionLocal()
+        except Exception:
+            pass
+    return SessionLocal()
+
+
 def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
+    db = get_session()
     try:
         yield db
     finally:
         db.close()
+

@@ -15,22 +15,32 @@ from app.schemas.interview import (
     ClaimsToDefendOut,
     PreparationGuideOut,
     LiveConfigOut,
+    InterviewSkipPayload,
+    FocusWarningPayload,
 )
-from app.services import interview_service
+from app.services import interview_service, platform_config_service
 
 router = APIRouter(prefix="/interview", tags=["interview"])
 settings = get_settings()
 
 
 @router.get("/live-config")
-def get_live_config(current_user: User = Depends(get_current_user)) -> dict:
-    """Returns whether Gemini Live API is configured in the environment."""
-    has_key = bool(settings.gemini_api_key)
-    msg = (
-        "Gemini Live API is ready."
-        if has_key
-        else "Live AI Interview is not configured yet. Configure GEMINI_API_KEY in backend/.env."
-    )
+def get_live_config(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Returns whether Gemini Live API is configured and enabled in platform settings."""
+    voice_enabled = platform_config_service.get_setting("voice_interview_enabled", True, db=db)
+    live_mode = platform_config_service.get_setting("gemini_live_mode", True, db=db)
+    has_key = bool(settings.gemini_api_key) and voice_enabled and live_mode
+
+    if not voice_enabled or not live_mode:
+        msg = "Live voice interviews are currently disabled by platform administrator."
+    elif not has_key:
+        msg = "Live AI Interview is not configured yet. Configure GEMINI_API_KEY in backend/.env."
+    else:
+        msg = "Gemini Live API is ready."
+
     return success_response(
         LiveConfigOut(
             configured=has_key,
@@ -38,6 +48,7 @@ def get_live_config(current_user: User = Depends(get_current_user)) -> dict:
             message=msg,
         ).model_dump()
     )
+
 
 
 @router.get("/claims-to-defend")
@@ -82,7 +93,14 @@ def create_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    if payload.session_mode == "LIVE":
+        if not platform_config_service.get_setting("voice_interview_enabled", True, db=db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Live voice interview mode is currently disabled by administrator configuration."
+            )
     session = interview_service.create_interview_session(db, current_user.id, payload)
+
     out = InterviewSessionOut.model_validate(session)
     if session.resume:
         out.resume_title = session.resume.title
@@ -140,13 +158,109 @@ def submit_turn(
 ) -> dict:
     try:
         user_msg, ai_msg = interview_service.process_candidate_turn(
-            db, current_user.id, session_id, payload.message_text
+            db,
+            current_user.id,
+            session_id,
+            payload.message_text,
+            duration_seconds=payload.duration_seconds or 0.0,
         )
         return success_response({
             "user_message": user_msg.message_text,
             "ai_response": ai_msg.message_text,
             "turn_feedback": ai_msg.evaluation_json,
         })
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/skip")
+def skip_turn(
+    session_id: int,
+    payload: InterviewSkipPayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        user_msg, ai_msg = interview_service.skip_question(
+            db, current_user.id, session_id, reason=payload.reason
+        )
+        return success_response({
+            "user_message": user_msg.message_text,
+            "ai_response": ai_msg.message_text,
+            "turn_feedback": ai_msg.evaluation_json,
+        })
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/hint")
+def get_hint(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        res = interview_service.request_hint(db, current_user.id, session_id)
+        return success_response(res)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/repeat")
+def get_repeat(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        res = interview_service.repeat_question(db, current_user.id, session_id)
+        return success_response(res)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/pause")
+def pause_session_endpoint(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        res = interview_service.pause_session(db, current_user.id, session_id)
+        return success_response(res, "Session timer paused.")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/resume")
+def resume_session_endpoint(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        res = interview_service.resume_session(db, current_user.id, session_id)
+        return success_response(res, "Session timer resumed.")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/sessions/{session_id}/focus-warning")
+def record_warning(
+    session_id: int,
+    payload: FocusWarningPayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        res = interview_service.record_focus_warning(
+            db,
+            current_user.id,
+            session_id,
+            warning_type=payload.warning_type,
+            confidence=payload.confidence,
+        )
+        return success_response(res)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 

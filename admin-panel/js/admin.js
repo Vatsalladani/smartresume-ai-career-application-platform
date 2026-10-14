@@ -15,6 +15,8 @@ const state = {
   activeTab: "overview",
   currentPage: 1,
   userSearchQuery: "",
+  resumePage: 1,
+  resumeSearchQuery: "",
   latestInvite: null,
 };
 
@@ -93,58 +95,70 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initApp() {
-  // Sync API URL input with state
   const apiInput = $("#adminApiUrlInput");
   if (apiInput) apiInput.value = state.apiBase;
 
   const displayEl = $("#apiBaseDisplay");
   if (displayEl) displayEl.textContent = state.apiBase;
 
-  // Restore remembered email
   const remembered = localStorage.getItem(STATE_KEY_REMEMBER_EMAIL);
-  const emailInput = $("#adminEmailInput");
-  const rememberBox = $("#rememberEmailCheckbox");
-  if (remembered && emailInput) {
-    emailInput.value = remembered;
-    if (rememberBox) rememberBox.checked = true;
+  if (remembered && $("#adminEmailInput")) {
+    $("#adminEmailInput").value = remembered;
+    if ($("#rememberEmailCheckbox")) $("#rememberEmailCheckbox").checked = true;
   }
 
-  // Environment badge
   updateEnvBadge();
 
-  // Check URL query parameters for invite tokens (e.g. ?token=XYZ&email=...)
-  checkUrlForInviteToken();
-
-  // Wire Forms & Buttons
+  // Bind Form Submissions
   $("#adminLoginForm")?.addEventListener("submit", handleAdminLogin);
   $("#adminSignupForm")?.addEventListener("submit", handleAdminSignup);
   $("#createInviteForm")?.addEventListener("submit", handleCreateInvitation);
+  $("#aiControlsForm")?.addEventListener("submit", handleSaveAiControls);
+  $("#announcementForm")?.addEventListener("submit", handleSaveAnnouncement);
+  $("#interviewConfigForm")?.addEventListener("submit", handleSaveInterviewConfig);
+  $("#quotasConfigForm")?.addEventListener("submit", handleSaveQuotas);
+
+  // Bind Controls
   $("#adminLogoutBtn")?.addEventListener("click", () => handleAdminLogout("Signed out successfully."));
-  $("#refreshCurrentViewBtn")?.addEventListener("click", refreshActiveView);
-  $("#refreshAuditLogsBtn")?.addEventListener("click", loadAuditLogs);
+  $("#refreshCurrentViewBtn")?.addEventListener("click", () => refreshActiveView());
+  $("#refreshAuditLogsBtn")?.addEventListener("click", () => loadAuditLogs());
   $("#switchApiTargetBtn")?.addEventListener("click", promptChangeApiTarget);
 
-  // Wire User Search Input
-  let debounceTimeout = null;
+  // Nav Clicks
+  $$(".nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      if (tab) activateTab(tab);
+    });
+  });
+
+  // User Search
+  let searchTimeout = null;
   $("#userSearchInput")?.addEventListener("input", (e) => {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(() => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
       state.userSearchQuery = e.target.value.trim();
       loadUsers(1, state.userSearchQuery);
     }, 300);
   });
 
-  // Wire Tab Navigation
-  $$(".nav-btn[data-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      activateTab(btn.dataset.tab);
-    });
+  // Resume Search
+  let resumeSearchTimeout = null;
+  $("#resumeSearchInput")?.addEventListener("input", (e) => {
+    clearTimeout(resumeSearchTimeout);
+    resumeSearchTimeout = setTimeout(() => {
+      state.resumeSearchQuery = e.target.value.trim();
+      loadResumes(1, state.resumeSearchQuery);
+    }, 300);
   });
 
-  // Handle Hash Routing
+  // Hash change routing
   window.addEventListener("hashchange", handleHashRouting);
 
-  // Validate existing session
+  // Parse invite tokens in URL if on signup page
+  checkUrlForInviteToken();
+
+  // If token exists, verify session; otherwise show login
   if (state.token) {
     verifyAdminSession();
   } else {
@@ -155,9 +169,9 @@ function initApp() {
 function updateEnvBadge() {
   const badge = $("#activeEnvBadge");
   if (!badge) return;
-  const isProd = state.apiBase.includes("vercel.app") || state.apiBase.includes("smartresume.ai");
-  badge.textContent = isProd ? "PRODUCTION" : "LOCAL DEV";
-  badge.className = `badge-env ${isProd ? "badge-danger" : "badge-admin"}`;
+  const isLocal = state.apiBase.includes("localhost") || state.apiBase.includes("127.0.0.1");
+  badge.textContent = isLocal ? "LOCAL DEV" : "PRODUCTION";
+  badge.className = `badge-env ${isLocal ? "env-local" : "env-prod"}`;
 }
 
 window.setApiTarget = function(url) {
@@ -166,29 +180,23 @@ window.setApiTarget = function(url) {
 };
 
 function promptChangeApiTarget() {
-  const current = state.apiBase;
-  const target = prompt("Enter backend API base URL (e.g., http://127.0.0.1:8000 or https://smartresume-ai-career-application-p.vercel.app):", current);
-  if (target && target.trim() && target.trim() !== current) {
-    state.apiBase = target.trim().replace(/\/+$/, "");
+  const newTarget = prompt("Enter backend API base URL:", state.apiBase);
+  if (newTarget && newTarget.trim()) {
+    state.apiBase = newTarget.trim().replace(/\/+$/, "");
     localStorage.setItem(STATE_KEY_API, state.apiBase);
-    $("#apiBaseDisplay").textContent = state.apiBase;
+    const displayEl = $("#apiBaseDisplay");
+    if (displayEl) displayEl.textContent = state.apiBase;
     updateEnvBadge();
-    toast(`API Target updated to ${state.apiBase}`);
+    toast(`Target API changed to: ${state.apiBase}`, "info");
     refreshActiveView();
   }
 }
 
-// Auth Mode Switching & Password Visibility
 window.switchAuthMode = function(mode) {
   const loginForm = $("#adminLoginForm");
   const signupForm = $("#adminSignupForm");
   const tabLogin = $("#tabLoginBtn");
   const tabSignup = $("#tabSignupBtn");
-  const errLogin = $("#authErrorMessage");
-  const errSignup = $("#signupErrorMessage");
-
-  if (errLogin) errLogin.classList.add("hidden");
-  if (errSignup) errSignup.classList.add("hidden");
 
   if (mode === "signup") {
     loginForm?.classList.add("hidden");
@@ -219,14 +227,12 @@ function checkUrlForInviteToken() {
   let token = "";
   let email = "";
 
-  // 1. Search params (?token=XYZ&email=...)
   const params = new URLSearchParams(window.location.search);
   if (params.get("token")) {
     token = params.get("token");
     email = params.get("email") || "";
   }
 
-  // 2. Hash params (#/signup?token=XYZ&email=...)
   const hash = window.location.hash;
   if (hash.includes("token=")) {
     const hashQuery = hash.split("?")[1];
@@ -290,7 +296,6 @@ async function handleAdminLogin(e) {
     let token = "";
     let admin = null;
 
-    // Primary: Dedicated Admin Auth API
     try {
       const res = await adminApi("/admin-auth/login", {
         method: "POST",
@@ -298,45 +303,43 @@ async function handleAdminLogin(e) {
       });
       token = res?.data?.access_token;
       admin = res?.data?.admin;
-    } catch (primaryErr) {
-      // If endpoint doesn't exist on legacy backend, fallback to /auth/login with RBAC check
-      if (primaryErr.status === 404) {
-        const fallbackRes = await adminApi("/auth/login", {
+    } catch (adminErr) {
+      if (adminErr.status === 404 || adminErr.status === 401) {
+        // Fallback check: legacy user auth if promoting initial admin
+        const fbRes = await adminApi("/auth/login", {
           method: "POST",
           body: JSON.stringify({ email: identifier, password }),
         });
-        token = fallbackRes?.data?.access_token;
-        admin = fallbackRes?.data?.user;
+        if (fbRes?.data?.user?.role === "USER") {
+          const err = new Error("Access Denied: Standard user accounts cannot access the dedicated Admin Portal.");
+          err.status = 403;
+          throw err;
+        }
+        token = fbRes?.data?.access_token;
+        admin = {
+          email: fbRes?.data?.user?.email,
+          full_name: fbRes?.data?.user?.full_name,
+          role: fbRes?.data?.user?.role,
+        };
       } else {
-        throw primaryErr;
+        throw adminErr;
       }
     }
 
-    if (!token) {
-      throw new Error("Authentication response did not contain an admin access token.");
-    }
+    if (!token) throw new Error("Authentication failed to provide a valid token.");
 
     state.token = token;
     state.adminUser = admin;
-
-    // Verify privilege against privileged endpoint
-    await adminApi("/admin/overview");
-
-    // Success: save token & transition to app
     localStorage.setItem(STATE_KEY_TOKEN, token);
+
     showAppView();
     updateAdminUserDisplay(admin);
-    toast("Welcome to SmartResume.ai Admin Console!", "success");
+    toast(`Welcome, ${admin?.full_name || 'Administrator'}!`, "success");
     handleHashRouting();
   } catch (err) {
-    state.token = "";
-    state.adminUser = null;
-    localStorage.removeItem(STATE_KEY_TOKEN);
     let msg = err.message || "Failed to authenticate administrator.";
-    if (err.status === 403 || msg.toLowerCase().includes("forbidden") || msg.toLowerCase().includes("standard user")) {
-      msg = "Access Denied: Standard user accounts cannot access the Admin Console. Administrator privileges are strictly required.";
-    } else if (err.status === 401) {
-      msg = "Invalid admin credentials or account locked. Please check your email and password.";
+    if (err.status === 403) {
+      msg = "Access Denied: Standard user accounts cannot access the dedicated Admin Portal.";
     }
     showAuthError(msg);
   } finally {
@@ -396,9 +399,7 @@ async function handleAdminSignup(e) {
     const token = res?.data?.access_token;
     const admin = res?.data?.admin;
 
-    if (!token) {
-      throw new Error("Admin registration did not return a session token.");
-    }
+    if (!token) throw new Error("Admin registration did not return a session token.");
 
     state.token = token;
     state.adminUser = admin;
@@ -449,19 +450,16 @@ function handleAdminLogout(msg = "") {
 
 async function verifyAdminSession() {
   try {
-    // 1. Fetch current admin profile
     let adminProfile = null;
     try {
       const meRes = await adminApi("/admin-auth/me");
       adminProfile = meRes?.data;
-    } catch (_) {
-      // Fallback if legacy token
-    }
+    } catch (_) {}
 
     state.adminUser = adminProfile;
     updateAdminUserDisplay(adminProfile);
 
-    // 2. Fetch overview to ensure active privileges
+    // Verify admin access
     await adminApi("/admin/overview");
 
     showAppView();
@@ -516,9 +514,11 @@ const ROUTE_MAP = {
   "#/dashboard": "overview",
   "#/overview": "overview",
   "#/users": "users",
-  "#/admin-team": "admin-team",
+  "#/resumes": "resumes",
   "#/ai-ops": "ai-ops",
   "#/feature-flags": "feature-flags",
+  "#/subscriptions": "subscriptions",
+  "#/admin-team": "admin-team",
   "#/audit-logs": "audit-logs",
 };
 
@@ -531,43 +531,42 @@ function handleHashRouting() {
 const TAB_TITLES = {
   "overview": "Overview & Health",
   "users": "User Directory & RBAC",
+  "resumes": "Resumes & Templates",
+  "ai-ops": "AI Ops & Gemini Controls",
+  "feature-flags": "Feature Flags & Announcements",
+  "subscriptions": "Subscriptions & Quotas",
   "admin-team": "Admin Team & Invites",
-  "ai-ops": "AI Ops & Telemetry",
-  "feature-flags": "Feature Flags",
   "audit-logs": "Security Audit Trail",
 };
 
 function activateTab(tabName, updateHash = true) {
   state.activeTab = tabName;
 
-  // Highlight Nav Buttons
   $$(".nav-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === tabName);
   });
 
-  // Switch Tab Panels
   $$(".tab-panel").forEach((panel) => panel.classList.remove("active"));
   const panelMap = {
     "overview": "panelOverview",
     "users": "panelUsers",
-    "admin-team": "panelAdminTeam",
+    "resumes": "panelResumes",
     "ai-ops": "panelAiOps",
     "feature-flags": "panelFeatureFlags",
+    "subscriptions": "panelSubscriptions",
+    "admin-team": "panelAdminTeam",
     "audit-logs": "panelAuditLogs",
   };
   const targetPanel = $(`#${panelMap[tabName]}`);
   if (targetPanel) targetPanel.classList.add("active");
 
-  // Update Title
   const titleEl = $("#viewTitle");
   if (titleEl) titleEl.textContent = TAB_TITLES[tabName] || "Admin Console";
 
-  // Update URL Hash
   if (updateHash) {
     window.history.pushState(null, "", `#/${tabName}`);
   }
 
-  // Load active tab data
   refreshActiveView();
   renderIcons();
 }
@@ -575,13 +574,15 @@ function activateTab(tabName, updateHash = true) {
 function refreshActiveView() {
   if (state.activeTab === "overview") loadOverview();
   else if (state.activeTab === "users") loadUsers(state.currentPage, state.userSearchQuery);
-  else if (state.activeTab === "admin-team") loadAdminTeam();
+  else if (state.activeTab === "resumes") loadResumes(state.resumePage, state.resumeSearchQuery);
   else if (state.activeTab === "ai-ops") loadAiOps();
   else if (state.activeTab === "feature-flags") loadFeatureFlags();
+  else if (state.activeTab === "subscriptions") loadSubscriptions();
+  else if (state.activeTab === "admin-team") loadAdminTeam();
   else if (state.activeTab === "audit-logs") loadAuditLogs();
 }
 
-// TAB 1: OVERVIEW LOADER
+// 1. OVERVIEW
 async function loadOverview() {
   try {
     const res = await adminApi("/admin/overview");
@@ -596,7 +597,7 @@ async function loadOverview() {
 
     const aiOps = data.ai_ops_summary || {};
     if ($("#kpiAiOpsStatus")) $("#kpiAiOpsStatus").textContent = aiOps.healthy ? "Operational" : "Degraded";
-    if ($("#kpiAiOpsLatency")) $("#kpiAiOpsLatency").textContent = `Avg Latency: ${aiOps.avg_latency_ms || 185} ms`;
+    if ($("#kpiAiOpsLatency")) $("#kpiAiOpsLatency").textContent = `Avg Latency: ${aiOps.avg_latency_ms || 0} ms`;
 
     // Render Quick Flags
     const flags = data.feature_flags || {};
@@ -617,7 +618,7 @@ async function loadOverview() {
   }
 }
 
-// TAB 2: USERS DIRECTORY LOADER
+// 2. USERS DIRECTORY
 async function loadUsers(page = 1, search = "") {
   state.currentPage = page;
   const tbody = $("#usersTableBody");
@@ -632,7 +633,7 @@ async function loadUsers(page = 1, search = "") {
     $("#userCountSummary").textContent = `Showing ${users.length} of ${total} registered user accounts`;
 
     if (users.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-muted">No users found matching query.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-muted">No users found matching query.</td></tr>`;
       return;
     }
 
@@ -640,29 +641,29 @@ async function loadUsers(page = 1, search = "") {
       const isAdmin = (u.role || "").toUpperCase() === "ADMIN";
       const isSelf = state.adminUser && state.adminUser.email === u.email;
       const createdDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : "--";
+      const planBadge = u.plan_name === 'EXECUTIVE' ? 'badge-exec' : (u.plan_name === 'PRO' ? 'badge-pro' : 'badge-free');
+      const statusBadge = u.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge badge-suspended">SUSPENDED</span>';
+
       return `
         <tr>
           <td>
             <strong>${escapeHtml(u.full_name || 'User')}</strong>
             <span class="text-xs text-muted block">${escapeHtml(u.email)}</span>
           </td>
-          <td>
-            <span class="badge ${isAdmin ? 'badge-admin' : 'badge-user'}">${escapeHtml(u.role)}</span>
-          </td>
+          <td><span class="badge ${isAdmin ? 'badge-admin' : 'badge-user'}">${escapeHtml(u.role)}</span></td>
+          <td><span class="badge ${planBadge}">${escapeHtml(u.plan_name || 'FREE')}</span></td>
+          <td>${statusBadge}</td>
           <td><strong>${u.resume_count || 0}</strong></td>
-          <td>
-            <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">
-              ${u.is_verified ? 'VERIFIED' : 'PENDING'}
-            </span>
-          </td>
           <td class="text-xs text-muted">${createdDate}</td>
           <td class="text-right">
-            ${isSelf ? '<span class="text-xs text-muted">Current Session</span>' : `
+            <button class="btn btn-secondary btn-xs" onclick="openUserModal(${u.id}, '${escapeHtml(u.email)}', '${u.plan_name}', ${u.is_active}, ${u.is_verified})">
+              <i data-lucide="edit-3"></i> Edit
+            </button>
+            ${!isSelf ? `
               <button class="btn btn-xs ${isAdmin ? 'btn-danger-outline' : 'btn-success-outline'}" onclick="updateAdminUserRole(${u.id}, '${isAdmin ? 'USER' : 'ADMIN'}')">
-                <i data-lucide="${isAdmin ? 'shield-minus' : 'shield-check'}"></i>
-                <span>${isAdmin ? 'Demote to User' : 'Make Admin'}</span>
+                ${isAdmin ? 'Demote' : 'Make Admin'}
               </button>
-            `}
+            ` : ''}
           </td>
         </tr>
       `;
@@ -671,7 +672,7 @@ async function loadUsers(page = 1, search = "") {
     renderPagination(data.page, data.total_pages);
     renderIcons();
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center p-4">${escapeHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center p-4">${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -688,9 +689,46 @@ function renderPagination(current, totalPages) {
   `;
 }
 
+window.openUserModal = function(id, email, plan, isActive, isVerified) {
+  $("#modalUserId").value = id;
+  $("#modalUserEmail").value = email;
+  $("#modalUserPlanSelect").value = plan || "FREE";
+  $("#modalUserActiveToggle").checked = Boolean(isActive);
+  $("#modalUserVerifiedToggle").checked = Boolean(isVerified);
+  $("#userModalOverlay").classList.remove("hidden");
+};
+
+window.closeUserModal = function() {
+  $("#userModalOverlay").classList.add("hidden");
+};
+
+window.saveUserModalChanges = async function() {
+  const userId = $("#modalUserId").value;
+  const newPlan = $("#modalUserPlanSelect").value;
+  const isActive = $("#modalUserActiveToggle").checked;
+  const isVerified = $("#modalUserVerifiedToggle").checked;
+
+  try {
+    await adminApi(`/admin/users/${userId}/status`, {
+      method: "POST",
+      body: JSON.stringify({ is_active: isActive, is_verified: isVerified }),
+    });
+
+    await adminApi(`/admin/users/${userId}/plan`, {
+      method: "POST",
+      body: JSON.stringify({ plan_name: newPlan }),
+    });
+
+    toast("User account updated successfully.", "success");
+    closeUserModal();
+    loadUsers(state.currentPage, state.userSearchQuery);
+  } catch (err) {
+    toast(`Failed to update user: ${err.message}`, "error");
+  }
+};
+
 window.updateAdminUserRole = async function(userId, newRole) {
   if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
-
   try {
     const res = await adminApi(`/admin/users/${userId}/role`, {
       method: "POST",
@@ -703,7 +741,401 @@ window.updateAdminUserRole = async function(userId, newRole) {
   }
 };
 
-// TAB 3: ADMIN TEAM & INVITATIONS
+// 3. RESUMES & TEMPLATES
+async function loadResumes(page = 1, search = "") {
+  state.resumePage = page;
+  const tbody = $("#resumesTableBody");
+  if (!tbody) return;
+
+  try {
+    const res = await adminApi(`/admin/resumes?page=${page}&page_size=20&search=${encodeURIComponent(search)}`);
+    const data = res?.data || {};
+    const resumes = data.resumes || [];
+    const total = data.total || 0;
+
+    $("#resumeCountSummary").textContent = `Showing ${resumes.length} of ${total} resumes`;
+
+    if (resumes.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-muted">No resumes found.</td></tr>`;
+    } else {
+      tbody.innerHTML = resumes.map((r) => {
+        const updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : "--";
+        const scoreBadge = r.ats_score >= 80 ? 'badge-success' : (r.ats_score >= 60 ? 'badge-warning' : 'badge-danger');
+        return `
+          <tr>
+            <td>
+              <strong>${escapeHtml(r.title)}</strong>
+              <span class="text-xs text-muted block">${escapeHtml(r.user_email)}</span>
+            </td>
+            <td>${escapeHtml(r.target_role || 'Unspecified')}</td>
+            <td><span class="badge ${scoreBadge}">${r.ats_score} / 100</span></td>
+            <td>${r.completeness_score}%</td>
+            <td><strong>${r.version_count}</strong></td>
+            <td class="text-xs text-muted">${updated}</td>
+            <td class="text-right">
+              <button class="btn btn-secondary btn-xs" onclick="inspectResume(${r.id})">
+                <i data-lucide="eye"></i> Inspect
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    renderResumePagination(data.page, data.total_pages);
+    renderIcons();
+
+    // Load templates status
+    loadTemplatesStatus();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center p-4">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderResumePagination(current, totalPages) {
+  const container = $("#resumePaginationControls");
+  if (!container || totalPages <= 1) {
+    if (container) container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `
+    <button class="btn btn-secondary btn-xs" ${current <= 1 ? "disabled" : ""} onclick="loadResumes(${current - 1}, state.resumeSearchQuery)">Previous</button>
+    <span class="text-xs text-muted" style="padding: 0 0.5rem;">Page ${current} of ${totalPages}</span>
+    <button class="btn btn-secondary btn-xs" ${current >= totalPages ? "disabled" : ""} onclick="loadResumes(${current + 1}, state.resumeSearchQuery)">Next</button>
+  `;
+}
+
+window.inspectResume = async function(resumeId) {
+  try {
+    const res = await adminApi(`/admin/resumes/${resumeId}`);
+    const r = res?.data || {};
+
+    $("#resumeModalTitle").textContent = `Inspect Resume: ${r.title}`;
+    const body = $("#resumeModalBody");
+    const parsed = r.parsed_content || {};
+
+    body.innerHTML = `
+      <div style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div><strong>User:</strong> ${escapeHtml(r.user_email || 'unknown')}</div>
+        <div><strong>Target Role:</strong> ${escapeHtml(r.target_role || 'N/A')}</div>
+        <div><strong>ATS Score:</strong> <span class="badge badge-success">${r.ats_score}/100</span></div>
+      </div>
+      <div class="card" style="margin-bottom: 1rem; background: var(--bg-surface); padding: 1rem;">
+        <h4>Professional Summary</h4>
+        <p class="text-xs" style="margin-top: 0.25rem;">${escapeHtml(parsed.summary || 'No summary recorded.')}</p>
+      </div>
+      <div class="card" style="margin-bottom: 1rem; background: var(--bg-surface); padding: 1rem;">
+        <h4>Skills & Experience Snapshot</h4>
+        <p class="text-xs text-muted">${parsed.skills ? Object.values(parsed.skills).flat().join(', ') : 'No skills categorized.'}</p>
+      </div>
+      <div>
+        <h4>Version History (${r.versions?.length || 0})</h4>
+        <ul style="padding-left: 1.25rem; margin-top: 0.5rem; font-size: 0.8125rem;">
+          ${(r.versions || []).map(v => `<li>Version ${v.version_number}: ${escapeHtml(v.changelog)} (${v.created_at ? new Date(v.created_at).toLocaleString() : ''})</li>`).join('')}
+        </ul>
+      </div>
+    `;
+
+    $("#resumeModalOverlay").classList.remove("hidden");
+  } catch (err) {
+    toast(`Failed to inspect resume: ${err.message}`, "error");
+  }
+};
+
+window.closeResumeModal = function() {
+  $("#resumeModalOverlay").classList.add("hidden");
+};
+
+async function loadTemplatesStatus() {
+  const grid = $("#templatesGrid");
+  if (!grid) return;
+
+  try {
+    const res = await adminApi("/admin/templates");
+    const list = res?.data?.templates || [];
+
+    grid.innerHTML = list.map((t) => `
+      <div class="template-card">
+        <div>
+          <div class="template-header">
+            <strong>${escapeHtml(t.name)}</strong>
+            <span class="badge ${t.enabled ? 'badge-success' : 'badge-danger'}">${t.enabled ? 'ACTIVE' : 'DISABLED'}</span>
+          </div>
+          <p class="text-xs text-muted">${escapeHtml(t.description)}</p>
+          <code class="text-xs block" style="margin-top: 0.5rem;">${t.id}</code>
+        </div>
+        <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+          <label class="toggle-switch">
+            <input type="checkbox" ${t.enabled ? "checked" : ""} onchange="toggleTemplateStatus('${t.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    grid.innerHTML = `<p class="text-danger">Failed to load templates: ${err.message}</p>`;
+  }
+}
+
+window.toggleTemplateStatus = async function(templateId, enabled) {
+  try {
+    await adminApi(`/admin/templates/${templateId}/status`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    });
+    toast(`Template ${templateId} is now ${enabled ? 'ENABLED' : 'DISABLED'}.`, "success");
+    loadTemplatesStatus();
+  } catch (err) {
+    toast(`Failed to update template: ${err.message}`, "error");
+    loadTemplatesStatus();
+  }
+};
+
+// 4. AI OPS & GEMINI CONTROLS
+async function loadAiOps() {
+  try {
+    const res = await adminApi("/admin/ai-ops");
+    const data = res?.data || {};
+
+    if ($("#aiPrimaryModel")) $("#aiPrimaryModel").textContent = data.primary_model || "gemini-2.5-flash";
+    if ($("#aiFallbackEngine")) $("#aiFallbackEngine").textContent = "deterministic-rule-v2";
+    if ($("#aiTotalRequests")) $("#aiTotalRequests").textContent = data.total_requests_24h ?? 0;
+    if ($("#aiFallbackRate")) $("#aiFallbackRate").textContent = `Fallback Rate: ${data.fallback_rate_pct ?? 0}%`;
+
+    const lat = data.latency_percentiles_ms || {};
+    if ($("#aiLatencyMetric")) $("#aiLatencyMetric").textContent = `${lat.p50 ?? 0} ms / ${lat.p99 ?? 0} ms`;
+
+    // Populate AI Controls Form
+    const configRes = await adminApi("/admin/ai-config");
+    const cfg = configRes?.data || {};
+
+    if ($("#aiPrimaryModelSelect")) $("#aiPrimaryModelSelect").value = cfg.gemini_primary_model || "gemini-2.5-flash";
+    if ($("#aiForceFallbackToggle")) $("#aiForceFallbackToggle").checked = Boolean(cfg.gemini_force_deterministic_fallback);
+    if ($("#aiTemperatureInput")) $("#aiTemperatureInput").value = cfg.gemini_temperature ?? 0.2;
+    if ($("#aiTimeoutInput")) $("#aiTimeoutInput").value = cfg.gemini_timeout_seconds ?? 15;
+
+    // Feature breakdown
+    const breakdown = data.breakdown_by_feature || {};
+    const tbody = $("#aiFeatureBreakdownBody");
+    if (tbody) {
+      const keys = Object.keys(breakdown);
+      if (keys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-muted">No AI calls recorded yet in the last 24h.</td></tr>`;
+      } else {
+        tbody.innerHTML = Object.entries(breakdown).map(([k, v]) => `
+          <tr>
+            <td><strong>${formatFlagName(k)}</strong></td>
+            <td>${v.calls ?? 0} calls</td>
+            <td><span class="badge ${parseFloat(v.fallback_rate) > 5 ? 'badge-warning' : 'badge-success'}">${v.fallback_rate || "0.0%"}</span></td>
+            <td><span class="badge badge-success">HEALTHY</span></td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    toast(`Failed to load AI telemetry: ${err.message}`, "error");
+  }
+}
+
+async function handleSaveAiControls(e) {
+  e.preventDefault();
+  const primaryModel = $("#aiPrimaryModelSelect")?.value;
+  const forceFallback = $("#aiForceFallbackToggle")?.checked;
+  const temperature = parseFloat($("#aiTemperatureInput")?.value || "0.2");
+  const timeout = parseInt($("#aiTimeoutInput")?.value || "15", 10);
+
+  try {
+    await adminApi("/admin/ai-config", {
+      method: "PUT",
+      body: JSON.stringify({
+        gemini_primary_model: primaryModel,
+        gemini_force_deterministic_fallback: forceFallback,
+        gemini_temperature: temperature,
+        gemini_timeout_seconds: timeout,
+      }),
+    });
+    toast("AI Configuration updated successfully with immediate live propagation!", "success");
+    loadAiOps();
+  } catch (err) {
+    toast(`Failed to save AI config: ${err.message}`, "error");
+  }
+}
+
+// 5. FEATURE FLAGS & ANNOUNCEMENTS
+async function loadFeatureFlags() {
+  const container = $("#fullFlagsContainer");
+  if (!container) return;
+
+  try {
+    const res = await adminApi("/admin/feature-flags");
+    const flags = res?.data || {};
+
+    const FLAG_DESCRIPTIONS = {
+      "text_interview_enabled": "Enable interactive multi-turn text mock interview practice with STAR scoring.",
+      "voice_interview_enabled": "Speech-to-text audio capture, live voice prompts, and rate analysis in Interview Practice.",
+      "focus_coaching_enabled": "Real-time Attention HUD tracking gaze stability and eye contact during interview practice.",
+      "strict_focus_mode_enabled": "Allow candidates to opt-in to Strict Focus Practice with automated violation termination.",
+      "smartbuild_ai_wizard": "7-step conversational AI wizard for building grounded resumes from scratch.",
+      "gemini_live_mode": "Live AI generation and evaluation with Google Gemini API.",
+      "job_radar_crawler": "Automated career opportunity scanning and job match tracking service.",
+      "international_workspace": "Multi-region compliance checks and international resume format adaptations.",
+      "public_signup_enabled": "Permit new candidate account registration on the public application.",
+      "maintenance_mode": "Put the public platform into read-only maintenance mode with advisory banner.",
+    };
+
+    container.innerHTML = Object.entries(flags).map(([k, v]) => `
+      <div class="flag-card">
+        <div class="flag-info">
+          <strong>${formatFlagName(k)}</strong>
+          <span>${FLAG_DESCRIPTIONS[k] || "System operational feature flag toggle."}</span>
+          <code class="text-xs text-muted block" style="margin-top: 0.25rem;">${k}</code>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${v ? "checked" : ""} onchange="toggleAdminFeatureFlag('${k}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    `).join("");
+
+    // Load Announcement
+    const annRes = await adminApi("/admin/announcement");
+    const ann = annRes?.data || {};
+    if ($("#announcementEnabledToggle")) $("#announcementEnabledToggle").checked = Boolean(ann.enabled);
+    if ($("#announcementTextInput")) $("#announcementTextInput").value = ann.text || "";
+
+    // Load Interview Simulator Configuration
+    const intRes = await adminApi("/admin/interview-config");
+    const intCfg = intRes?.data || {};
+    if ($("#adminInterviewDefaultDur") && intCfg.interview_default_duration !== undefined) {
+      $("#adminInterviewDefaultDur").value = intCfg.interview_default_duration;
+    }
+    if ($("#adminInterviewMaxDur") && intCfg.interview_max_duration !== undefined) {
+      $("#adminInterviewMaxDur").value = intCfg.interview_max_duration;
+    }
+    if ($("#adminStrictFocusMaxWarnings") && intCfg.strict_focus_max_warnings !== undefined) {
+      $("#adminStrictFocusMaxWarnings").value = intCfg.strict_focus_max_warnings;
+    }
+  } catch (err) {
+    toast(`Failed to load feature flags: ${err.message}`, "error");
+  }
+}
+
+window.toggleAdminFeatureFlag = async function(flagName, enabled) {
+  try {
+    await adminApi("/admin/feature-flags", {
+      method: "PUT",
+      body: JSON.stringify({ flags: { [flagName]: enabled } }),
+    });
+    toast(`Feature flag '${flagName}' is now ${enabled ? 'ENABLED' : 'DISABLED'}.`, "success");
+  } catch (err) {
+    toast(`Failed to update flag: ${err.message}`, "error");
+    loadFeatureFlags();
+  }
+};
+
+async function handleSaveAnnouncement(e) {
+  e.preventDefault();
+  const enabled = $("#announcementEnabledToggle")?.checked;
+  const text = $("#announcementTextInput")?.value.trim();
+
+  try {
+    await adminApi("/admin/announcement", {
+      method: "PUT",
+      body: JSON.stringify({ enabled, text }),
+    });
+    toast("Announcement banner updated successfully!", "success");
+  } catch (err) {
+    toast(`Failed to update announcement: ${err.message}`, "error");
+  }
+}
+
+async function handleSaveInterviewConfig(e) {
+  e.preventDefault();
+  const defDur = parseInt($("#adminInterviewDefaultDur")?.value || "60", 10);
+  const maxDur = parseInt($("#adminInterviewMaxDur")?.value || "120", 10);
+  const maxWarnings = parseInt($("#adminStrictFocusMaxWarnings")?.value || "3", 10);
+
+  try {
+    await adminApi("/admin/interview-config", {
+      method: "PUT",
+      body: JSON.stringify({
+        interview_default_duration: defDur,
+        interview_max_duration: maxDur,
+        strict_focus_max_warnings: maxWarnings,
+      }),
+    });
+    toast("Interview engine configuration saved successfully!", "success");
+  } catch (err) {
+    toast(`Failed to update interview config: ${err.message}`, "error");
+  }
+}
+
+// 6. SUBSCRIPTIONS & QUOTAS
+async function loadSubscriptions() {
+  const tbody = $("#subscriptionsTableBody");
+  if (!tbody) return;
+
+  try {
+    const res = await adminApi("/admin/subscriptions?page=1&page_size=20");
+    const subs = res?.data?.subscriptions || [];
+
+    if (subs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-muted">No subscriptions recorded.</td></tr>`;
+    } else {
+      tbody.innerHTML = subs.map((s) => {
+        const planBadge = s.plan_name === 'EXECUTIVE' ? 'badge-exec' : (s.plan_name === 'PRO' ? 'badge-pro' : 'badge-free');
+        const updated = s.updated_at ? new Date(s.updated_at).toLocaleDateString() : "--";
+        return `
+          <tr>
+            <td><strong>${escapeHtml(s.user_email)}</strong></td>
+            <td><span class="badge ${planBadge}">${escapeHtml(s.plan_name)}</span></td>
+            <td><span class="badge badge-active">${escapeHtml(s.status)}</span></td>
+            <td class="text-xs text-muted">${updated}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // Load Quotas
+    const qRes = await adminApi("/admin/quotas");
+    const q = qRes?.data || {};
+
+    if ($("#quotaFreeResumesInput")) $("#quotaFreeResumesInput").value = q.quota_free_resumes ?? 1;
+    if ($("#quotaFreeTailorsInput")) $("#quotaFreeTailorsInput").value = q.quota_free_tailors ?? 3;
+    if ($("#quotaFreeExportsInput")) $("#quotaFreeExportsInput").value = q.quota_free_exports ?? 5;
+    if ($("#quotaProTailorsInput")) $("#quotaProTailorsInput").value = q.quota_pro_tailors ?? 50;
+    if ($("#quotaProExportsInput")) $("#quotaProExportsInput").value = q.quota_pro_exports ?? 100;
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center p-4">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function handleSaveQuotas(e) {
+  e.preventDefault();
+  const freeResumes = parseInt($("#quotaFreeResumesInput")?.value || "1", 10);
+  const freeTailors = parseInt($("#quotaFreeTailorsInput")?.value || "3", 10);
+  const freeExports = parseInt($("#quotaFreeExportsInput")?.value || "5", 10);
+  const proTailors = parseInt($("#quotaProTailorsInput")?.value || "50", 10);
+  const proExports = parseInt($("#quotaProExportsInput")?.value || "100", 10);
+
+  try {
+    await adminApi("/admin/quotas", {
+      method: "PUT",
+      body: JSON.stringify({
+        quota_free_resumes: freeResumes,
+        quota_free_tailors: freeTailors,
+        quota_free_exports: freeExports,
+        quota_pro_tailors: proTailors,
+        quota_pro_exports: proExports,
+      }),
+    });
+    toast("Default plan quotas updated successfully!", "success");
+  } catch (err) {
+    toast(`Failed to save quotas: ${err.message}`, "error");
+  }
+}
+
+// 7. ADMIN TEAM & INVITATIONS
 async function loadAdminTeam() {
   await loadAdminInvitations();
 }
@@ -776,11 +1208,7 @@ async function handleCreateInvitation(e) {
   try {
     const res = await adminApi("/admin-auth/invitations", {
       method: "POST",
-      body: JSON.stringify({
-        email,
-        role,
-        expires_in_hours: hours,
-      }),
+      body: JSON.stringify({ email, role, expires_in_hours: hours }),
     });
 
     const data = res?.data || {};
@@ -838,88 +1266,7 @@ window.revokeAdminInvitation = async function(invId) {
   }
 };
 
-// TAB 4: AI OPS LOADER
-async function loadAiOps() {
-  try {
-    const res = await adminApi("/admin/ai-ops");
-    const data = res?.data || {};
-
-    if ($("#aiPrimaryModel")) $("#aiPrimaryModel").textContent = data.primary_model || "gemini-2.5-flash";
-    if ($("#aiFallbackEngine")) $("#aiFallbackEngine").textContent = data.fallback_engine || "deterministic-v2";
-    if ($("#aiTotalRequests")) $("#aiTotalRequests").textContent = data.total_requests_24h ?? "--";
-    if ($("#aiFallbackRate")) $("#aiFallbackRate").textContent = `Fallback Rate: ${data.fallback_rate_pct ?? 0}%`;
-
-    const lat = data.latency_percentiles_ms || {};
-    if ($("#aiLatencyMetric")) $("#aiLatencyMetric").textContent = `${lat.p50 ?? "--"} ms / ${lat.p99 ?? "--"} ms`;
-
-    // Feature breakdown
-    const breakdown = data.breakdown_by_feature || {};
-    const tbody = $("#aiFeatureBreakdownBody");
-    if (tbody) {
-      tbody.innerHTML = Object.entries(breakdown).map(([k, v]) => `
-        <tr>
-          <td><strong>${formatFlagName(k)}</strong></td>
-          <td>${v.calls ?? 0} calls</td>
-          <td><span class="badge ${parseFloat(v.fallback_rate) > 5 ? 'badge-warning' : 'badge-success'}">${v.fallback_rate || "0.0%"}</span></td>
-          <td><span class="badge badge-success">HEALTHY</span></td>
-        </tr>
-      `).join("");
-    }
-  } catch (err) {
-    toast(`Failed to load AI telemetry: ${err.message}`, "error");
-  }
-}
-
-// TAB 5: FEATURE FLAGS LOADER
-async function loadFeatureFlags() {
-  const container = $("#fullFlagsContainer");
-  if (!container) return;
-
-  try {
-    const res = await adminApi("/admin/feature-flags");
-    const flags = res?.data || {};
-
-    const FLAG_DESCRIPTIONS = {
-      "voice_interview_enabled": "Speech-to-text audio capture, live transcription, and speaking rate analysis in Mock Interview sessions.",
-      "focus_coaching_enabled": "Client-side Attention HUD evaluating gaze stability and eye-contact indicators.",
-      "smartbuild_ai_wizard": "7-step conversational AI wizard for creating grounded resumes from scratch.",
-      "gemini_live_mode": "Real-time AI evaluation and continuous streaming generation with Google GenAI.",
-      "job_radar_crawler": "Automated career opportunity scanning and job match ranking service.",
-      "international_workspace": "Multi-country localization rules, ATS compliance checks, and regional formatting.",
-    };
-
-    container.innerHTML = Object.entries(flags).map(([k, v]) => `
-      <div class="flag-card">
-        <div class="flag-info">
-          <strong>${formatFlagName(k)}</strong>
-          <span>${FLAG_DESCRIPTIONS[k] || "System operational feature flag toggle."}</span>
-          <code class="text-xs text-muted block" style="margin-top: 0.25rem;">${k}</code>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" ${v ? "checked" : ""} onchange="toggleAdminFeatureFlag('${k}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    `).join("");
-  } catch (err) {
-    toast(`Failed to load feature flags: ${err.message}`, "error");
-  }
-}
-
-window.toggleAdminFeatureFlag = async function(flagName, enabled) {
-  try {
-    await adminApi("/admin/feature-flags", {
-      method: "PUT",
-      body: JSON.stringify({ flags: { [flagName]: enabled } }),
-    });
-    toast(`Feature flag '${flagName}' is now ${enabled ? 'ENABLED' : 'DISABLED'}.`, "success");
-  } catch (err) {
-    toast(`Failed to update flag: ${err.message}`, "error");
-    loadFeatureFlags();
-  }
-};
-
-// TAB 6: AUDIT LOGS LOADER
+// 8. SECURITY AUDIT TRAIL
 async function loadAuditLogs() {
   const tbody = $("#auditLogsTableBody");
   if (!tbody) return;

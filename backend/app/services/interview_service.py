@@ -10,6 +10,7 @@ Finance, Healthcare, and general domains without cross-domain hallucinations.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any, Optional
 from sqlalchemy.orm import Session
 
@@ -528,6 +529,75 @@ def get_claims_to_defend(
     return claims
 
 
+def generate_phase_plan(duration_minutes: int, target_domain: str, target_role: str, career_level: str) -> list[dict[str, Any]]:
+    """Generates a structured, configurable phase distribution fitting the session length."""
+    total = max(5, duration_minutes)
+
+    if target_domain == "Pharmaceutical & Chemistry":
+        phases = [
+            {"name": "Introduction & Orientation", "start_pct": 0.0, "end_pct": 0.08, "topics": ["Laboratory Background", "Analytical Scope"]},
+            {"name": "Analytical Method Execution & Protocols", "start_pct": 0.08, "end_pct": 0.25, "topics": ["Sample Prep", "System Suitability", "HPLC/UV-Vis"]},
+            {"name": "Instrument Calibration & Troubleshooting", "start_pct": 0.25, "end_pct": 0.45, "topics": ["Baseline Drift", "Ghost Peaks", "Resolution"]},
+            {"name": "OOS & Deviation Investigation", "start_pct": 0.45, "end_pct": 0.65, "topics": ["Out-of-Specification", "cGMP", "FDA Phase 1"]},
+            {"name": "Data Integrity & ALCOA+ Principles", "start_pct": 0.65, "end_pct": 0.82, "topics": ["21 CFR Part 11", "Audit Trail", "Data Traceability"]},
+            {"name": "Behavioral Judgement & Closing", "start_pct": 0.82, "end_pct": 1.0, "topics": ["Quality Disagreement", "Candidate Questions"]},
+        ]
+    elif target_domain == "Finance & Accounting":
+        phases = [
+            {"name": "Introduction & Financial Scope", "start_pct": 0.0, "end_pct": 0.08, "topics": ["Professional Background", "Financial Scope"]},
+            {"name": "Financial Modeling & Forecasting", "start_pct": 0.08, "end_pct": 0.30, "topics": ["Multi-Year Projections", "Working Capital", "Revenue Drivers"]},
+            {"name": "Variance Analysis & P&L Diagnosis", "start_pct": 0.30, "end_pct": 0.55, "topics": ["Budget vs Actual", "Rate Variance", "Operational Inefficiencies"]},
+            {"name": "Accounting Standards & GAAP Compliance", "start_pct": 0.55, "end_pct": 0.80, "topics": ["ASC 606", "IFRS", "Revenue Recognition"]},
+            {"name": "Business Ethics & Closing", "start_pct": 0.80, "end_pct": 1.0, "topics": ["Stakeholder Communication", "Candidate Questions"]},
+        ]
+    else:  # Software Engineering, Tech & General
+        phases = [
+            {"name": "Introduction & Communication", "start_pct": 0.0, "end_pct": 0.08, "topics": ["Professional Background", "Core Orientation"]},
+            {"name": "Resume Walkthrough & Claim Verification", "start_pct": 0.08, "end_pct": 0.20, "topics": ["Project Architecture", "Technical Stack Choices"]},
+            {"name": "Programming Fundamentals & OOP", "start_pct": 0.20, "end_pct": 0.36, "topics": ["Language Fundamentals", "OOP Design Principles"]},
+            {"name": "DBMS, SQL & Data Consistency", "start_pct": 0.36, "end_pct": 0.53, "topics": ["Relational Modeling", "ACID Transactions", "Indexing & Optimization"]},
+            {"name": "OS, Networking & CS Fundamentals", "start_pct": 0.53, "end_pct": 0.66, "topics": ["HTTP Protocols", "Concurrency", "Network Latency"]},
+            {"name": "Role-Specific Technologies & Scenarios", "start_pct": 0.66, "end_pct": 0.83, "topics": ["System Resilience", "Peak Load Edge Cases"]},
+            {"name": "Debugging Scenarios & Architecture", "start_pct": 0.83, "end_pct": 0.93, "topics": ["Incident Triage", "Production Profiling"]},
+            {"name": "Behavioral, HR & Closing", "start_pct": 0.93, "end_pct": 1.0, "topics": ["Team Conflict Resolution", "Candidate Questions"]},
+        ]
+        if "SENIOR" in career_level or "EXPERIENCED" in career_level:
+            phases[5]["topics"].extend(["Distributed Consensus", "Scalability Bottlenecks"])
+            phases[6]["topics"].extend(["Disaster Recovery", "Zero-Downtime Migration"])
+
+    result_phases = []
+    for idx, p in enumerate(phases):
+        s_min = round(p["start_pct"] * total)
+        e_min = round(p["end_pct"] * total)
+        if idx == len(phases) - 1:
+            e_min = total
+        result_phases.append({
+            "index": idx,
+            "name": p["name"],
+            "start_minute": s_min,
+            "end_minute": e_min,
+            "time_window": f"{s_min}–{e_min} min",
+            "topics": p["topics"],
+        })
+    return result_phases
+
+
+def generate_initial_coverage_plan(target_domain: str, target_role: str, skills: list[str], phases: list[dict[str, Any]]) -> dict[str, Any]:
+    """Builds the comprehensive question coverage matrix."""
+    planned = []
+    for p in phases:
+        planned.extend(p.get("topics", []))
+
+    return {
+        "planned_topics": planned,
+        "attempted_topics": [],
+        "demonstrated_topics": [],
+        "weak_topics": [],
+        "omitted_topics": planned.copy(),
+        "recommended_future_practice": [],
+    }
+
+
 def create_interview_session(db: Session, user_id: int, session_in: InterviewSessionCreate) -> InterviewSession:
     """Creates a new interactive interview session with opening calibrated to candidate domain and role."""
     resume = None
@@ -542,6 +612,14 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
     career_level = (session_in.career_level or "DEVELOPING").upper()
     difficulty = getattr(session_in, "difficulty", "MEDIUM").upper()
     practice_mode = getattr(session_in, "practice_mode", "STANDARD").upper()
+
+    # Duration and focus mode controls
+    dur = getattr(session_in, "duration_minutes", 60) or 60
+    from app.services import platform_config_service
+    max_dur = platform_config_service.get_setting("interview_max_duration", 120, db=db)
+    dur = min(dur, max_dur)
+    focus_coach = bool(getattr(session_in, "focus_coach_enabled", False))
+    strict_focus = bool(getattr(session_in, "strict_focus_mode", False))
 
     job_desc = session_in.job_description or ""
     if session_in.job_id:
@@ -585,6 +663,9 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
 
     target_domain = detect_domain(role=target_role, skills=cand_skills)
 
+    phases = generate_phase_plan(dur, target_domain, target_role, career_level)
+    cov_plan = generate_initial_coverage_plan(target_domain, target_role, cand_skills, phases)
+
     session = InterviewSession(
         user_id=user_id,
         job_id=session_in.job_id,
@@ -597,6 +678,19 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
         readiness_score=70,
         feedback_summary=f"Mode: {practice_mode} | Difficulty: {difficulty} | Domain: {target_domain} | Target: {target_role} at {target_company}",
         job_description_snapshot=job_desc,
+        career_level=career_level,
+        difficulty=difficulty,
+        duration_minutes=dur,
+        started_at=datetime.utcnow(),
+        current_phase=phases[0]["name"] if phases else "Introduction & Communication",
+        current_phase_index=0,
+        is_paused=False,
+        total_paused_seconds=0,
+        focus_coach_enabled=focus_coach,
+        strict_focus_mode=strict_focus,
+        focus_warnings_count=0,
+        focus_warning_history=[],
+        coverage_plan={"phases": phases, **cov_plan},
     )
     db.add(session)
     db.commit()
@@ -635,9 +729,13 @@ def create_interview_session(db: Session, user_id: int, session_in: InterviewSes
             "step": "stage_1_warmup",
             "level": 1,
             "question_type": "Introduction & Orientation",
+            "phase": phases[0]["name"] if phases else "Introduction & Communication",
+            "phase_index": 0,
             "difficulty": difficulty,
             "practice_mode": practice_mode,
             "target_domain": target_domain,
+            "duration_minutes": dur,
+            "coverage_plan": session.coverage_plan,
         },
     )
     db.add(initial_msg)
@@ -908,17 +1006,272 @@ def process_candidate_turn(
         current_score = min(94, current_score + 2)
     session.readiness_score = current_score
 
+    # Phase Progression & Coverage Matrix Update
+    started_at = session.started_at or session.created_at or datetime.utcnow()
+    total_paused = session.total_paused_seconds or 0
+    elapsed_seconds = max(0.0, (datetime.utcnow() - started_at).total_seconds() - total_paused)
+    elapsed_minutes = elapsed_seconds / 60.0
+
+    cov_plan = dict(session.coverage_plan or {})
+    phases = cov_plan.get("phases") or []
+    if phases:
+        cur_idx = session.current_phase_index or 0
+        for p in phases:
+            if p.get("start_minute", 0) <= elapsed_minutes < p.get("end_minute", 999):
+                cur_idx = p.get("index", cur_idx)
+                break
+        cur_idx = min(cur_idx, len(phases) - 1)
+        session.current_phase_index = cur_idx
+        session.current_phase = phases[cur_idx]["name"]
+
+        current_topics = phases[cur_idx].get("topics", [])
+        topic_to_mark = current_topics[0] if current_topics else question_type
+
+        attempted = set(cov_plan.get("attempted_topics", []))
+        demonstrated = set(cov_plan.get("demonstrated_topics", []))
+        weak = set(cov_plan.get("weak_topics", []))
+        omitted = [t for t in cov_plan.get("omitted_topics", []) if t != topic_to_mark]
+
+        attempted.add(topic_to_mark)
+        if has_action and not is_superficial:
+            demonstrated.add(topic_to_mark)
+        elif is_superficial or ("weak" in weak_feedback and len(weak_feedback) > 1):
+            weak.add(topic_to_mark)
+
+        cov_plan["attempted_topics"] = list(attempted)
+        cov_plan["demonstrated_topics"] = list(demonstrated)
+        cov_plan["weak_topics"] = list(weak)
+        cov_plan["omitted_topics"] = omitted
+        session.coverage_plan = cov_plan
+
     db.commit()
     return cand_msg, ai_msg
 
 
-def complete_evaluation(db: Session, user_id: int, session_id: int) -> InterviewEvaluation:
+def skip_question(
+    db: Session,
+    user_id: int,
+    session_id: int,
+    reason: Optional[str] = None,
+) -> tuple[InterviewMessage, InterviewMessage]:
+    """Records question skip, marks current topic as weak, and advances interview."""
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
+    if not session:
+        raise ValueError("Interview session not found")
+
+    reason_str = f" Reason: {reason}" if reason else ""
+    skip_text = f"[Candidate skipped this question.{reason_str}]"
+
+    # Mark topic as weak in coverage plan
+    cov_plan = dict(session.coverage_plan or {})
+    phases = cov_plan.get("phases") or []
+    cur_idx = min(session.current_phase_index or 0, len(phases) - 1) if phases else 0
+    current_topic = phases[cur_idx].get("topics", ["Skipped Topic"])[0] if phases else "Skipped Topic"
+
+    attempted = set(cov_plan.get("attempted_topics", []))
+    weak = set(cov_plan.get("weak_topics", []))
+    attempted.add(current_topic)
+    weak.add(current_topic)
+    cov_plan["attempted_topics"] = list(attempted)
+    cov_plan["weak_topics"] = list(weak)
+    cov_plan["omitted_topics"] = [t for t in cov_plan.get("omitted_topics", []) if t != current_topic]
+    session.coverage_plan = cov_plan
+
+    # Advance phase
+    if phases and cur_idx < len(phases) - 1:
+        cur_idx += 1
+        session.current_phase_index = cur_idx
+        session.current_phase = phases[cur_idx]["name"]
+
+    user_msg = InterviewMessage(
+        session_id=session.id,
+        sender="USER",
+        message_text=skip_text,
+        evaluation_json={"action": "skip", "reason": reason, "topic": current_topic},
+    )
+    db.add(user_msg)
+
+    # Next question
+    next_topic = phases[cur_idx].get("topics", ["Next Area"])[0] if phases else "Next Area"
+    ai_text = (
+        f"[Stage {cur_idx + 1}: {session.current_phase}]\n"
+        f"Understood — let's move forward. We'll transition to {next_topic}. "
+        f"Can you explain your approach and practical experience in this area?"
+    )
+    ai_msg = InterviewMessage(
+        session_id=session.id,
+        sender="AI",
+        message_text=ai_text,
+        evaluation_json={"phase": session.current_phase, "topic": next_topic, "skip_transition": True},
+    )
+    db.add(ai_msg)
+    db.commit()
+    return user_msg, ai_msg
+
+
+def request_hint(db: Session, user_id: int, session_id: int) -> dict[str, str]:
+    """Generates a contextual guiding hint for the current phase without giving away the full answer."""
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
+    if not session:
+        raise ValueError("Interview session not found")
+
+    phase_name = session.current_phase or "Interview Question"
+    target_role = session.target_role or "Role"
+
+    if "Analytical" in phase_name or "Method" in phase_name:
+        hint_text = (
+            "Hint: Structure your response around system suitability criteria: mention mobile phase, "
+            "column parameters, retention time repeatability, and how you evaluate resolution or tailing factor."
+        )
+    elif "Instrument" in phase_name or "Troubleshooting" in phase_name:
+        hint_text = (
+            "Hint: Think about hardware vs chemistry causes: baseline drift is often due to column contamination, "
+            "temperature fluctuation, or lamp age. Detail how you systematically isolate the source."
+        )
+    elif "OOS" in phase_name or "Deviation" in phase_name:
+        hint_text = (
+            "Hint: Detail Phase 1 (laboratory investigation) steps first: verify calculations, check standard solutions, "
+            "inspect instrument logs before touching the production sample."
+        )
+    elif "Modeling" in phase_name or "Financial" in phase_name:
+        hint_text = (
+            "Hint: Start with the 3 financial statements. State how revenue drivers feed the income statement, "
+            "how working capital flows through cash flow, and key sensitivity levers."
+        )
+    elif "Architecture" in phase_name or "System" in phase_name:
+        hint_text = (
+            "Hint: Use the STAR approach: describe the request lifecycle (client -> API gateway -> service -> database), "
+            "concurrency constraints, caching layers, and why alternative frameworks were ruled out."
+        )
+    elif "Debugging" in phase_name or "Scenario" in phase_name:
+        hint_text = (
+            "Hint: Walk through a structured triage loop: 1. Reproduce & verify metrics/logs; 2. Formulate hypothesis; "
+            "3. Isolate component with canary/telemetry; 4. Apply fix and add preventative alerting."
+        )
+    else:
+        hint_text = (
+            f"Hint: For {target_role}, focus on your personal hands-on contribution ('I designed/I executed'), "
+            "include concrete metrics or tolerances, and explain the engineering or operational trade-offs."
+        )
+
+    return {"hint": hint_text, "phase": phase_name}
+
+
+def repeat_question(db: Session, user_id: int, session_id: int) -> dict[str, str]:
+    """Retrieves and clarifies the most recent AI question for the candidate."""
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
+    if not session:
+        raise ValueError("Interview session not found")
+
+    last_ai = (
+        db.query(InterviewMessage)
+        .filter(InterviewMessage.session_id == session.id, InterviewMessage.sender == "AI")
+        .order_by(InterviewMessage.id.desc())
+        .first()
+    )
+    q_text = last_ai.message_text if last_ai else "Can you describe your relevant experience?"
+
+    return {
+        "question": q_text,
+        "clarification": f"Here is the question again:\n\n{q_text}\n\nTip: Take your time to structure your answer. State your role, the tools used, and measurable results.",
+    }
+
+
+def pause_session(db: Session, user_id: int, session_id: int) -> dict[str, Any]:
+    """Pauses the interview session timer."""
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
+    if not session:
+        raise ValueError("Interview session not found")
+
+    if not session.is_paused:
+        session.is_paused = True
+        session.paused_at = datetime.utcnow()
+        db.commit()
+
+    return {
+        "is_paused": True,
+        "paused_at": session.paused_at.isoformat() if session.paused_at else None,
+        "total_paused_seconds": session.total_paused_seconds or 0,
+    }
+
+
+def resume_session(db: Session, user_id: int, session_id: int) -> dict[str, Any]:
+    """Resumes the interview session timer and records paused duration."""
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
+    if not session:
+        raise ValueError("Interview session not found")
+
+    if session.is_paused and session.paused_at:
+        delta = (datetime.utcnow() - session.paused_at).total_seconds()
+        session.total_paused_seconds = int((session.total_paused_seconds or 0) + max(0, delta))
+        session.is_paused = False
+        session.paused_at = None
+        db.commit()
+
+    return {
+        "is_paused": False,
+        "total_paused_seconds": session.total_paused_seconds or 0,
+    }
+
+
+def record_focus_warning(
+    db: Session,
+    user_id: int,
+    session_id: int,
+    warning_type: str = "OFF_SCREEN",
+    confidence: float = 0.9,
+) -> dict[str, Any]:
+    """Records a camera focus coach warning and enforces auto-termination in strict focus mode."""
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
+    if not session:
+        raise ValueError("Interview session not found")
+
+    history = list(session.focus_warning_history or [])
+    history.append({
+        "timestamp": datetime.utcnow().isoformat(),
+        "warning_type": warning_type,
+        "confidence": confidence,
+    })
+    session.focus_warning_history = history
+    session.focus_warnings_count = (session.focus_warnings_count or 0) + 1
+
+    from app.services import platform_config_service
+    max_warnings = platform_config_service.get_setting("strict_focus_max_warnings", 3, db=db)
+
+    # In strict mode, if warnings exceed max allowed, auto-terminate gracefully without corrupting technical evaluation
+    session_terminated = False
+    if session.strict_focus_mode and session.focus_warnings_count > max_warnings:
+        session.status = "COMPLETED"
+        session.ended_at = datetime.utcnow()
+        session.termination_reason = "STRICT_FOCUS_VIOLATION"
+        complete_evaluation(db, user_id, session_id, termination_reason="STRICT_FOCUS_VIOLATION")
+        session_terminated = True
+
+    db.commit()
+    return {
+        "warnings_count": session.focus_warnings_count,
+        "max_warnings": max_warnings,
+        "strict_focus_mode": session.strict_focus_mode,
+        "session_terminated": session_terminated,
+        "termination_reason": session.termination_reason,
+    }
+
+
+def complete_evaluation(
+    db: Session,
+    user_id: int,
+    session_id: int,
+    termination_reason: Optional[str] = None,
+) -> InterviewEvaluation:
     """Generates comprehensive multi-dimensional interview report across 6 dimensions."""
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id, InterviewSession.user_id == user_id).first()
     if not session:
         raise ValueError("Interview session not found")
 
     session.status = "COMPLETED"
+    session.ended_at = datetime.utcnow()
+    if termination_reason:
+        session.termination_reason = termination_reason
 
     user_msgs = [m.message_text for m in session.messages if m.sender == "USER"]
     combined_user_text = " ".join(user_msgs).lower()
@@ -1054,6 +1407,25 @@ def complete_evaluation(db: Session, user_id: int, session_id: int) -> Interview
         f"Practice scenario-based troubleshooting in {target_domain}: simulate unexpected edge-case deviations and explain step-by-step root-cause isolation."
     )
 
+    # Aggregate voice metrics across all candidate turns
+    voice_records = []
+    for m in session.messages:
+        if m.sender == "USER" and m.evaluation_json and "voice_metrics" in m.evaluation_json:
+            voice_records.append(m.evaluation_json["voice_metrics"])
+
+    avg_wpm = round(sum(v.get("wpm", 0) for v in voice_records) / len(voice_records), 1) if voice_records else 0
+    total_fillers = sum(v.get("filler_count", 0) for v in voice_records)
+    aggregated_voice = {
+        "turns_analyzed": len(voice_records),
+        "average_wpm": avg_wpm,
+        "total_filler_words": total_fillers,
+        "pacing_summary": (
+            "Clear and well-paced delivery across turns."
+            if (110 <= avg_wpm <= 160 or avg_wpm == 0)
+            else ("Delivery was slightly fast on average." if avg_wpm > 160 else "Delivery was cautious/slow.")
+        ),
+    }
+
     evaluation = db.query(InterviewEvaluation).filter(InterviewEvaluation.session_id == session.id).first()
     if not evaluation:
         evaluation = InterviewEvaluation(
@@ -1088,6 +1460,10 @@ def complete_evaluation(db: Session, user_id: int, session_id: int) -> Interview
     evaluation.weak_questions = [
         {"topic": "Resilience & Edge Cases", "feedback": f"Needs deeper discussion of anomaly handling and validation protocols in {target_domain}."}
     ]
+    evaluation.voice_delivery_metrics = aggregated_voice
+    evaluation.coverage_summary = session.coverage_plan or {}
+    if termination_reason:
+        evaluation.termination_reason = termination_reason
 
     session.feedback_summary = (
         f"Score: {overall_score}/100 | Tech: {tech_score} | Problem Solving: {ps_score} | Comm: {comm_score} | Status: {evaluation.readiness_level}"

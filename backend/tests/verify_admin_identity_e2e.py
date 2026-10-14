@@ -79,7 +79,7 @@ def run_e2e_verification() -> dict:
     finally:
         db.close()
 
-    # 2. Start Admin Panel Static Server on 4174
+    # 2. Start Admin Panel Static Server on 4174 and Backend on 8000 if needed
     print("\n--- 2. Starting Admin Panel Server on 4174 ---")
     admin_dir = Path(__file__).resolve().parent.parent.parent / "admin-panel"
     admin_proc = subprocess.Popen(
@@ -89,6 +89,22 @@ def run_e2e_verification() -> dict:
     )
     time.sleep(1.5)
     print(f"✅ Admin Panel server active at http://127.0.0.1:4174 (serving {admin_dir})")
+
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    backend_running = (s.connect_ex(('127.0.0.1', 8000)) == 0)
+    s.close()
+    backend_proc = None
+    if not backend_running:
+        print("--- Starting FastAPI backend server on 8000 ---")
+        backend_proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+            cwd=str(backend_dir),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        time.sleep(3.0)
+        print("✅ FastAPI backend active at http://127.0.0.1:8000")
 
     try:
         with sync_playwright() as p:
@@ -255,7 +271,13 @@ def run_e2e_verification() -> dict:
             admin_proc.wait(timeout=3)
         except Exception:
             admin_proc.kill()
-        print("✅ Admin dev server cleanly stopped.")
+        if backend_proc:
+            backend_proc.terminate()
+            try:
+                backend_proc.wait(timeout=3)
+            except Exception:
+                backend_proc.kill()
+        print("✅ Dev servers cleanly stopped.")
 
     return results
 

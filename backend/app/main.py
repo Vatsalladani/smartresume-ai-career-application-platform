@@ -22,6 +22,7 @@ from app.routers import (
     jobs,
     notifications,
     payments,
+    platform,
     profile,
     resumes,
     smartapply,
@@ -29,6 +30,7 @@ from app.routers import (
     templates,
     users,
 )
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -78,6 +80,8 @@ app.include_router(career_insights.router, prefix=settings.api_prefix)
 app.include_router(notifications.router, prefix=settings.api_prefix)
 app.include_router(payments.router, prefix=settings.api_prefix)
 app.include_router(templates.router, prefix=settings.api_prefix)
+app.include_router(platform.router, prefix=settings.api_prefix)
+
 
 
 @app.get("/health")

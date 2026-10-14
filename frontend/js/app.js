@@ -107,8 +107,57 @@ const AUTH_ROUTES = {
 };
 
 // Boot & Lifecycle
+async function syncPlatformConfiguration() {
+  try {
+    const platRes = await API.request("/platform/config", { auth: false });
+    const pConfig = platRes?.data || platRes || {};
+    state.platformConfig = pConfig;
+    applyPlatformConfig(pConfig);
+  } catch (err) {
+    console.debug("Platform config sync skipped:", err);
+  }
+}
+
+function applyPlatformConfig(config) {
+  if (!config) return;
+
+  // 1. System Announcement Banner
+  let banner = document.getElementById("systemAnnouncementBanner");
+  if (config.system_announcement_enabled && config.system_announcement_text) {
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "systemAnnouncementBanner";
+      banner.className = "platform-announcement-banner";
+      banner.style.cssText = "background: linear-gradient(90deg, #4f46e5, #6366f1); color: #fff; padding: 10px 16px; text-align: center; font-size: 0.875rem; font-weight: 500; display: flex; justify-content: center; align-items: center; gap: 8px; z-index: 9999;";
+      document.body.prepend(banner);
+    }
+    banner.innerHTML = `<span>📢 ${escapeHtml(config.system_announcement_text)}</span>`;
+    banner.style.display = "flex";
+  } else if (banner) {
+    banner.style.display = "none";
+  }
+
+  // 2. Maintenance Mode Alert
+  let maintBanner = document.getElementById("platformMaintenanceBanner");
+  if (config.maintenance_mode) {
+    if (!maintBanner) {
+      maintBanner = document.createElement("div");
+      maintBanner.id = "platformMaintenanceBanner";
+      maintBanner.style.cssText = "background: #f59e0b; color: #111827; padding: 10px 16px; text-align: center; font-size: 0.875rem; font-weight: 600; z-index: 9999;";
+      document.body.prepend(maintBanner);
+    }
+    maintBanner.textContent = "⚠️ Scheduled Maintenance Mode: Platform is currently undergoing administrative updates.";
+    maintBanner.style.display = "block";
+  } else if (maintBanner) {
+    maintBanner.style.display = "none";
+  }
+}
+
 async function boot() {
   document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+
+  // Live Platform Configuration & Announcement sync
+  await syncPlatformConfiguration();
 
   // Check URL parameters for OAuth, Reset Token, Verify Token, or Auth routes
   const authParam = checkAuthUrlParams();
@@ -143,6 +192,7 @@ async function boot() {
   }
   drawIcons();
 }
+
 
 function checkAuthUrlParams() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -12870,9 +12920,149 @@ function populateInterviewResumeSelect() {
   }
 }
 
+let interviewSessionTimerInterval = null;
+let interviewSessionStartTime = null;
+
+function startInterviewSessionTimer() {
+  stopInterviewSessionTimer();
+  interviewSessionStartTime = Date.now();
+  const display = $("#interviewTimerDisplay");
+  if (display) display.textContent = "00:00";
+  const liveDisplay = $("#liveTimerDisplay");
+  if (liveDisplay) liveDisplay.textContent = "00:00";
+
+  interviewSessionTimerInterval = setInterval(() => {
+    if (!interviewSessionStartTime) return;
+    const elapsedSecs = Math.floor((Date.now() - interviewSessionStartTime) / 1000);
+    const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, "0");
+    const secs = String(elapsedSecs % 60).padStart(2, "0");
+    const formatted = `${mins}:${secs}`;
+    const el = $("#interviewTimerDisplay");
+    if (el) el.textContent = formatted;
+    const liveEl = $("#liveTimerDisplay");
+    if (liveEl) liveEl.textContent = formatted;
+  }, 1000);
+}
+
+function stopInterviewSessionTimer() {
+  if (interviewSessionTimerInterval) {
+    clearInterval(interviewSessionTimerInterval);
+    interviewSessionTimerInterval = null;
+  }
+  interviewSessionStartTime = null;
+}
+
+let interviewSpeechRecognition = null;
+let isInterviewDictating = false;
+
+function toggleInterviewVoiceDictation() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = $("#interviewVoiceDictateBtn");
+  const input = $("#candidateAnswerInput");
+  if (!SpeechRec) {
+    toast("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.", "warning");
+    return;
+  }
+
+  if (isInterviewDictating && interviewSpeechRecognition) {
+    interviewSpeechRecognition.stop();
+    isInterviewDictating = false;
+    if (btn) {
+      btn.classList.remove("primary-btn");
+      btn.classList.add("secondary-btn");
+      btn.innerHTML = `<i data-lucide="mic"></i><span>Voice</span>`;
+      drawIcons();
+    }
+    toast("Voice recording stopped.");
+    return;
+  }
+
+  try {
+    const rec = new SpeechRec();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+
+    let initialVal = input ? input.value : "";
+    rec.onresult = (event) => {
+      let interim = "";
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + " ";
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      if (input) {
+        input.value = (initialVal ? initialVal + " " : "") + finalTranscript + interim;
+      }
+    };
+
+    rec.onerror = (err) => {
+      console.warn("Speech recognition error:", err);
+      isInterviewDictating = false;
+      if (btn) {
+        btn.classList.remove("primary-btn");
+        btn.classList.add("secondary-btn");
+        btn.innerHTML = `<i data-lucide="mic"></i><span>Voice</span>`;
+        drawIcons();
+      }
+      toast("Speech recognition error: " + (err.error || "interrupted"), "warning");
+    };
+
+    rec.onend = () => {
+      isInterviewDictating = false;
+      if (btn) {
+        btn.classList.remove("primary-btn");
+        btn.classList.add("secondary-btn");
+        btn.innerHTML = `<i data-lucide="mic"></i><span>Voice</span>`;
+        drawIcons();
+      }
+    };
+
+    rec.start();
+    interviewSpeechRecognition = rec;
+    isInterviewDictating = true;
+    if (btn) {
+      btn.classList.remove("secondary-btn");
+      btn.classList.add("primary-btn");
+      btn.innerHTML = `<i data-lucide="mic-off"></i><span>Listening...</span>`;
+      drawIcons();
+    }
+    toast("Listening... Speak your answer now.");
+  } catch (err) {
+    toast("Microphone access could not be initialized.", "error");
+  }
+}
+
 function wireInterviewCopilot() {
   // Populate resumes
   populateInterviewResumeSelect();
+
+  // Voice dictation button
+  $("#interviewVoiceDictateBtn")?.addEventListener("click", toggleInterviewVoiceDictation);
+
+  // AI Voice readout toggle
+  $("#toggleInterviewTtsBtn")?.addEventListener("click", () => {
+    isInterviewTtsEnabled = !isInterviewTtsEnabled;
+    const btn = $("#toggleInterviewTtsBtn");
+    const label = $("#interviewTtsBtnText");
+    if (!isInterviewTtsEnabled && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (label) label.textContent = isInterviewTtsEnabled ? "AI Voice: On" : "AI Voice: Off";
+    if (btn) {
+      if (isInterviewTtsEnabled) {
+        btn.classList.add("secondary-btn");
+        btn.classList.remove("ghost-btn");
+      } else {
+        btn.classList.remove("secondary-btn");
+        btn.classList.add("ghost-btn");
+      }
+    }
+    toast(isInterviewTtsEnabled ? "AI Voice spoken readout enabled." : "AI Voice readout muted.");
+  });
 
   // Resume selector change
   $("#interviewResumeSelect")?.addEventListener("change", async (e) => {
@@ -12968,6 +13158,8 @@ function wireInterviewCopilot() {
     const selectedResumeId = $("#interviewResumeSelect")?.value || state.activeResumeId || null;
     const targetLoc = $("#interviewLocationInput")?.value.trim() || null;
     const targetJD = $("#interviewJobDescriptionInput")?.value.trim() || null;
+    const duration = parseInt($("#interviewDurationSelect")?.value || "60", 10);
+    const strictFocus = $("#interviewStrictFocusCheckbox")?.checked || false;
 
     try {
       toast("Initializing Interview Practice Session...");
@@ -12983,6 +13175,9 @@ function wireInterviewCopilot() {
           career_level: level,
           difficulty: difficulty,
           practice_mode: practice_mode,
+          duration_minutes: duration,
+          focus_coach_enabled: !!_focusCoachActive,
+          strict_focus_mode: strictFocus,
           job_id: state.activeJobContext.jobId || null,
         },
       });
@@ -13069,6 +13264,9 @@ function wireInterviewCopilot() {
   $("#endInterviewBtn")?.addEventListener("click", async () => {
     if (!activeInterviewSessionId) return;
     try {
+      stopInterviewSessionTimer();
+      stopFocusCoach();
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       toast("Generating Evidence-Based Interview Review...");
       const evaluation = await API.request(`/interview/sessions/${activeInterviewSessionId}/complete`, { method: "POST" });
 
@@ -13078,6 +13276,81 @@ function wireInterviewCopilot() {
 
       renderInterviewReviewCard(evaluation);
       toast("Review generated!");
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
+  // PAUSE / RESUME TIMER
+  let isInterviewTimerPaused = false;
+  $("#pauseResumeInterviewBtn")?.addEventListener("click", async () => {
+    if (!activeInterviewSessionId) return;
+    const btn = $("#pauseResumeInterviewBtn");
+    try {
+      if (!isInterviewTimerPaused) {
+        await API.request(`/interview/sessions/${activeInterviewSessionId}/pause`, { method: "POST" });
+        isInterviewTimerPaused = true;
+        if (interviewSessionTimerInterval) {
+          clearInterval(interviewSessionTimerInterval);
+          interviewSessionTimerInterval = null;
+        }
+        if (btn) btn.innerHTML = `<i data-lucide="play" style="width:12px; height:12px;"></i><span id="pauseResumeBtnText">Resume</span>`;
+        drawIcons();
+        toast("Interview session timer paused.");
+      } else {
+        await API.request(`/interview/sessions/${activeInterviewSessionId}/resume`, { method: "POST" });
+        isInterviewTimerPaused = false;
+        startInterviewSessionTimer();
+        if (btn) btn.innerHTML = `<i data-lucide="pause" style="width:12px; height:12px;"></i><span id="pauseResumeBtnText">Pause</span>`;
+        drawIcons();
+        toast("Interview session timer resumed.");
+      }
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
+  // REPEAT QUESTION
+  $("#repeatInterviewBtn")?.addEventListener("click", async () => {
+    if (!activeInterviewSessionId) return;
+    try {
+      toast("Requesting question repetition...");
+      const res = await API.request(`/interview/sessions/${activeInterviewSessionId}/repeat`, { method: "POST" });
+      appendInterviewMsg("ai", res.clarification || res.question);
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
+  // REQUEST HINT
+  $("#hintInterviewBtn")?.addEventListener("click", async () => {
+    if (!activeInterviewSessionId) return;
+    try {
+      toast("Generating coaching hint...");
+      const res = await API.request(`/interview/sessions/${activeInterviewSessionId}/hint`, { method: "POST" });
+      appendInterviewMsg("ai", `[Coach Hint — ${res.phase}]\n${res.hint}`);
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
+  // SKIP QUESTION
+  $("#skipInterviewBtn")?.addEventListener("click", async () => {
+    if (!activeInterviewSessionId) return;
+    const reason = prompt("Enter an optional note/reason for skipping (or press OK):");
+    if (reason === null) return;
+    try {
+      toast("Skipping to next round...");
+      const res = await API.request(`/interview/sessions/${activeInterviewSessionId}/skip`, {
+        method: "POST",
+        body: { reason: reason.trim() || null },
+      });
+      appendInterviewMsg("user", res.user_message);
+      appendInterviewMsg("ai", res.ai_response);
+      if (res.turn_feedback && res.turn_feedback.phase) {
+        const pill = $("#interviewStatusPill");
+        if (pill) pill.textContent = res.turn_feedback.phase;
+      }
     } catch (err) {
       toast(err.message, "error");
     }
@@ -13199,6 +13472,7 @@ function wireInterviewCopilot() {
   });
 
   $("#liveEndBtn")?.addEventListener("click", async () => {
+    stopInterviewSessionTimer();
     stopLiveInterviewMedia();
     $("#liveInterviewRoom")?.classList.add("hidden");
     if (activeInterviewSessionId) {
@@ -13336,11 +13610,22 @@ async function resumeInterviewSession(sessionId) {
 }
 
 function renderActiveInterviewSession(session) {
+  startInterviewSessionTimer();
   if ($("#activeInterviewTitle")) {
     $("#activeInterviewTitle").textContent = `${session.target_role} at ${session.target_company}`;
   }
   if ($("#interviewStatusPill")) {
-    $("#interviewStatusPill").textContent = session.status;
+    $("#interviewStatusPill").textContent = session.current_phase || session.status || "Level 1: Warm-up";
+  }
+
+  // Strict Focus Badge
+  const badge = $("#strictFocusWarningBadge");
+  const countDisplay = $("#strictFocusCountDisplay");
+  if (session.strict_focus_mode) {
+    if (badge) badge.classList.remove("hidden");
+    if (countDisplay) countDisplay.textContent = session.focus_warnings_count || 0;
+  } else {
+    if (badge) badge.classList.add("hidden");
   }
 
   const chatBox = $("#interviewChatBox");
@@ -13352,14 +13637,53 @@ function renderActiveInterviewSession(session) {
   }
 }
 
+let isInterviewTtsEnabled = true;
+
+function speakAiText(text) {
+  if (!("speechSynthesis" in window) || !isInterviewTtsEnabled) return;
+  try {
+    window.speechSynthesis.cancel();
+    const cleanText = text
+      .replace(/\[Stage[^\]]+\]/g, "")
+      .replace(/\[Coach[^\]]+\]/g, "")
+      .replace(/[*_#`]/g, "")
+      .trim();
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.warn("Speech synthesis error:", err);
+  }
+}
+window.speakAiText = speakAiText;
+
 function appendInterviewMsg(sender, text) {
   const chatBox = $("#interviewChatBox");
   if (!chatBox) return;
   const msgEl = document.createElement("div");
   msgEl.className = `chat-msg ${sender}`;
-  msgEl.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+
+  let inner = escapeHtml(text).replace(/\n/g, "<br>");
+  if (sender === "ai") {
+    inner = `
+      <div class="flex-between align-center mb-1">
+        <span class="text-xs font-bold text-primary">AI Interviewer</span>
+        <button class="icon-btn xs" type="button" title="Listen to response" onclick="speakAiText(this.dataset.msg)" data-msg="${escapeHtml(text)}" style="padding:2px 4px; font-size:10px;">
+          <i data-lucide="volume-2" style="width:12px;height:12px;"></i>
+        </button>
+      </div>
+      <div>${inner}</div>
+    `;
+    speakAiText(text);
+  }
+  msgEl.innerHTML = inner;
   chatBox.appendChild(msgEl);
   chatBox.scrollTop = chatBox.scrollHeight;
+  drawIcons();
 }
 
 // ==========================================================================
@@ -15085,3 +15409,27 @@ async function toggleFocusCoach() {
   }
 }
 window.toggleFocusCoach = toggleFocusCoach;
+
+function stopFocusCoach() {
+  if (_focusCoachActive || _focusCoachStream) {
+    _focusCoachActive = false;
+    if (_focusCoachStream) {
+      _focusCoachStream.getTracks().forEach((t) => t.stop());
+      _focusCoachStream = null;
+    }
+    if (_focusCoachCheckInterval) {
+      clearInterval(_focusCoachCheckInterval);
+      _focusCoachCheckInterval = null;
+    }
+    const toggleBtn = $("#toggleFocusCoachBtn");
+    if (toggleBtn) {
+      toggleBtn.innerHTML = `<i data-lucide="eye"></i><span>Focus Coach: Off</span>`;
+      toggleBtn.classList.remove("primary-btn");
+      toggleBtn.classList.add("secondary-btn");
+    }
+    const hud = $("#focusCoachHUD");
+    if (hud) hud.classList.add("hidden");
+    drawIcons();
+  }
+}
+window.stopFocusCoach = stopFocusCoach;

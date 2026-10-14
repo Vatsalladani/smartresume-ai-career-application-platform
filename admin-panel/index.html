@@ -196,17 +196,25 @@
           <i data-lucide="users"></i>
           <span>User Directory & RBAC</span>
         </button>
-        <button class="nav-btn" data-tab="admin-team">
-          <i data-lucide="shield-alert"></i>
-          <span>Admin Team & Invites</span>
+        <button class="nav-btn" data-tab="resumes">
+          <i data-lucide="file-text"></i>
+          <span>Resumes & Templates</span>
         </button>
         <button class="nav-btn" data-tab="ai-ops">
           <i data-lucide="cpu"></i>
-          <span>AI Ops & Telemetry</span>
+          <span>AI Ops & Controls</span>
         </button>
         <button class="nav-btn" data-tab="feature-flags">
           <i data-lucide="sliders"></i>
-          <span>Feature Flags</span>
+          <span>Feature Flags & Config</span>
+        </button>
+        <button class="nav-btn" data-tab="subscriptions">
+          <i data-lucide="credit-card"></i>
+          <span>Subscriptions & Quotas</span>
+        </button>
+        <button class="nav-btn" data-tab="admin-team">
+          <i data-lucide="shield-alert"></i>
+          <span>Admin Team & Invites</span>
         </button>
         <button class="nav-btn" data-tab="audit-logs">
           <i data-lucide="shield"></i>
@@ -334,7 +342,7 @@
           <div class="card-header flex-between">
             <div>
               <h3><i data-lucide="users"></i> User Directory & Access Control</h3>
-              <p class="text-sm text-muted">Inspect registered accounts, verify roles, and promote/demote administrative permissions with audit logging.</p>
+              <p class="text-sm text-muted">Inspect registered accounts, change plans, toggle active/suspended status, and manage administrative privileges.</p>
             </div>
             <div class="table-search-box">
               <i data-lucide="search"></i>
@@ -348,14 +356,15 @@
                   <tr>
                     <th>User / Account</th>
                     <th>Role</th>
+                    <th>Plan</th>
+                    <th>Status</th>
                     <th>Resumes</th>
-                    <th>Verified</th>
                     <th>Registered</th>
-                    <th class="text-right">Privilege Action</th>
+                    <th class="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="usersTableBody">
-                  <tr><td colspan="6" class="text-center p-4 text-muted">Loading user directory...</td></tr>
+                  <tr><td colspan="7" class="text-center p-4 text-muted">Loading user directory...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -367,7 +376,298 @@
         </div>
       </section>
 
-      <!-- TAB 3: ADMIN TEAM & INVITATION ONBOARDING -->
+      <!-- TAB 3: RESUMES & TEMPLATE MANAGEMENT -->
+      <section id="panelResumes" class="tab-panel">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3><i data-lucide="file-text"></i> Candidate Resumes Directory</h3>
+              <p class="text-sm text-muted">Inspect all candidate resumes, track ATS compatibility scores, and review version histories.</p>
+            </div>
+            <div class="table-search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="resumeSearchInput" class="form-input sm" placeholder="Search title, role, user email...">
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Resume Title / User</th>
+                    <th>Target Role</th>
+                    <th>ATS Score</th>
+                    <th>Completeness</th>
+                    <th>Versions</th>
+                    <th>Updated</th>
+                    <th class="text-right">Inspection</th>
+                  </tr>
+                </thead>
+                <tbody id="resumesTableBody">
+                  <tr><td colspan="7" class="text-center p-4 text-muted">Loading resumes...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer flex-between">
+            <span class="text-sm text-muted" id="resumeCountSummary">Showing resumes</span>
+            <div class="pagination-controls" id="resumePaginationControls"></div>
+          </div>
+        </div>
+
+        <!-- Template Catalog Controls -->
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <h3><i data-lucide="layout"></i> Resume Template Catalog Management</h3>
+            <p class="text-sm text-muted">Enable or disable templates platform-wide. Changes take effect immediately in the candidate builder.</p>
+          </div>
+          <div class="card-body">
+            <div class="template-grid" id="templatesGrid">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: AI OPS & GEMINI CONTROLS -->
+      <section id="panelAiOps" class="tab-panel">
+        <div class="metrics-grid">
+          <div class="stat-card">
+            <span class="stat-title">Primary Model</span>
+            <div class="stat-value text-sm" id="aiPrimaryModel">gemini-2.5-flash</div>
+            <div class="stat-subtitle text-success">Google GenAI Live</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">Fallback Engine</span>
+            <div class="stat-value text-sm" id="aiFallbackEngine">deterministic-v2</div>
+            <div class="stat-subtitle">Zero Hallucination Rules Engine</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">24h AI Requests</span>
+            <div class="stat-value" id="aiTotalRequests">--</div>
+            <div class="stat-subtitle text-success" id="aiFallbackRate">Fallback: 0.0%</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">Response Latency (p50 / p99)</span>
+            <div class="stat-value text-sm" id="aiLatencyMetric">-- ms / -- ms</div>
+            <div class="stat-subtitle text-primary">Sub-second execution</div>
+          </div>
+        </div>
+
+        <div class="content-split-grid">
+          <!-- AI Orchestration Live Controls -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i data-lucide="sliders"></i> Gemini Orchestration & Kill Switch</h3>
+              <p class="text-sm text-muted">Live control of AI routing, emergency fallback switches, and sampling parameters.</p>
+            </div>
+            <div class="card-body">
+              <form id="aiControlsForm" class="admin-form">
+                <div class="form-group">
+                  <label for="aiPrimaryModelSelect">Primary Gemini Model</label>
+                  <select id="aiPrimaryModelSelect" class="form-input">
+                    <option value="gemini-2.5-flash">gemini-2.5-flash (Recommended, High Speed)</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro (Deep Reasoning & Analysis)</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash (Legacy Standard)</option>
+                  </select>
+                </div>
+
+                <div class="health-item" style="margin: 1rem 0; padding: 0.75rem; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-sm);">
+                  <div>
+                    <strong class="text-danger">Emergency Fallback Kill Switch</strong>
+                    <p class="text-xs text-muted">Force 100% deterministic engine fallback for all AI features immediately.</p>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="aiForceFallbackToggle">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label for="aiTemperatureInput">Sampling Temperature (0.0 - 1.0)</label>
+                  <input type="number" id="aiTemperatureInput" class="form-input" min="0.0" max="1.0" step="0.05" value="0.2">
+                </div>
+
+                <div class="form-group">
+                  <label for="aiTimeoutInput">Network Timeout (Seconds)</label>
+                  <input type="number" id="aiTimeoutInput" class="form-input" min="5" max="60" value="15">
+                </div>
+
+                <button type="submit" id="saveAiControlsBtn" class="btn btn-primary btn-block">
+                  <i data-lucide="save"></i>
+                  <span>Save AI Configuration</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Feature-Level Breakdown -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i data-lucide="bar-chart-2"></i> Feature-Level AI Telemetry</h3>
+              <p class="text-sm text-muted">Operational volume and fallback rates across AI workflows.</p>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Feature Workflow</th>
+                      <th>24h Volume</th>
+                      <th>Fallback Rate</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="aiFeatureBreakdownBody">
+                    <tr><td colspan="4" class="text-center p-4 text-muted">Loading telemetry...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: FEATURE FLAGS & CONFIGURATION -->
+      <section id="panelFeatureFlags" class="tab-panel">
+        <!-- Global Announcement & Maintenance Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-header">
+            <h3><i data-lucide="megaphone"></i> Platform Announcement & Maintenance Banner</h3>
+            <p class="text-sm text-muted">Display a global broadcast or maintenance message across the candidate portal.</p>
+          </div>
+          <div class="card-body">
+            <form id="announcementForm" class="admin-form">
+              <div class="health-item" style="margin-bottom: 1rem;">
+                <span>Display Announcement Banner</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="announcementEnabledToggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label for="announcementTextInput">Banner Message Text</label>
+                <input type="text" id="announcementTextInput" class="form-input" placeholder="e.g. Scheduled maintenance tonight at 11:00 PM UTC.">
+              </div>
+              <button type="submit" id="saveAnnouncementBtn" class="btn btn-secondary btn-sm">
+                <i data-lucide="save"></i>
+                <span>Update Banner</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- AI Mock Interview Engine Configuration Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-header">
+            <h3><i data-lucide="video"></i> Mock Interview Engine Configuration</h3>
+            <p class="text-sm text-muted">Configure default/maximum session duration, strict focus rules, and warning tolerances.</p>
+          </div>
+          <div class="card-body">
+            <form id="interviewConfigForm" class="admin-form">
+              <div class="form-row grid-3">
+                <div class="form-group">
+                  <label for="adminInterviewDefaultDur">Default Duration (Minutes)</label>
+                  <input type="number" id="adminInterviewDefaultDur" class="form-input" min="5" max="180" value="60">
+                </div>
+                <div class="form-group">
+                  <label for="adminInterviewMaxDur">Max Duration Limit (Minutes)</label>
+                  <input type="number" id="adminInterviewMaxDur" class="form-input" min="10" max="240" value="120">
+                </div>
+                <div class="form-group">
+                  <label for="adminStrictFocusMaxWarnings">Strict Focus Warning Limit</label>
+                  <input type="number" id="adminStrictFocusMaxWarnings" class="form-input" min="1" max="10" value="3">
+                </div>
+              </div>
+              <button type="submit" id="saveInterviewConfigBtn" class="btn btn-secondary btn-sm" style="margin-top: 1rem;">
+                <i data-lucide="save"></i>
+                <span>Save Interview Engine Settings</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- System Flags Grid -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i data-lucide="sliders"></i> System Feature Flags</h3>
+            <p class="text-sm text-muted">Enable or disable system modules with immediate live backend persistence and audit logging.</p>
+          </div>
+          <div class="card-body">
+            <div class="flags-grid" id="fullFlagsContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: SUBSCRIPTIONS & QUOTAS -->
+      <section id="panelSubscriptions" class="tab-panel">
+        <div class="content-split-grid">
+          <!-- Plan Quotas Editor -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i data-lucide="sliders"></i> Default Plan Quotas & Allowances</h3>
+              <p class="text-sm text-muted">Configure default monthly allowances. Server checks apply immediately on next user action.</p>
+            </div>
+            <div class="card-body">
+              <form id="quotasConfigForm" class="admin-form">
+                <div class="form-group">
+                  <label for="quotaFreeResumesInput">FREE: Max Active Resumes</label>
+                  <input type="number" id="quotaFreeResumesInput" class="form-input" min="1" max="10" required>
+                </div>
+                <div class="form-group">
+                  <label for="quotaFreeTailorsInput">FREE: Monthly AI Tailored Versions</label>
+                  <input type="number" id="quotaFreeTailorsInput" class="form-input" min="0" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label for="quotaFreeExportsInput">FREE: Monthly PDF Exports</label>
+                  <input type="number" id="quotaFreeExportsInput" class="form-input" min="0" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label for="quotaProTailorsInput">PRO: Monthly AI Tailored Versions</label>
+                  <input type="number" id="quotaProTailorsInput" class="form-input" min="10" max="500" required>
+                </div>
+                <div class="form-group">
+                  <label for="quotaProExportsInput">PRO: Monthly PDF Exports</label>
+                  <input type="number" id="quotaProExportsInput" class="form-input" min="20" max="1000" required>
+                </div>
+                <button type="submit" id="saveQuotasBtn" class="btn btn-primary btn-block">
+                  <i data-lucide="save"></i>
+                  <span>Save Plan Quotas</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Active Subscriptions Overview -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i data-lucide="credit-card"></i> Candidate Subscriptions Directory</h3>
+              <p class="text-sm text-muted">Active memberships and payment statuses.</p>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>User Email</th>
+                      <th>Plan Tier</th>
+                      <th>Status</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody id="subscriptionsTableBody">
+                    <tr><td colspan="4" class="text-center p-4 text-muted">Loading subscriptions...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: ADMIN TEAM & INVITATION ONBOARDING -->
       <section id="panelAdminTeam" class="tab-panel">
         <div class="content-split-grid">
           <!-- Create Admin Invitation Card -->
@@ -476,77 +776,13 @@
         </div>
       </section>
 
-      <!-- TAB 4: AI OPS & TELEMETRY -->
-      <section id="panelAiOps" class="tab-panel">
-        <div class="metrics-grid">
-          <div class="stat-card">
-            <span class="stat-title">Primary Model</span>
-            <div class="stat-value text-sm" id="aiPrimaryModel">gemini-2.5-flash</div>
-            <div class="stat-subtitle text-success">Google GenAI Live</div>
-          </div>
-          <div class="stat-card">
-            <span class="stat-title">Fallback Engine</span>
-            <div class="stat-value text-sm" id="aiFallbackEngine">deterministic-v2</div>
-            <div class="stat-subtitle">Zero Hallucination Rules Engine</div>
-          </div>
-          <div class="stat-card">
-            <span class="stat-title">24h AI Requests</span>
-            <div class="stat-value" id="aiTotalRequests">--</div>
-            <div class="stat-subtitle text-success" id="aiFallbackRate">Fallback: 0.0%</div>
-          </div>
-          <div class="stat-card">
-            <span class="stat-title">Response Latency (p50 / p99)</span>
-            <div class="stat-value text-sm" id="aiLatencyMetric">-- ms / -- ms</div>
-            <div class="stat-subtitle text-primary">Sub-second execution</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h3><i data-lucide="bar-chart-2"></i> Feature-Level AI Telemetry Breakdown</h3>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Feature Workflow</th>
-                    <th>24h Request Volume</th>
-                    <th>Fallback Activation Rate</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="aiFeatureBreakdownBody">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 5: FEATURE FLAGS -->
-      <section id="panelFeatureFlags" class="tab-panel">
-        <div class="card">
-          <div class="card-header">
-            <h3><i data-lucide="sliders"></i> System Feature Flags & Platform Controls</h3>
-            <p class="text-sm text-muted">Dynamically enable or disable platform capabilities in real time. Changes are persisted on the backend and recorded in the audit log.</p>
-          </div>
-          <div class="card-body">
-            <div class="flags-grid" id="fullFlagsContainer">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 6: SECURITY AUDIT TRAIL -->
+      <!-- TAB 8: SECURITY AUDIT TRAIL -->
       <section id="panelAuditLogs" class="tab-panel">
         <div class="card">
           <div class="card-header flex-between">
             <div>
               <h3><i data-lucide="shield"></i> Security & Administrative Audit Log</h3>
-              <p class="text-sm text-muted">Immutable event records capturing administrative actions, role modifications, and system configuration updates.</p>
+              <p class="text-sm text-muted">Immutable PostgreSQL event records capturing administrative actions, role modifications, and system configuration updates.</p>
             </div>
             <button id="refreshAuditLogsBtn" class="btn btn-secondary btn-sm">
               <i data-lucide="refresh-cw"></i>
@@ -574,6 +810,65 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- MODAL: EDIT USER STATUS & PLAN -->
+  <div id="userModalOverlay" class="admin-modal-overlay hidden">
+    <div class="admin-modal-card">
+      <div class="modal-header">
+        <h3 id="userModalTitle">Manage User Account</h3>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="closeUserModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modalUserId">
+        <div class="form-group">
+          <label>Candidate Email</label>
+          <input type="text" id="modalUserEmail" class="form-input" disabled>
+        </div>
+        <div class="form-group">
+          <label for="modalUserPlanSelect">Subscription Plan</label>
+          <select id="modalUserPlanSelect" class="form-input">
+            <option value="FREE">FREE Plan</option>
+            <option value="PRO">PRO Plan</option>
+            <option value="EXECUTIVE">EXECUTIVE Plan</option>
+          </select>
+        </div>
+        <div class="health-item" style="margin: 1rem 0;">
+          <span>Account Active</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="modalUserActiveToggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="health-item">
+          <span>Email Verified</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="modalUserVerifiedToggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeUserModal()">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveUserModalChanges()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: INSPECT RESUME DETAILS -->
+  <div id="resumeModalOverlay" class="admin-modal-overlay hidden">
+    <div class="admin-modal-card" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 id="resumeModalTitle">Resume Inspection Snapshot</h3>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="closeResumeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="resumeModalBody">
+        Loading resume content...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeResumeModal()">Close</button>
+      </div>
+    </div>
   </div>
 
   <script src="js/admin.js"></script>

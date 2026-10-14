@@ -91,6 +91,27 @@ def require_admin(
     return current_admin
 
 
+def require_admin_mutation(
+    current_admin: AdminAccount | User = Depends(get_current_admin),
+) -> AdminAccount | User:
+    """Ensures the administrator has write/mutation permissions (blocks READONLY_ADMIN)."""
+    admin_role = getattr(current_admin, "role", "ADMIN")
+    if admin_role == "READONLY_ADMIN":
+        raise AppError("Read-only administrator account cannot perform mutation operations.", status.HTTP_403_FORBIDDEN)
+    return current_admin
+
+
+def require_owner_admin(
+    current_admin: AdminAccount | User = Depends(get_current_admin),
+) -> AdminAccount | User:
+    """Ensures the administrator has root/owner authority."""
+    admin_role = getattr(current_admin, "role", "ADMIN")
+    if admin_role not in ("OWNER_ADMIN", "ADMIN"):
+        raise AppError("Root owner administrator privileges required.", status.HTTP_403_FORBIDDEN)
+    return current_admin
+
+
+
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 

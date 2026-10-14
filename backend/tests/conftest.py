@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
+import app.models  # Ensure all model tables are registered in Base.metadata
 from app.main import app
 
 os.environ["TESTING"] = "1"

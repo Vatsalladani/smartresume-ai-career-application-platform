@@ -1,4 +1,5 @@
 from app.models.admin import AdminAccount, AdminInvitation
+from app.models.ai_log import AIOperationLog
 from app.models.application import JobApplication
 from app.models.audit import AuditLog
 from app.models.job_fit import (
@@ -20,6 +21,7 @@ from app.models.evidence_vault import EvidenceItem
 from app.models.interview import InterviewEvaluation, InterviewMessage, InterviewSession
 from app.models.notification import Notification
 from app.models.payment_event import PaymentEvent
+from app.models.platform_setting import PlatformSetting
 from app.models.resume import ATSAnalysis, Resume, ResumeVersion
 from app.models.subscription import Subscription
 from app.models.tokens import RefreshToken, TokenBlacklist
@@ -29,6 +31,7 @@ from app.models.user import User
 __all__ = [
     "AdminAccount",
     "AdminInvitation",
+    "AIOperationLog",
     "ApplicationVersion",
     "ATSAnalysis",
     "ATSCheck",
@@ -46,6 +49,7 @@ __all__ = [
     "JobRequirement",
     "Notification",
     "PaymentEvent",
+    "PlatformSetting",
     "Profile",
     "Project",
     "RefreshToken",
@@ -57,3 +61,4 @@ __all__ = [
     "UsageCounter",
     "User",
 ]
+

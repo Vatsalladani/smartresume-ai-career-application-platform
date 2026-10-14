@@ -15,6 +15,9 @@ class InterviewSessionCreate(BaseModel):
     career_level: Optional[str] = Field(default="DEVELOPING", max_length=30)  # EARLY_CAREER, DEVELOPING, EXPERIENCED
     difficulty: str = Field(default="MEDIUM", max_length=30)  # EASY, MEDIUM, HARD, VERY_HARD, ADAPTIVE
     practice_mode: str = Field(default="STANDARD", max_length=30)  # QUICK, STANDARD, DEEP, FULL_PRESSURE
+    duration_minutes: int = Field(default=60, ge=5, le=180)
+    focus_coach_enabled: bool = False
+    strict_focus_mode: bool = False
 
 
 class PreparationGuideOut(BaseModel):
@@ -58,6 +61,7 @@ class LiveConfigOut(BaseModel):
 class InterviewMessageCreate(BaseModel):
     message_text: str = Field(min_length=1, max_length=10000)
     sender: str = Field(default="USER", max_length=10)
+    duration_seconds: Optional[float] = 0.0
 
 
 class InterviewMessageOut(BaseModel):
@@ -92,10 +96,12 @@ class InterviewEvaluationOut(BaseModel):
     technical_topics_to_revise: list[str] = Field(default_factory=list)
     suggested_next_practice: str = ""
     readiness_level: str = "NEEDS_PRACTICE"
+    voice_delivery_metrics: dict = Field(default_factory=dict)
+    coverage_summary: dict = Field(default_factory=dict)
+    termination_reason: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
-
 
 
 class InterviewSessionOut(BaseModel):
@@ -112,9 +118,34 @@ class InterviewSessionOut(BaseModel):
     readiness_score: int
     feedback_summary: str
     job_description_snapshot: Optional[str] = None
+    career_level: str = "DEVELOPING"
+    difficulty: str = "MEDIUM"
+    duration_minutes: int = 60
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    current_phase: str = "Introduction & Communication"
+    current_phase_index: int = 0
+    is_paused: bool = False
+    total_paused_seconds: int = 0
+    focus_coach_enabled: bool = False
+    strict_focus_mode: bool = False
+    focus_warnings_count: int = 0
+    focus_warning_history: list[dict] = Field(default_factory=list)
+    coverage_plan: dict = Field(default_factory=dict)
+    termination_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     messages: list[InterviewMessageOut] = Field(default_factory=list)
     evaluation: Optional[InterviewEvaluationOut] = None
 
     model_config = {"from_attributes": True}
+
+
+class InterviewSkipPayload(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+class FocusWarningPayload(BaseModel):
+    warning_type: str = Field(default="OFF_SCREEN", max_length=50)
+    confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+

@@ -26,6 +26,7 @@ def get_or_create_usage_counter(db: Session, user_id: int) -> UsageCounter:
 
 
 def get_user_plan_and_limits(db: Session, user_id: int) -> dict:
+    from app.services import platform_config_service
     settings = get_settings()
     sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
     now = datetime.utcnow()
@@ -33,15 +34,15 @@ def get_user_plan_and_limits(db: Session, user_id: int) -> dict:
 
     if is_pro:
         plan_name = sub.plan_name
-        fit_limit = settings.pro_quota_fit_analyses_per_month
-        tailor_limit = settings.pro_quota_tailored_versions_per_month
-        export_limit = settings.pro_quota_exports_per_month
-        templates_allowed = ["classic_ats", "technical_ats", "campus_fresher", "professional"]
+        fit_limit = 999999 if sub.plan_name == "EXECUTIVE" else int(getattr(settings, "pro_quota_fit_analyses_per_month", 50))
+        tailor_limit = 999999 if sub.plan_name == "EXECUTIVE" else int(platform_config_service.get_setting("quota_pro_tailors", getattr(settings, "pro_quota_tailored_versions_per_month", 50), db=db))
+        export_limit = 999999 if sub.plan_name == "EXECUTIVE" else int(platform_config_service.get_setting("quota_pro_exports", getattr(settings, "pro_quota_exports_per_month", 100), db=db))
+        templates_allowed = ["classic_ats", "modern_clean", "executive_brief", "tech_minimal", "technical_ats", "campus_fresher", "professional"]
     else:
         plan_name = "FREE"
-        fit_limit = settings.free_quota_fit_analyses_per_month
-        tailor_limit = settings.free_quota_tailored_versions_per_month
-        export_limit = settings.free_quota_exports_per_month
+        fit_limit = int(platform_config_service.get_setting("quota_free_analyses", getattr(settings, "free_quota_fit_analyses_per_month", 5), db=db))
+        tailor_limit = int(platform_config_service.get_setting("quota_free_tailors", getattr(settings, "free_quota_tailored_versions_per_month", 3), db=db))
+        export_limit = int(platform_config_service.get_setting("quota_free_exports", getattr(settings, "free_quota_exports_per_month", 5), db=db))
         templates_allowed = ["classic_ats", "campus_fresher"]
 
     return {
@@ -53,6 +54,7 @@ def get_user_plan_and_limits(db: Session, user_id: int) -> dict:
         "export_limit": export_limit,
         "templates_allowed": templates_allowed,
     }
+
 
 
 def check_and_increment_quota(db: Session, user_id: int, action: str) -> None:

@@ -19,7 +19,7 @@ from app.schemas.auth import (
     UserRegister,
     VerifyEmailRequest,
 )
-from app.services import auth_service, oauth_service
+from app.services import auth_service, oauth_service, platform_config_service
 from app.services.audit_service import write_audit_log
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -27,7 +27,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register")
 def register(payload: UserRegister, request: Request, db: Session = Depends(get_db)) -> dict:
+    if not platform_config_service.get_setting("public_signup_enabled", True, db=db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public candidate registration is currently paused by platform administrator."
+        )
     user, verification_token = auth_service.register_user(db, payload)
+
     from app.services import email_service
     email_service.send_verification_email(user.email, verification_token, user.full_name)
     write_audit_log(
