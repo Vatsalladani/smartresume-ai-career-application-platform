@@ -259,22 +259,42 @@ def ensure_defaults_seeded(db: Session) -> None:
 def _refresh_cache_from_db(db: Session) -> None:
     """Loads all settings from database into memory cache."""
     global _memory_cache, _cache_initialized
-    ensure_defaults_seeded(db)
-    rows = db.query(PlatformSetting).all()
-    new_cache: dict[str, Any] = {}
-    for r in rows:
-        val = _deserialize_value(r.value, r.value_type)
-        new_cache[r.key] = {
-            "value": val,
-            "type": r.value_type,
-            "description": r.description,
-            "is_public": r.is_public,
-            "updated_by": r.updated_by,
-            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
-        }
-    with _cache_lock:
-        _memory_cache = new_cache
-        _cache_initialized = True
+    try:
+        ensure_defaults_seeded(db)
+        rows = db.query(PlatformSetting).all()
+        new_cache: dict[str, Any] = {}
+        for r in rows:
+            val = _deserialize_value(r.value, r.value_type)
+            new_cache[r.key] = {
+                "value": val,
+                "type": r.value_type,
+                "description": r.description,
+                "is_public": r.is_public,
+                "updated_by": r.updated_by,
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+            }
+        with _cache_lock:
+            _memory_cache = new_cache
+            _cache_initialized = True
+    except Exception as e:
+        logger.warning("Could not query platform_settings from DB (%s); falling back to canonical defaults", e)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        with _cache_lock:
+            _memory_cache = {
+                k: {
+                    "value": spec["value"],
+                    "type": spec["type"],
+                    "description": spec["description"],
+                    "is_public": spec["is_public"],
+                    "updated_by": "canonical_default",
+                    "updated_at": datetime.utcnow().isoformat(),
+                }
+                for k, spec in CANONICAL_DEFAULTS.items()
+            }
+            _cache_initialized = True
 
 
 def get_setting(key: str, default: Any = None, db: Optional[Session] = None) -> Any:
