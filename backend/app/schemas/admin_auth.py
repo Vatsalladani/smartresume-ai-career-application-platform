@@ -12,11 +12,44 @@ class AdminLoginRequest(BaseModel):
     password: str = Field(..., min_length=1, max_length=128)
 
 
+class AdminGoogleLoginRequest(BaseModel):
+    code: Optional[str] = Field(None, description="Google OAuth authorization code")
+    id_token: Optional[str] = Field(None, description="Google OAuth ID token / credential")
+    redirect_uri: Optional[str] = Field(None, description="OAuth redirect URI if code flow used")
+
+
+class AdminGoogleAcceptInvitationRequest(BaseModel):
+    invitation_token: str = Field(..., min_length=8, max_length=255, description="Invitation token")
+    code: Optional[str] = Field(None, description="Google OAuth authorization code")
+    id_token: Optional[str] = Field(None, description="Google OAuth ID token / credential")
+    redirect_uri: Optional[str] = Field(None, description="OAuth redirect URI if code flow used")
+
+
+class AdminPasswordAcceptInvitationRequest(BaseModel):
+    invitation_token: str = Field(..., min_length=8, max_length=255, description="Invitation token")
+    full_name: str = Field(..., min_length=2, max_length=100)
+    password: str = Field(..., min_length=8, max_length=128)
+    email: Optional[EmailStr] = Field(None, description="Administrator email address (optional if invitation bound)")
+
+
 class AdminSignupRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
-    email: EmailStr = Field(..., description="Administrator email address")
+    email: Optional[EmailStr] = Field(None, description="Administrator email address")
     password: str = Field(..., min_length=8, max_length=128)
     invitation_token: str = Field(..., min_length=8, max_length=255, description="Invitation token provided by Owner Admin")
+
+
+class AdminInvitationInfoResponse(BaseModel):
+    valid: bool
+    email: str
+    role: str
+    expires_at: datetime
+    status: str
+
+
+class AdminOAuthConfigResponse(BaseModel):
+    google_enabled: bool
+    google_client_id: Optional[str] = None
 
 
 class AdminInvitationCreateRequest(BaseModel):

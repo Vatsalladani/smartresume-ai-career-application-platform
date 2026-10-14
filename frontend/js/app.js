@@ -2365,6 +2365,9 @@ async function flushBuilderAutosave() {
     clearTimeout(builderAutosaveTimeout);
     builderAutosaveTimeout = null;
   }
+  if (!window._isBuilderDirty) {
+    return;
+  }
   try {
     localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
     if (state.activeResumeId) {
@@ -2374,6 +2377,7 @@ async function flushBuilderAutosave() {
           parsed_content: resumeBuilderState,
         },
       });
+      window._isBuilderDirty = false;
     }
   } catch (err) {
     console.warn("Autosave flush error:", err);
@@ -2453,6 +2457,7 @@ function loadResumeBuilderState() {
 }
 
 function triggerBuilderAutosave() {
+  window._isBuilderDirty = true;
   const statusEl = $("#builderSaveStatus");
   const statusText = $("#builderSaveStatusText");
   if (statusEl) {
@@ -2470,6 +2475,7 @@ function triggerBuilderAutosave() {
             parsed_content: resumeBuilderState,
           },
         }).catch(e => console.warn("Backend autosave skipped:", e));
+        window._isBuilderDirty = false;
       }
       if (statusEl) {
         statusEl.className = "builder-save-status";
@@ -2675,58 +2681,119 @@ function checkAndRenderMarketRecommendation(resume) {
   }
 }
 
+let _openResumeInProgress = false;
+let _builderRenderedForId = null;
+
+function applyResumeToBuilderState(res) {
+  if (res && res.parsed_content && typeof res.parsed_content === "object" && res.parsed_content.header) {
+    const clean = getCleanResumeBuilderState();
+    resumeBuilderState = Object.assign(clean, res.parsed_content);
+  } else {
+    resumeBuilderState = getCleanResumeBuilderState();
+  }
+  localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
+  window._isBuilderDirty = false;
+}
+
+function showBuilderLoadingSkeleton() {
+  const canvas = $("#resumePreviewCanvas");
+  if (canvas) {
+    canvas.innerHTML = `
+      <div class="resume-loading-skeleton" style="padding: 2.5rem; display: flex; flex-direction: column; gap: 1.25rem; background: var(--surface); border-radius: 8px; min-height: 480px;">
+        <div style="height: 28px; width: 45%; background: rgba(148, 163, 184, 0.2); border-radius: 4px; animation: pulse 1.5s infinite;"></div>
+        <div style="height: 16px; width: 30%; background: rgba(148, 163, 184, 0.15); border-radius: 4px; animation: pulse 1.5s infinite;"></div>
+        <div style="height: 1px; width: 100%; background: var(--border-color); margin: 0.5rem 0;"></div>
+        <div style="height: 14px; width: 90%; background: rgba(148, 163, 184, 0.15); border-radius: 4px; animation: pulse 1.5s infinite;"></div>
+        <div style="height: 14px; width: 80%; background: rgba(148, 163, 184, 0.15); border-radius: 4px; animation: pulse 1.5s infinite;"></div>
+        <div style="height: 18px; width: 35%; background: rgba(148, 163, 184, 0.2); border-radius: 4px; margin-top: 1rem; animation: pulse 1.5s infinite;"></div>
+        <div style="height: 14px; width: 95%; background: rgba(148, 163, 184, 0.15); border-radius: 4px; animation: pulse 1.5s infinite;"></div>
+      </div>
+    `;
+  }
+}
+
+function hideBuilderLoadingSkeleton() {
+  const skel = document.querySelector(".resume-loading-skeleton");
+  if (skel) skel.remove();
+}
+
 async function switchActiveResume(newResumeId) {
   if (!newResumeId) return;
-  await flushBuilderAutosave();
+  if (window._isBuilderDirty) {
+    await flushBuilderAutosave();
+  }
 
   state.activeResumeId = newResumeId;
   state.currentResumeId = newResumeId;
   localStorage.setItem("smartresume_active_resume_id", String(newResumeId));
 
+  // Check if target resume is already in state.resumes with valid parsed_content
+  let res = (state.resumes || []).find(r => r.id === newResumeId);
+  const isCached = res && res.parsed_content && typeof res.parsed_content === "object" && res.parsed_content.header;
+
   try {
-    const res = await API.request(`/resumes/${newResumeId}`);
-    const idx = (state.resumes || []).findIndex(r => r.id === newResumeId);
-    if (idx !== -1) {
-      state.resumes[idx] = res;
-    } else {
-      state.resumes.push(res);
+    if (!isCached) {
+      showBuilderLoadingSkeleton();
+      res = await API.request(`/resumes/${newResumeId}`);
+      const idx = (state.resumes || []).findIndex(r => r.id === newResumeId);
+      if (idx !== -1) {
+        state.resumes[idx] = res;
+      } else {
+        state.resumes.push(res);
+      }
+      hideBuilderLoadingSkeleton();
     }
 
-    if (res.parsed_content && typeof res.parsed_content === "object" && res.parsed_content.header) {
-      const clean = getCleanResumeBuilderState();
-      resumeBuilderState = Object.assign(clean, res.parsed_content);
-    } else {
-      resumeBuilderState = getCleanResumeBuilderState();
-    }
-    localStorage.setItem("smartresume_builder_state", JSON.stringify(resumeBuilderState));
+    applyResumeToBuilderState(res);
+    _builderRenderedForId = newResumeId;
 
     updateBuilderHeaderUI(res);
     renderBuilderEditorFromState();
     renderResumePreviewCanvas();
     renderDashboardMyResumes();
     renderResumeSwitcherModal();
-    populateInterviewResumeSelect();
+    if ($("#tabInterview")?.classList.contains("active")) {
+      populateInterviewResumeSelect();
+    }
 
     $("#resumeSwitcherModal")?.classList.add("hidden");
     toast(`Switched to "${res.title}".`);
   } catch (err) {
+    hideBuilderLoadingSkeleton();
     toast(`Failed to switch resume: ${err.message}`, "error");
   }
 }
 
-async function openResume(resumeId) {
+async function openResume(resumeId, options = {}) {
   if (!resumeId) {
     toast("No resume specified.", "warning");
     return;
   }
+  if (_openResumeInProgress) return;
+  _openResumeInProgress = true;
+
+  const btn = options.button || (document.activeElement && document.activeElement.tagName === "BUTTON" ? document.activeElement : null);
+  if (btn) setButtonLoading(btn, true, "Opening...");
+
   try {
-    await switchActiveResume(resumeId);
+    // 1. Immediately update active state
+    state.activeResumeId = resumeId;
+    state.currentResumeId = resumeId;
+    localStorage.setItem("smartresume_active_resume_id", String(resumeId));
+
+    // 2. Immediate tab navigation for instant perceptual response (<10ms)
     navigateToTab("resume-builder");
     const ws = document.querySelector(".workspace");
     if (ws) ws.scrollTop = 0;
+
+    // 3. Switch resume content (synchronously from memory if cached!)
+    await switchActiveResume(resumeId);
   } catch (err) {
     console.error("openResume error:", err);
     toast(`Failed to open resume #${resumeId}: ${err.message}`, "error");
+  } finally {
+    _openResumeInProgress = false;
+    if (btn) setButtonLoading(btn, false, "Open Resume");
   }
 }
 window.openResume = openResume;
@@ -5808,8 +5875,11 @@ function loadResumeBuilderView() {
   if ($("#builderDateFormat") && resumeBuilderState.dateFormat) $("#builderDateFormat").value = resumeBuilderState.dateFormat;
   if ($("#builderDateAlign") && resumeBuilderState.dateAlignment) $("#builderDateAlign").value = resumeBuilderState.dateAlignment;
 
-  renderBuilderEditorFromState();
-  renderResumePreviewCanvas();
+  if (_builderRenderedForId !== state.activeResumeId) {
+    renderBuilderEditorFromState();
+    renderResumePreviewCanvas();
+  }
+  _builderRenderedForId = null;
 }
 
 // Section management helpers
@@ -7864,40 +7934,45 @@ function updateCareerProfileStrength() {
 }
 
 window.onProfileOpenBestResumeClick = async function() {
+  const btn = $("#profileOpenBestResumeBtn");
+  if (btn) setButtonLoading(btn, true, "Opening...");
   try {
     let targetResumeId = window._bestResumeId;
-    if (!targetResumeId) {
-      const health = await API.request("/profile/health").catch(() => null);
-      if (health && health.best_resume_id) {
-        targetResumeId = health.best_resume_id;
-        window._bestResumeId = health.best_resume_id;
+
+    if (!targetResumeId && state.resumes && state.resumes.length) {
+      const activeResumes = state.resumes.filter(r => !r.is_archived);
+      if (activeResumes.length > 0) {
+        const sorted = [...activeResumes].sort((a, b) => {
+          const sa = typeof a.canonical_health_score === "number" ? a.canonical_health_score : (a.ats_score || a.score || 0);
+          const sb = typeof b.canonical_health_score === "number" ? b.canonical_health_score : (b.ats_score || b.score || 0);
+          return sb - sa;
+        });
+        targetResumeId = sorted[0].id;
       }
     }
+
+    if (!targetResumeId && state.activeResumeId) {
+      const active = (state.resumes || []).find(r => r.id === state.activeResumeId && !r.is_archived);
+      if (active) targetResumeId = active.id;
+    }
+
     if (!targetResumeId) {
       if (!state.resumes || !state.resumes.length) {
         await loadResumes();
       }
       const activeResumes = (state.resumes || []).filter(r => !r.is_archived);
-      if (!activeResumes.length) {
-        toast("No active resumes found. Create or upload a resume first.", "info");
-        navigateToTab("resume-builder");
-        return;
+      if (activeResumes.length > 0) {
+        const sorted = [...activeResumes].sort((a, b) => {
+          const sa = typeof a.canonical_health_score === "number" ? a.canonical_health_score : (a.ats_score || a.score || 0);
+          const sb = typeof b.canonical_health_score === "number" ? b.canonical_health_score : (b.ats_score || b.score || 0);
+          return sb - sa;
+        });
+        targetResumeId = sorted[0].id;
       }
-      const validResumes = activeResumes.map(r => {
-        let s = 0;
-        if (typeof r.canonical_health_score === "number") s = r.canonical_health_score;
-        else if (r.health_score && typeof r.health_score.overall_score === "number") s = r.health_score.overall_score;
-        else if (typeof r.score === "number") s = r.score;
-        else if (typeof r.overall_score === "number") s = r.overall_score;
-        else if (typeof r.ats_score === "number") s = r.ats_score;
-        return { ...r, effective_score: s };
-      });
-      validResumes.sort((a, b) => b.effective_score - a.effective_score);
-      targetResumeId = validResumes[0]?.id;
     }
 
     if (targetResumeId) {
-      await openResume(targetResumeId);
+      await openResume(targetResumeId, { button: btn });
     } else {
       toast("No resume available to open. Starting a new draft.", "info");
       navigateToTab("resume-builder");
@@ -7905,6 +7980,8 @@ window.onProfileOpenBestResumeClick = async function() {
   } catch (err) {
     console.error("Error opening best resume:", err);
     toast(`Failed to open best resume: ${err.message}`, "error");
+  } finally {
+    if (btn) setButtonLoading(btn, false, "Open Resume");
   }
 };
 
@@ -12915,7 +12992,7 @@ function populateInterviewResumeSelect() {
 
   const current = activeResumes.find(r => r.id === state.activeResumeId) || activeResumes[0];
   syncInterviewSelectedResumeUI(current);
-  if (current) {
+  if (current && $("#tabInterview")?.classList.contains("active")) {
     loadInterviewPreparationGuide(current.id, state.activeJobContext?.role, state.activeJobContext?.company);
   }
 }

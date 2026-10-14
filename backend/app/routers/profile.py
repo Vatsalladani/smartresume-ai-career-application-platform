@@ -264,15 +264,26 @@ def get_profile_health(
 
     scored_resumes = []
     for r in user_resumes:
-        r_data = r.parsed_content or {}
         r_role = r.target_role or target_role or profile.headline or "Software Engineer"
-        sc = calculate_evidence_based_score(r_data, target_role=r_role)
+        if r.ats_score and r.ats_score > 0:
+            score_val = r.ats_score
+            confidence_val = "High" if score_val >= 80 else "Medium"
+        else:
+            r_data = r.parsed_content or {}
+            sc = calculate_evidence_based_score(r_data, target_role=r_role)
+            score_val = sc["overall_score"]
+            confidence_val = sc.get("score_confidence", "Medium")
+            r.ats_score = score_val
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
         scored_resumes.append({
             "id": r.id,
             "title": r.title or f"Resume #{r.id}",
             "target_role": r.target_role or r_role,
-            "score": sc["overall_score"],
-            "confidence": sc.get("score_confidence", "Medium"),
+            "score": score_val,
+            "confidence": confidence_val,
             "updated_at": r.updated_at.isoformat() if r.updated_at else None,
         })
 

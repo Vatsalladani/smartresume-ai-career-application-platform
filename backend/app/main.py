@@ -145,6 +145,10 @@ if frontend_dir.exists():
         resp.headers["X-Robots-Tag"] = "noindex, nofollow"
         return resp
 
+    admin_panel_dir = Path(__file__).resolve().parent.parent.parent / "admin-panel"
+    if admin_panel_dir.exists() and (admin_panel_dir / "index.html").exists():
+        app.mount("/admin-panel", StaticFiles(directory=str(admin_panel_dir), html=True), name="admin_panel")
+
     if (frontend_dir / "index.html").exists():
         app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 

@@ -10,16 +10,28 @@ from app.database import get_db
 from app.dependencies import get_current_admin
 from app.models.admin import AdminAccount
 from app.schemas.admin_auth import (
+    AdminGoogleAcceptInvitationRequest,
+    AdminGoogleLoginRequest,
     AdminInvitationCreateRequest,
+    AdminInvitationInfoResponse,
     AdminInvitationOut,
     AdminLoginRequest,
+    AdminOAuthConfigResponse,
     AdminOut,
+    AdminPasswordAcceptInvitationRequest,
     AdminSignupRequest,
     AdminTokenResponse,
 )
 from app.services import admin_auth_service
 
 router = APIRouter(prefix="/admin-auth", tags=["admin-auth"])
+
+
+@router.get("/oauth-config", response_model=dict)
+def get_oauth_config() -> dict:
+    """Returns Google OAuth availability and client ID for the admin console."""
+    cfg = admin_auth_service.get_admin_oauth_config()
+    return success_response(cfg, "Admin OAuth config retrieved successfully.")
 
 
 @router.post("/login", response_model=dict)
@@ -40,6 +52,41 @@ def admin_login(
     return success_response(data, "Administrator authenticated successfully.")
 
 
+@router.post("/google", response_model=dict)
+async def admin_google_login(
+    payload: AdminGoogleLoginRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Authenticates an administrator via Google OAuth and issues an admin session token.
+
+    CRITICAL: If the Google email is not an already provisioned AdminAccount, returns 403 Forbidden.
+    """
+    google_identity = await admin_auth_service.verify_google_identity(
+        code=payload.code,
+        id_token=payload.id_token,
+        redirect_uri=payload.redirect_uri,
+    )
+    admin, token = admin_auth_service.authenticate_admin_with_google(
+        db,
+        google_identity=google_identity,
+    )
+    data = AdminTokenResponse(
+        access_token=token,
+        admin=AdminOut.model_validate(admin),
+    ).model_dump()
+    return success_response(data, "Administrator authenticated via Google successfully.")
+
+
+@router.get("/invitation-info", response_model=dict)
+def get_invitation_info(
+    token: str = Query(..., min_length=8, description="Raw invitation token"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Retrieves invitation metadata (email, role, expiration) without consuming it."""
+    info = admin_auth_service.get_invitation_info(db, token)
+    return success_response(info, "Invitation verified successfully.")
+
+
 @router.post("/signup", response_model=dict)
 def admin_signup(
     payload: AdminSignupRequest,
@@ -52,6 +99,29 @@ def admin_signup(
         admin=AdminOut.model_validate(admin),
     ).model_dump()
     return success_response(data, "Administrator account created successfully.")
+
+
+@router.post("/google/accept-invitation", response_model=dict)
+async def admin_google_accept_invitation(
+    payload: AdminGoogleAcceptInvitationRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Completes administrator onboarding using Google OAuth."""
+    google_identity = await admin_auth_service.verify_google_identity(
+        code=payload.code,
+        id_token=payload.id_token,
+        redirect_uri=payload.redirect_uri,
+    )
+    admin, token = admin_auth_service.accept_invitation_with_google(
+        db,
+        invitation_token=payload.invitation_token,
+        google_identity=google_identity,
+    )
+    data = AdminTokenResponse(
+        access_token=token,
+        admin=AdminOut.model_validate(admin),
+    ).model_dump()
+    return success_response(data, "Administrator account created via Google successfully.")
 
 
 @router.get("/me", response_model=dict)
@@ -79,7 +149,7 @@ def create_invitation(
     )
     inv_data = AdminInvitationOut.model_validate(invitation).model_dump()
     inv_data["raw_token"] = raw_token
-    inv_data["invite_url"] = f"#/signup?token={raw_token}&email={invitation.email}"
+    inv_data["invite_url"] = f"#/invite?token={raw_token}"
     return success_response(inv_data, "Administrator invitation created successfully.")
 
 

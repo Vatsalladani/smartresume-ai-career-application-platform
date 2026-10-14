@@ -8,9 +8,24 @@ const STATE_KEY_API = "smartresume_admin_api";
 const STATE_KEY_REMEMBER_EMAIL = "smartresume_admin_remembered_email";
 const DEFAULT_API_URL = "http://127.0.0.1:8000";
 
+function getAutoApiBase() {
+  const stored = localStorage.getItem(STATE_KEY_API);
+  if (stored) return stored.replace(/\/+$/, "");
+  const hostname = window.location.hostname;
+  const origin = window.location.origin;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    if (window.location.port === "8000") return origin;
+    return "http://127.0.0.1:8000";
+  }
+  if (origin && !origin.startsWith("file:") && !origin.includes("null")) {
+    return origin;
+  }
+  return "https://smartresume-ai-career-application-p.vercel.app";
+}
+
 const state = {
-  token: localStorage.getItem(STATE_KEY_TOKEN) || "",
-  apiBase: (localStorage.getItem(STATE_KEY_API) || DEFAULT_API_URL).replace(/\/+$/, ""),
+  token: sessionStorage.getItem(STATE_KEY_TOKEN) || localStorage.getItem(STATE_KEY_TOKEN) || "",
+  apiBase: getAutoApiBase(),
   adminUser: null,
   activeTab: "overview",
   currentPage: 1,
@@ -18,6 +33,9 @@ const state = {
   resumePage: 1,
   resumeSearchQuery: "",
   latestInvite: null,
+  currentInviteToken: null,
+  currentInviteEmail: null,
+  googleOAuthConfig: { google_enabled: false, google_client_id: null },
 };
 
 // UI Helper Utilities
@@ -82,7 +100,7 @@ async function adminApi(endpoint, options = {}) {
 
     return data;
   } catch (err) {
-    if (err.status === 401 && !endpoint.includes("/login") && !endpoint.includes("/signup")) {
+    if (err.status === 401 && !endpoint.includes("/login") && !endpoint.includes("/signup") && !endpoint.includes("/google")) {
       handleAdminLogout("Session expired. Please sign in again.");
     }
     throw err;
@@ -94,10 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initApp();
 });
 
-function initApp() {
-  const apiInput = $("#adminApiUrlInput");
-  if (apiInput) apiInput.value = state.apiBase;
-
+async function initApp() {
   const displayEl = $("#apiBaseDisplay");
   if (displayEl) displayEl.textContent = state.apiBase;
 
@@ -109,9 +124,12 @@ function initApp() {
 
   updateEnvBadge();
 
+  // Load Google OAuth status
+  await loadAdminOAuthConfig();
+
   // Bind Form Submissions
   $("#adminLoginForm")?.addEventListener("submit", handleAdminLogin);
-  $("#adminSignupForm")?.addEventListener("submit", handleAdminSignup);
+  $("#adminInvitePasswordForm")?.addEventListener("submit", handleInvitePasswordSubmit);
   $("#createInviteForm")?.addEventListener("submit", handleCreateInvitation);
   $("#aiControlsForm")?.addEventListener("submit", handleSaveAiControls);
   $("#announcementForm")?.addEventListener("submit", handleSaveAnnouncement);
@@ -155,28 +173,41 @@ function initApp() {
   // Hash change routing
   window.addEventListener("hashchange", handleHashRouting);
 
-  // Parse invite tokens in URL if on signup page
-  checkUrlForInviteToken();
+  // Check URL for invitation token
+  const hasInvite = await checkUrlForInviteToken();
 
-  // If token exists, verify session; otherwise show login
-  if (state.token) {
-    verifyAdminSession();
-  } else {
-    showAuthView();
+  // If token exists and not in invite flow, verify session; otherwise show login
+  if (!hasInvite) {
+    if (state.token) {
+      verifyAdminSession();
+    } else {
+      showAuthView();
+    }
   }
 }
 
 function updateEnvBadge() {
-  const badge = $("#activeEnvBadge");
-  if (!badge) return;
   const isLocal = state.apiBase.includes("localhost") || state.apiBase.includes("127.0.0.1");
-  badge.textContent = isLocal ? "LOCAL DEV" : "PRODUCTION";
-  badge.className = `badge-env ${isLocal ? "env-local" : "env-prod"}`;
+  const envText = isLocal ? "Local Dev (8000)" : "Production";
+
+  const badge = $("#activeEnvBadge");
+  if (badge) {
+    badge.textContent = isLocal ? "LOCAL DEV" : "PRODUCTION";
+    badge.className = `badge-env ${isLocal ? "env-local" : "env-prod"}`;
+  }
+
+  const authBadge = $("#authEnvText");
+  if (authBadge) {
+    authBadge.textContent = `Environment: ${envText}`;
+  }
 }
 
 window.setApiTarget = function(url) {
-  const input = $("#adminApiUrlInput");
-  if (input) input.value = url;
+  state.apiBase = url.replace(/\/+$/, "");
+  localStorage.setItem(STATE_KEY_API, state.apiBase);
+  updateEnvBadge();
+  const displayEl = $("#apiBaseDisplay");
+  if (displayEl) displayEl.textContent = state.apiBase;
 };
 
 function promptChangeApiTarget() {
@@ -192,25 +223,21 @@ function promptChangeApiTarget() {
   }
 }
 
-window.switchAuthMode = function(mode) {
-  const loginForm = $("#adminLoginForm");
-  const signupForm = $("#adminSignupForm");
-  const tabLogin = $("#tabLoginBtn");
-  const tabSignup = $("#tabSignupBtn");
-
-  if (mode === "signup") {
-    loginForm?.classList.add("hidden");
-    signupForm?.classList.remove("hidden");
-    tabLogin?.classList.remove("active");
-    tabSignup?.classList.add("active");
-  } else {
-    loginForm?.classList.remove("hidden");
-    signupForm?.classList.add("hidden");
-    tabLogin?.classList.add("active");
-    tabSignup?.classList.remove("active");
-  }
-  renderIcons();
-};
+async function loadAdminOAuthConfig() {
+  try {
+    const res = await adminApi("/admin-auth/oauth-config");
+    if (res?.data) {
+      state.googleOAuthConfig = res.data;
+      if (!res.data.google_enabled) {
+        const notice = $("#googleNotice");
+        if (notice) {
+          notice.textContent = "Google Sign-In is not configured for this environment. Please sign in with email/password.";
+          notice.classList.remove("hidden");
+        }
+      }
+    }
+  } catch (_) {}
+}
 
 window.togglePasswordVisibility = function(inputId, btnEl) {
   const input = $(`#${inputId}`);
@@ -223,65 +250,308 @@ window.togglePasswordVisibility = function(inputId, btnEl) {
   }
 };
 
-function checkUrlForInviteToken() {
+// Check for Invitation in URL (?token=... or #/invite?token=...)
+async function checkUrlForInviteToken() {
   let token = "";
-  let email = "";
-
   const params = new URLSearchParams(window.location.search);
-  if (params.get("token")) {
-    token = params.get("token");
-    email = params.get("email") || "";
-  }
+  token = params.get("token") || params.get("invitation_token");
 
-  const hash = window.location.hash;
-  if (hash.includes("token=")) {
-    const hashQuery = hash.split("?")[1];
-    if (hashQuery) {
-      const hParams = new URLSearchParams(hashQuery);
-      if (hParams.get("token")) {
-        token = hParams.get("token");
-        email = hParams.get("email") || email;
+  if (!token && window.location.hash) {
+    const hash = window.location.hash;
+    if (hash.includes("token=")) {
+      const parts = hash.split("?");
+      if (parts[1]) {
+        const hParams = new URLSearchParams(parts[1]);
+        token = hParams.get("token") || hParams.get("invitation_token");
       }
     }
   }
 
   if (token) {
-    switchAuthMode("signup");
-    const tokenInput = $("#adminSignupToken");
-    const emailInput = $("#adminSignupEmail");
-    if (tokenInput) tokenInput.value = token;
-    if (emailInput && email) emailInput.value = email;
-    toast("Administrator invitation token loaded from link.", "info");
-  } else if (window.location.hash.startsWith("#/signup")) {
-    switchAuthMode("signup");
+    await loadInvitationOnboarding(token);
+    return true;
+  }
+  return false;
+}
+
+async function loadInvitationOnboarding(token) {
+  state.currentInviteToken = token;
+  const loginSection = $("#adminLoginSection");
+  const inviteSection = $("#adminInviteSection");
+  const emailDisplay = $("#inviteEmailDisplay");
+  const roleBadge = $("#inviteRoleBadge");
+  const errBanner = $("#inviteErrorMessage");
+
+  if (errBanner) errBanner.classList.add("hidden");
+  showAuthView();
+
+  try {
+    const res = await adminApi(`/admin-auth/invitation-info?token=${encodeURIComponent(token)}`);
+    const info = res?.data;
+    if (!info || !info.valid) throw new Error("Invalid invitation token.");
+
+    state.currentInviteEmail = info.email;
+    if (emailDisplay) emailDisplay.textContent = info.email;
+    if (roleBadge) roleBadge.textContent = `ROLE: ${info.role}`;
+
+    loginSection?.classList.add("hidden");
+    inviteSection?.classList.remove("hidden");
+    toast("Administrator invitation token loaded.", "info");
+    renderIcons();
+  } catch (err) {
+    loginSection?.classList.remove("hidden");
+    inviteSection?.classList.add("hidden");
+    const msg = err.data?.message || err.message || "Administrator invitation token is invalid, expired, or already consumed.";
+    showAuthError(msg);
+  }
+}
+
+window.cancelInvitationView = function() {
+  state.currentInviteToken = null;
+  state.currentInviteEmail = null;
+  $("#adminLoginSection")?.classList.remove("hidden");
+  $("#adminInviteSection")?.classList.add("hidden");
+  window.location.hash = "";
+  history.replaceState(null, "", window.location.pathname);
+  renderIcons();
+};
+
+window.handleAdminGoogleLogin = function() {
+  if (!state.googleOAuthConfig?.google_enabled || !state.googleOAuthConfig?.google_client_id) {
+    toast("Google Sign-In is not configured for this environment. Please sign in with email and password.", "info");
+    const notice = $("#googleNotice");
+    if (notice) {
+      notice.textContent = "Google Sign-In is not configured for this environment. Please sign in with email/password.";
+      notice.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (window.google?.accounts?.oauth2) {
+    const client = google.accounts.oauth2.initCodeClient({
+      client_id: state.googleOAuthConfig.google_client_id,
+      scope: "openid email profile",
+      ux_mode: "popup",
+      callback: async (response) => {
+        if (response.code) {
+          await submitGoogleAuth({ code: response.code });
+        }
+      },
+      error_callback: () => {
+        toast("Google authentication was cancelled or encountered an error.", "error");
+      }
+    });
+    client.requestCode();
+  } else {
+    toast("Google Identity Services library is loading. Please retry in a moment.", "info");
+  }
+};
+
+window.submitGoogleAuth = async function({ code, id_token }) {
+  const btn = $("#adminGoogleLoginBtn");
+  const errorBanner = $("#authErrorMessage");
+  if (errorBanner) errorBanner.classList.add("hidden");
+  if (btn) {
+    btn.disabled = true;
+    const txt = $("#googleBtnText");
+    if (txt) txt.textContent = "Authenticating with Google...";
+  }
+
+  try {
+    const res = await adminApi("/admin-auth/google", {
+      method: "POST",
+      body: JSON.stringify({ code, id_token }),
+    });
+
+    const token = res?.data?.access_token;
+    const admin = res?.data?.admin;
+
+    if (!token) throw new Error("Google authentication did not provide an admin session.");
+
+    state.token = token;
+    state.adminUser = admin;
+    sessionStorage.setItem(STATE_KEY_TOKEN, token);
+    localStorage.removeItem(STATE_KEY_TOKEN);
+
+    showAppView();
+    updateAdminUserDisplay(admin);
+    toast(`Welcome, ${admin?.full_name || 'Administrator'}!`, "success");
+    handleHashRouting();
+  } catch (err) {
+    let msg = err.message || "Failed to authenticate with Google.";
+    if (err.status === 403) {
+      msg = err.data?.message || `Admin Access Denied. Your Google account is not authorized for the Admin Portal. Please contact the Owner Admin.`;
+    }
+    showAuthError(msg);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      const txt = $("#googleBtnText");
+      if (txt) txt.textContent = "Continue with Google";
+    }
+  }
+};
+
+window.handleInviteGoogleAccept = function() {
+  if (!state.currentInviteToken) {
+    showInviteError("No active invitation token found.");
+    return;
+  }
+
+  if (!state.googleOAuthConfig?.google_enabled || !state.googleOAuthConfig?.google_client_id) {
+    showInviteError("Google Sign-In is not configured for this environment. Please set a password below to complete setup.");
+    return;
+  }
+
+  if (window.google?.accounts?.oauth2) {
+    const client = google.accounts.oauth2.initCodeClient({
+      client_id: state.googleOAuthConfig.google_client_id,
+      scope: "openid email profile",
+      ux_mode: "popup",
+      callback: async (response) => {
+        if (response.code) {
+          await submitInviteGoogleAccept({ code: response.code });
+        }
+      },
+      error_callback: () => {
+        toast("Google authorization was cancelled.", "error");
+      }
+    });
+    client.requestCode();
+  } else {
+    toast("Google Identity Services library is loading. Please retry in a moment.", "info");
+  }
+};
+
+window.submitInviteGoogleAccept = async function({ code, id_token }) {
+  const btn = $("#inviteGoogleBtn");
+  const errBanner = $("#inviteErrorMessage");
+  if (errBanner) errBanner.classList.add("hidden");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await adminApi("/admin-auth/google/accept-invitation", {
+      method: "POST",
+      body: JSON.stringify({
+        invitation_token: state.currentInviteToken,
+        code,
+        id_token,
+      }),
+    });
+
+    const token = res?.data?.access_token;
+    const admin = res?.data?.admin;
+    if (!token) throw new Error("Onboarding did not return a valid session token.");
+
+    state.token = token;
+    state.adminUser = admin;
+    sessionStorage.setItem(STATE_KEY_TOKEN, token);
+    localStorage.removeItem(STATE_KEY_TOKEN);
+
+    showAppView();
+    updateAdminUserDisplay(admin);
+    toast("Administrator account provisioned via Google successfully!", "success");
+    window.location.hash = "";
+    history.replaceState(null, "", window.location.pathname);
+    handleHashRouting();
+  } catch (err) {
+    const msg = err.data?.message || err.message || "Failed to accept invitation with Google.";
+    showInviteError(msg);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+async function handleInvitePasswordSubmit(e) {
+  e.preventDefault();
+  const full_name = $("#inviteFullName")?.value.trim();
+  const password = $("#invitePassword")?.value;
+  const confirm = $("#invitePasswordConfirm")?.value;
+  const btn = $("#inviteSubmitBtn");
+
+  if (!full_name || !password || !confirm) {
+    showInviteError("Please fill in all required fields.");
+    return;
+  }
+
+  if (password.length < 8) {
+    showInviteError("Password must be at least 8 characters long.");
+    return;
+  }
+
+  if (password !== confirm) {
+    showInviteError("Passwords do not match. Please verify and re-enter.");
+    return;
+  }
+
+  const errBanner = $("#inviteErrorMessage");
+  if (errBanner) errBanner.classList.add("hidden");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>Activating Account...</span>`;
+  }
+
+  try {
+    const res = await adminApi("/admin-auth/signup", {
+      method: "POST",
+      body: JSON.stringify({
+        invitation_token: state.currentInviteToken,
+        full_name,
+        password,
+      }),
+    });
+
+    const token = res?.data?.access_token;
+    const admin = res?.data?.admin;
+    if (!token) throw new Error("Account activation did not return a session token.");
+
+    state.token = token;
+    state.adminUser = admin;
+    sessionStorage.setItem(STATE_KEY_TOKEN, token);
+    localStorage.removeItem(STATE_KEY_TOKEN);
+
+    showAppView();
+    updateAdminUserDisplay(admin);
+    toast("Administrator account activated successfully!", "success");
+    window.location.hash = "";
+    history.replaceState(null, "", window.location.pathname);
+    handleHashRouting();
+  } catch (err) {
+    const msg = err.data?.message || err.message || "Failed to activate administrator account.";
+    showInviteError(msg);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="shield-check"></i><span>Complete Account Setup</span>`;
+      renderIcons();
+    }
+  }
+}
+
+function showInviteError(msg) {
+  const errorBanner = $("#inviteErrorMessage");
+  if (errorBanner) {
+    errorBanner.textContent = msg;
+    errorBanner.classList.remove("hidden");
   }
 }
 
 // Authentication Handlers
 async function handleAdminLogin(e) {
   e.preventDefault();
-  const identifier = $("#adminEmailInput")?.value.trim();
+  const email = $("#adminEmailInput")?.value.trim();
   const password = $("#adminPasswordInput")?.value;
-  const apiUrl = $("#adminApiUrlInput")?.value.trim();
   const remember = $("#rememberEmailCheckbox")?.checked;
   const errorBanner = $("#authErrorMessage");
   const loginBtn = $("#adminLoginBtn");
 
-  if (!identifier || !password) {
-    showAuthError("Please provide both email/username and password.");
+  if (!email || !password) {
+    showAuthError("Please provide both administrator email and password.");
     return;
   }
 
-  if (apiUrl) {
-    state.apiBase = apiUrl.replace(/\/+$/, "");
-    localStorage.setItem(STATE_KEY_API, state.apiBase);
-    const displayEl = $("#apiBaseDisplay");
-    if (displayEl) displayEl.textContent = state.apiBase;
-    updateEnvBadge();
-  }
-
   if (remember) {
-    localStorage.setItem(STATE_KEY_REMEMBER_EMAIL, identifier);
+    localStorage.setItem(STATE_KEY_REMEMBER_EMAIL, email);
   } else {
     localStorage.removeItem(STATE_KEY_REMEMBER_EMAIL);
   }
@@ -289,7 +559,7 @@ async function handleAdminLogin(e) {
   if (errorBanner) errorBanner.classList.add("hidden");
   if (loginBtn) {
     loginBtn.disabled = true;
-    loginBtn.innerHTML = `<span>Authenticating...</span>`;
+    loginBtn.innerHTML = `<span>Signing In...</span>`;
   }
 
   try {
@@ -299,7 +569,7 @@ async function handleAdminLogin(e) {
     try {
       const res = await adminApi("/admin-auth/login", {
         method: "POST",
-        body: JSON.stringify({ email_or_username: identifier, password }),
+        body: JSON.stringify({ email_or_username: email, password }),
       });
       token = res?.data?.access_token;
       admin = res?.data?.admin;
@@ -308,7 +578,7 @@ async function handleAdminLogin(e) {
         // Fallback check: legacy user auth if promoting initial admin
         const fbRes = await adminApi("/auth/login", {
           method: "POST",
-          body: JSON.stringify({ email: identifier, password }),
+          body: JSON.stringify({ email, password }),
         });
         if (fbRes?.data?.user?.role === "USER") {
           const err = new Error("Access Denied: Standard user accounts cannot access the dedicated Admin Portal.");
@@ -330,14 +600,15 @@ async function handleAdminLogin(e) {
 
     state.token = token;
     state.adminUser = admin;
-    localStorage.setItem(STATE_KEY_TOKEN, token);
+    sessionStorage.setItem(STATE_KEY_TOKEN, token);
+    localStorage.removeItem(STATE_KEY_TOKEN);
 
     showAppView();
     updateAdminUserDisplay(admin);
     toast(`Welcome, ${admin?.full_name || 'Administrator'}!`, "success");
     handleHashRouting();
   } catch (err) {
-    let msg = err.message || "Failed to authenticate administrator.";
+    let msg = err.data?.message || err.message || "Failed to authenticate administrator.";
     if (err.status === 403) {
       msg = "Access Denied: Standard user accounts cannot access the dedicated Admin Portal.";
     }
@@ -345,80 +616,7 @@ async function handleAdminLogin(e) {
   } finally {
     if (loginBtn) {
       loginBtn.disabled = false;
-      loginBtn.innerHTML = `<i data-lucide="log-in"></i><span>Authenticate Administrator</span>`;
-      renderIcons();
-    }
-  }
-}
-
-async function handleAdminSignup(e) {
-  e.preventDefault();
-  const full_name = $("#adminSignupName")?.value.trim();
-  const email = $("#adminSignupEmail")?.value.trim();
-  const username = $("#adminSignupUsername")?.value.trim() || undefined;
-  const invitation_token = $("#adminSignupToken")?.value.trim();
-  const password = $("#adminSignupPassword")?.value;
-  const confirm_password = $("#adminSignupConfirm")?.value;
-  const errorBanner = $("#signupErrorMessage");
-  const signupBtn = $("#adminSignupBtn");
-
-  if (!full_name || !email || !invitation_token || !password || !confirm_password) {
-    showSignupError("Please fill in all required fields.");
-    return;
-  }
-
-  if (password.length < 8) {
-    showSignupError("Password must be at least 8 characters long.");
-    return;
-  }
-
-  if (password !== confirm_password) {
-    showSignupError("Passwords do not match. Please re-enter.");
-    return;
-  }
-
-  if (errorBanner) errorBanner.classList.add("hidden");
-  if (signupBtn) {
-    signupBtn.disabled = true;
-    signupBtn.innerHTML = `<span>Provisioning Admin Account...</span>`;
-  }
-
-  try {
-    const res = await adminApi("/admin-auth/signup", {
-      method: "POST",
-      body: JSON.stringify({
-        email,
-        full_name,
-        username,
-        invitation_token,
-        password,
-        confirm_password,
-      }),
-    });
-
-    const token = res?.data?.access_token;
-    const admin = res?.data?.admin;
-
-    if (!token) throw new Error("Admin registration did not return a session token.");
-
-    state.token = token;
-    state.adminUser = admin;
-    localStorage.setItem(STATE_KEY_TOKEN, token);
-
-    showAppView();
-    updateAdminUserDisplay(admin);
-    toast("Administrator account provisioned successfully!", "success");
-    handleHashRouting();
-  } catch (err) {
-    let msg = err.message || "Failed to create administrator account.";
-    if (err.status === 400 && msg.toLowerCase().includes("invitation")) {
-      msg = "Invalid, expired, or already used invitation token. Please request a new invite from your Owner Administrator.";
-    }
-    showSignupError(msg);
-  } finally {
-    if (signupBtn) {
-      signupBtn.disabled = false;
-      signupBtn.innerHTML = `<i data-lucide="user-plus"></i><span>Create Administrator Account</span>`;
+      loginBtn.innerHTML = `<i data-lucide="log-in"></i><span>Sign In</span>`;
       renderIcons();
     }
   }
@@ -432,17 +630,10 @@ function showAuthError(msg) {
   }
 }
 
-function showSignupError(msg) {
-  const errorBanner = $("#signupErrorMessage");
-  if (errorBanner) {
-    errorBanner.textContent = msg;
-    errorBanner.classList.remove("hidden");
-  }
-}
-
 function handleAdminLogout(msg = "") {
   state.token = "";
   state.adminUser = null;
+  sessionStorage.removeItem(STATE_KEY_TOKEN);
   localStorage.removeItem(STATE_KEY_TOKEN);
   showAuthView();
   if (msg) toast(msg, "info");
@@ -1238,11 +1429,11 @@ async function handleCreateInvitation(e) {
 window.copyLatestInviteLink = function() {
   if (!state.latestInvite) return;
   const baseUrl = window.location.origin + window.location.pathname;
-  const link = `${baseUrl}#/signup?token=${state.latestInvite.raw_token}&email=${encodeURIComponent(state.latestInvite.email)}`;
+  const link = `${baseUrl}#/invite?token=${state.latestInvite.raw_token}`;
   navigator.clipboard.writeText(link).then(() => {
-    toast("Invitation signup link copied to clipboard!", "success");
+    toast("Invitation link copied to clipboard!", "success");
   }).catch(() => {
-    prompt("Copy Invitation Signup Link:", link);
+    prompt("Copy Invitation Link:", link);
   });
 };
 

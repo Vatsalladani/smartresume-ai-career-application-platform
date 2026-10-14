@@ -300,3 +300,126 @@ def test_feature_flags_and_audit_logging_by_admin(client: TestClient, clean_admi
             json={"flags": {"voice_interview_enabled": True}},
             headers=headers,
         )
+
+
+def test_admin_oauth_config_endpoint(client: TestClient):
+    """Verifies that GET /api/v1/admin-auth/oauth-config returns configuration details without authentication."""
+    res = client.get("/api/v1/admin-auth/oauth-config")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert "google_enabled" in data
+
+
+def test_admin_invitation_info_endpoint(client: TestClient, clean_admin_db: Session):
+    """Verifies that GET /api/v1/admin-auth/invitation-info inspects invitations safely without consuming them."""
+    # 1. Create invitation
+    invitation, raw_token = admin_auth_service.create_admin_invitation(
+        clean_admin_db,
+        email="invitee.info@smartresume.ai",
+        role="ADMIN",
+    )
+
+    # 2. Query invitation-info
+    res = client.get(f"/api/v1/admin-auth/invitation-info?token={raw_token}")
+    assert res.status_code == 200
+    info = res.json()["data"]
+    assert info["valid"] is True
+    assert info["email"] == "invitee.info@smartresume.ai"
+    assert info["role"] == "ADMIN"
+    assert info["status"] == "ACTIVE"
+
+    # 3. Invalid token returns 404
+    invalid_res = client.get("/api/v1/admin-auth/invitation-info?token=adm_inv_nonexistent_token_12345")
+    assert invalid_res.status_code == 404
+
+    # 4. Consumed token returns 400
+    invitation.is_consumed = True
+    clean_admin_db.commit()
+    consumed_res = client.get(f"/api/v1/admin-auth/invitation-info?token={raw_token}")
+    assert consumed_res.status_code == 400
+    assert "already been accepted" in consumed_res.json()["message"].lower()
+
+
+def test_admin_google_login_security(client: TestClient, clean_admin_db: Session, monkeypatch):
+    """Verifies that Google auth strictly rejects unauthorized users (403) and allows active admins."""
+    # Mock verify_google_identity
+    async def mock_verify_google(code=None, id_token=None, redirect_uri=None):
+        if id_token == "token_unauthorized":
+            return {"email": "unauthorized.person@gmail.com", "full_name": "Unauthorized Person", "sub": "123"}
+        elif id_token == "token_authorized":
+            return {"email": "real.admin@smartresume.ai", "full_name": "Real Admin", "sub": "456"}
+        raise Exception("Invalid token")
+
+    monkeypatch.setattr(admin_auth_service, "verify_google_identity", mock_verify_google)
+
+    # 1. Unauthorized Google user -> 403 Forbidden
+    res_unauth = client.post("/api/v1/admin-auth/google", json={"id_token": "token_unauthorized"})
+    assert res_unauth.status_code == 403
+    assert "Admin Access Denied" in res_unauth.json()["message"]
+
+    # 2. Provision real admin account
+    admin_auth_service.bootstrap_owner_admin(
+        clean_admin_db,
+        email="real.admin@smartresume.ai",
+        password="SecureAdminPass123!",
+        full_name="Real Admin",
+    )
+
+    # 3. Authorized Google user -> 200 OK + Admin Token
+    res_auth = client.post("/api/v1/admin-auth/google", json={"id_token": "token_authorized"})
+    assert res_auth.status_code == 200
+    data = res_auth.json()["data"]
+    assert "access_token" in data
+    assert data["admin"]["email"] == "real.admin@smartresume.ai"
+
+    # Token works on admin endpoints
+    headers = {"Authorization": f"Bearer {data['access_token']}"}
+    assert client.get("/api/v1/admin/overview", headers=headers).status_code == 200
+
+
+def test_admin_google_accept_invitation_flow(client: TestClient, clean_admin_db: Session, monkeypatch):
+    """Verifies that invitation onboarding via Google checks email matching and provisions the admin."""
+    # Mock verify_google_identity
+    async def mock_verify_google(code=None, id_token=None, redirect_uri=None):
+        if id_token == "token_mismatch":
+            return {"email": "different.email@gmail.com", "full_name": "Different Person", "sub": "789"}
+        elif id_token == "token_match":
+            return {"email": "invitee.google@smartresume.ai", "full_name": "Invited Google User", "sub": "101"}
+        raise Exception("Invalid token")
+
+    monkeypatch.setattr(admin_auth_service, "verify_google_identity", mock_verify_google)
+
+    invitation, raw_token = admin_auth_service.create_admin_invitation(
+        clean_admin_db,
+        email="invitee.google@smartresume.ai",
+        role="ADMIN",
+    )
+
+    # 1. Email mismatch -> 400
+    res_mismatch = client.post(
+        "/api/v1/admin-auth/google/accept-invitation",
+        json={"invitation_token": raw_token, "id_token": "token_mismatch"},
+    )
+    assert res_mismatch.status_code == 400
+    assert "does not match" in res_mismatch.json()["message"].lower()
+
+    # 2. Email match -> 200 OK
+    res_match = client.post(
+        "/api/v1/admin-auth/google/accept-invitation",
+        json={"invitation_token": raw_token, "id_token": "token_match"},
+    )
+    assert res_match.status_code == 200
+    data = res_match.json()["data"]
+    assert data["admin"]["email"] == "invitee.google@smartresume.ai"
+
+    # Verify invitation is consumed
+    clean_admin_db.refresh(invitation)
+    assert invitation.is_consumed is True
+
+    # 3. Re-using the consumed invitation fails
+    res_consumed = client.post(
+        "/api/v1/admin-auth/google/accept-invitation",
+        json={"invitation_token": raw_token, "id_token": "token_match"},
+    )
+    assert res_consumed.status_code == 400
+
