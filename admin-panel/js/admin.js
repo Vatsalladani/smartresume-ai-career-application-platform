@@ -35,7 +35,6 @@ const state = {
   latestInvite: null,
   currentInviteToken: null,
   currentInviteEmail: null,
-  googleOAuthConfig: { google_enabled: false, google_client_id: null },
 };
 
 // UI Helper Utilities
@@ -100,7 +99,7 @@ async function adminApi(endpoint, options = {}) {
 
     return data;
   } catch (err) {
-    if (err.status === 401 && !endpoint.includes("/login") && !endpoint.includes("/signup") && !endpoint.includes("/google")) {
+    if (err.status === 401 && !endpoint.includes("/login") && !endpoint.includes("/signup")) {
       handleAdminLogout("Session expired. Please sign in again.");
     }
     throw err;
@@ -123,9 +122,6 @@ async function initApp() {
   }
 
   updateEnvBadge();
-
-  // Load Google OAuth status
-  await loadAdminOAuthConfig();
 
   // Bind Form Submissions
   $("#adminLoginForm")?.addEventListener("submit", handleAdminLogin);
@@ -223,22 +219,6 @@ function promptChangeApiTarget() {
   }
 }
 
-async function loadAdminOAuthConfig() {
-  try {
-    const res = await adminApi("/admin-auth/oauth-config");
-    if (res?.data) {
-      state.googleOAuthConfig = res.data;
-      if (!res.data.google_enabled) {
-        const notice = $("#googleNotice");
-        if (notice) {
-          notice.textContent = "Google Sign-In is not configured for this environment. Please sign in with email/password.";
-          notice.classList.remove("hidden");
-        }
-      }
-    }
-  } catch (_) {}
-}
-
 window.togglePasswordVisibility = function(inputId, btnEl) {
   const input = $(`#${inputId}`);
   if (!input) return;
@@ -314,152 +294,6 @@ window.cancelInvitationView = function() {
   window.location.hash = "";
   history.replaceState(null, "", window.location.pathname);
   renderIcons();
-};
-
-window.handleAdminGoogleLogin = function() {
-  if (!state.googleOAuthConfig?.google_enabled || !state.googleOAuthConfig?.google_client_id) {
-    toast("Google Sign-In is not configured for this environment. Please sign in with email and password.", "info");
-    const notice = $("#googleNotice");
-    if (notice) {
-      notice.textContent = "Google Sign-In is not configured for this environment. Please sign in with email/password.";
-      notice.classList.remove("hidden");
-    }
-    return;
-  }
-
-  if (window.google?.accounts?.oauth2) {
-    const client = google.accounts.oauth2.initCodeClient({
-      client_id: state.googleOAuthConfig.google_client_id,
-      scope: "openid email profile",
-      ux_mode: "popup",
-      callback: async (response) => {
-        if (response.code) {
-          await submitGoogleAuth({ code: response.code });
-        }
-      },
-      error_callback: () => {
-        toast("Google authentication was cancelled or encountered an error.", "error");
-      }
-    });
-    client.requestCode();
-  } else {
-    toast("Google Identity Services library is loading. Please retry in a moment.", "info");
-  }
-};
-
-window.submitGoogleAuth = async function({ code, id_token }) {
-  const btn = $("#adminGoogleLoginBtn");
-  const errorBanner = $("#authErrorMessage");
-  if (errorBanner) errorBanner.classList.add("hidden");
-  if (btn) {
-    btn.disabled = true;
-    const txt = $("#googleBtnText");
-    if (txt) txt.textContent = "Authenticating with Google...";
-  }
-
-  try {
-    const res = await adminApi("/admin-auth/google", {
-      method: "POST",
-      body: JSON.stringify({ code, id_token }),
-    });
-
-    const token = res?.data?.access_token;
-    const admin = res?.data?.admin;
-
-    if (!token) throw new Error("Google authentication did not provide an admin session.");
-
-    state.token = token;
-    state.adminUser = admin;
-    sessionStorage.setItem(STATE_KEY_TOKEN, token);
-    localStorage.removeItem(STATE_KEY_TOKEN);
-
-    showAppView();
-    updateAdminUserDisplay(admin);
-    toast(`Welcome, ${admin?.full_name || 'Administrator'}!`, "success");
-    handleHashRouting();
-  } catch (err) {
-    let msg = err.message || "Failed to authenticate with Google.";
-    if (err.status === 403) {
-      msg = err.data?.message || `Admin Access Denied. Your Google account is not authorized for the Admin Portal. Please contact the Owner Admin.`;
-    }
-    showAuthError(msg);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      const txt = $("#googleBtnText");
-      if (txt) txt.textContent = "Continue with Google";
-    }
-  }
-};
-
-window.handleInviteGoogleAccept = function() {
-  if (!state.currentInviteToken) {
-    showInviteError("No active invitation token found.");
-    return;
-  }
-
-  if (!state.googleOAuthConfig?.google_enabled || !state.googleOAuthConfig?.google_client_id) {
-    showInviteError("Google Sign-In is not configured for this environment. Please set a password below to complete setup.");
-    return;
-  }
-
-  if (window.google?.accounts?.oauth2) {
-    const client = google.accounts.oauth2.initCodeClient({
-      client_id: state.googleOAuthConfig.google_client_id,
-      scope: "openid email profile",
-      ux_mode: "popup",
-      callback: async (response) => {
-        if (response.code) {
-          await submitInviteGoogleAccept({ code: response.code });
-        }
-      },
-      error_callback: () => {
-        toast("Google authorization was cancelled.", "error");
-      }
-    });
-    client.requestCode();
-  } else {
-    toast("Google Identity Services library is loading. Please retry in a moment.", "info");
-  }
-};
-
-window.submitInviteGoogleAccept = async function({ code, id_token }) {
-  const btn = $("#inviteGoogleBtn");
-  const errBanner = $("#inviteErrorMessage");
-  if (errBanner) errBanner.classList.add("hidden");
-  if (btn) btn.disabled = true;
-
-  try {
-    const res = await adminApi("/admin-auth/google/accept-invitation", {
-      method: "POST",
-      body: JSON.stringify({
-        invitation_token: state.currentInviteToken,
-        code,
-        id_token,
-      }),
-    });
-
-    const token = res?.data?.access_token;
-    const admin = res?.data?.admin;
-    if (!token) throw new Error("Onboarding did not return a valid session token.");
-
-    state.token = token;
-    state.adminUser = admin;
-    sessionStorage.setItem(STATE_KEY_TOKEN, token);
-    localStorage.removeItem(STATE_KEY_TOKEN);
-
-    showAppView();
-    updateAdminUserDisplay(admin);
-    toast("Administrator account provisioned via Google successfully!", "success");
-    window.location.hash = "";
-    history.replaceState(null, "", window.location.pathname);
-    handleHashRouting();
-  } catch (err) {
-    const msg = err.data?.message || err.message || "Failed to accept invitation with Google.";
-    showInviteError(msg);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
 };
 
 async function handleInvitePasswordSubmit(e) {

@@ -10,12 +10,37 @@ from app.models import User
 from app.schemas.user import ChangePasswordRequest, ProfileOut, ProfileUpdate
 from app.services.audit_service import write_audit_log
 
+from datetime import datetime
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/profile")
 def get_profile(current_user: User = Depends(get_current_user)) -> dict:
-    subscription = current_user.subscription
+    sub = current_user.subscription
+    plan_name = "FREE"
+    status_str = "ACTIVE"
+    now = datetime.utcnow()
+    if sub:
+        status_str = sub.status
+        if sub.status == "ACTIVE":
+            if sub.plan_name in ("PRO_MONTHLY", "PRO_ANNUAL", "EXECUTIVE"):
+                if sub.expires_at and sub.expires_at < now:
+                    status_str = "EXPIRED"
+                    plan_name = "FREE"
+                else:
+                    plan_name = sub.plan_name
+            elif sub.plan_name == "PRO_TRIAL" or sub.is_trial:
+                if sub.trial_expires_at and sub.trial_expires_at < now:
+                    status_str = "EXPIRED"
+                    plan_name = "FREE"
+                else:
+                    plan_name = "PRO_TRIAL"
+            else:
+                plan_name = sub.plan_name or "FREE"
+        else:
+            plan_name = "FREE"
+
     return success_response(
         ProfileOut(
             id=current_user.id,
@@ -23,8 +48,8 @@ def get_profile(current_user: User = Depends(get_current_user)) -> dict:
             full_name=current_user.full_name,
             role=current_user.role,
             is_verified=current_user.is_verified,
-            plan_name=subscription.plan_name if subscription else "FREE",
-            subscription_status=subscription.status if subscription else "ACTIVE",
+            plan_name=plan_name,
+            subscription_status=status_str,
         ).model_dump()
     )
 

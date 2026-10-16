@@ -414,13 +414,45 @@ COUNTRY_GUIDELINES = {
 }
 
 
+PRO_TEMPLATE_IDS = {
+    "executive_professional",
+    "consulting_management",
+    "academic_research",
+    "two_column_professional",
+    "creative_professional",
+    "international_professional",
+    "regional_photo_cv",
+    "premium_leadership",
+}
+
+
+def is_pro_template(template_id: str) -> bool:
+    """Returns True if the template requires an active Pro subscription or trial."""
+    if not template_id:
+        return False
+    clean_id = template_id.strip().lower()
+    if clean_id in PRO_TEMPLATE_IDS:
+        return True
+    tpl = TEMPLATES_BY_ID.get(clean_id)
+    return bool(tpl and tpl.access_tier.upper() == "PRO")
+
+
 def get_all_templates(
     category: str | None = None,
     access_tier: str | None = None,
     career_level: str | None = None,
+    db: Any = None,
 ) -> list[TemplateMetadata]:
-    """Retrieve templates matching optional filter criteria."""
-    results = TEMPLATES_CATALOG
+    """Retrieve templates matching optional filter criteria, filtering out admin-disabled templates."""
+    results = list(TEMPLATES_CATALOG)
+    if db is not None:
+        try:
+            from app.services import platform_config_service
+            catalog_status = platform_config_service.get_setting("template_catalog", {}, db=db)
+            if isinstance(catalog_status, dict) and catalog_status:
+                results = [t for t in results if catalog_status.get(t.template_id) is not False]
+        except Exception:
+            pass
     if category and category.lower() != "all":
         results = [t for t in results if t.category.lower() == category.lower()]
     if access_tier and access_tier.lower() != "all":

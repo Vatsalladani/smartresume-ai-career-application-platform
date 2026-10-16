@@ -13,6 +13,8 @@ class UserOut(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    plan_name: str = "FREE"
+    subscription_status: str = "ACTIVE"
 
     model_config = {"from_attributes": True}
 

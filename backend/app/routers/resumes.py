@@ -2,7 +2,7 @@ import io
 import re
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,8 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ATSAnalysis, Resume, User
 from app.repositories.resume_repository import get_resume_version, get_user_resume
+from app.services.template_service import is_pro_template
+from app.services.quota_service import user_has_pro_access
 from app.schemas.resume import (
     ResumeCompareOut,
     ResumeCreate,
@@ -57,6 +59,12 @@ async def create_resume_endpoint(
     if "application/json" in ct:
         body = await request.json()
         payload = ResumeCreate(**body)
+        tpl = (payload.parsed_content or {}).get("template") if isinstance(payload.parsed_content, dict) else None
+        if tpl and is_pro_template(tpl) and not user_has_pro_access(db, current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Template '{tpl}' is a Pro template and requires an active Pro subscription or trial."
+            )
         raw = payload.raw_text or ""
         resume = create_resume(
             db,
@@ -110,12 +118,19 @@ def list_resumes(
 def export_profile_resume_get(
     format: Literal["pdf", "docx"] = "pdf",
     template_id: str = "classic_ats",
+    template: str | None = None,
     font_size: str = "medium",
     spacing: str = "standard",
     accent_color: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
+    eff_tpl = template or template_id
+    if eff_tpl and is_pro_template(eff_tpl) and not user_has_pro_access(db, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Exporting with Pro template '{eff_tpl}' requires an active Pro subscription or trial."
+        )
     profile = get_or_create_profile(db, current_user.id)
     candidate_name = getattr(profile, "full_name", None) or current_user.full_name or "Candidate"
     email = getattr(profile, "email", None) or current_user.email or ""
@@ -216,6 +231,11 @@ def export_profile_resume_post(
 ) -> StreamingResponse:
     target_format = (payload.get("format") or format or "pdf").lower()
     template_id = payload.get("template_id") or payload.get("template_name") or "classic_ats"
+    if template_id and is_pro_template(template_id) and not user_has_pro_access(db, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Exporting with Pro template '{template_id}' requires an active Pro subscription or trial."
+        )
     accent_color = payload.get("accent_color")
     secondary_color = payload.get("secondary_color")
     font_size = payload.get("font_size") or "medium"
@@ -400,6 +420,13 @@ def patch_resume(
     db: Session = Depends(get_db),
 ) -> dict:
     resume = get_user_resume(db, resume_id, current_user.id)
+    if payload.parsed_content and isinstance(payload.parsed_content, dict):
+        tpl = payload.parsed_content.get("template")
+        if tpl and is_pro_template(tpl) and not user_has_pro_access(db, current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Template '{tpl}' is a Pro template and requires an active Pro subscription or trial."
+            )
     update_resume(
         db,
         resume,
@@ -580,6 +607,12 @@ def export_resume(
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     resume = get_user_resume(db, resume_id, current_user.id)
+    tpl = (resume.parsed_content or {}).get("template") if isinstance(resume.parsed_content, dict) else None
+    if tpl and is_pro_template(tpl) and not user_has_pro_access(db, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Exporting with Pro template '{tpl}' requires an active Pro subscription or trial."
+        )
     analysis = None
     if analysis_id:
         analysis_row = (

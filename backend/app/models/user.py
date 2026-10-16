@@ -30,3 +30,33 @@ class User(Base):
     analyses = relationship("ATSAnalysis", back_populates="user", cascade="all, delete-orphan")
     applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+
+    @property
+    def plan_name(self) -> str:
+        sub = self.subscription
+        if not sub:
+            return "FREE"
+        if sub.status == "ACTIVE":
+            now = datetime.utcnow()
+            if sub.plan_name in ("PRO_MONTHLY", "PRO_ANNUAL", "EXECUTIVE"):
+                if sub.expires_at and sub.expires_at < now:
+                    return "FREE"
+                return sub.plan_name
+            if sub.plan_name == "PRO_TRIAL" or sub.is_trial:
+                if sub.trial_expires_at and sub.trial_expires_at < now:
+                    return "FREE"
+                return "PRO_TRIAL"
+            return sub.plan_name or "FREE"
+        return "FREE"
+
+    @property
+    def subscription_status(self) -> str:
+        sub = self.subscription
+        if not sub:
+            return "ACTIVE"
+        now = datetime.utcnow()
+        if sub.status == "ACTIVE":
+            if (sub.expires_at and sub.expires_at < now) or (sub.is_trial and sub.trial_expires_at and sub.trial_expires_at < now):
+                return "EXPIRED"
+            return "ACTIVE"
+        return sub.status

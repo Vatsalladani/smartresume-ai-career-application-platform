@@ -149,15 +149,29 @@ def verify_and_process_payment(
     settings = get_settings()
     is_test_env = settings.payment_mode == "test" or settings.payments_mode == "mock" or "test" in order_id.lower() or "mock" in order_id.lower()
 
-    # If in live mode with Razorpay credentials, verify cryptographic signature
-    if not is_test_env and settings.razorpay_key_secret and signature:
-        expected = hmac.new(
-            settings.razorpay_key_secret.encode("utf-8"),
-            f"{order_id}|{payment_id}".encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
-        if not hmac.compare_digest(expected, signature):
-            raise AppError("Payment verification failed: invalid signature.", status.HTTP_400_BAD_REQUEST)
+    # Reject malformed or arbitrary fake orders
+    if not order_id or not str(order_id).startswith("order_") or len(str(order_id)) < 10:
+        raise AppError("Payment verification failed: invalid order reference.", status.HTTP_400_BAD_REQUEST)
+
+    # Signature validation: Never trust unverified or tampered signatures
+    if signature:
+        if settings.razorpay_key_secret:
+            expected = hmac.new(
+                settings.razorpay_key_secret.encode("utf-8"),
+                f"{order_id}|{payment_id}".encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+            if not hmac.compare_digest(expected, signature):
+                raise AppError("Payment verification failed: invalid signature.", status.HTTP_400_BAD_REQUEST)
+        elif is_test_env:
+            # In test mode without live secret, only accepted test signature format is valid
+            valid_test_sig = f"sig_test_{order_id}_{payment_id}"
+            if signature != valid_test_sig and not signature.startswith("test_sig_valid_"):
+                raise AppError("Payment verification failed: invalid test signature.", status.HTTP_400_BAD_REQUEST)
+        else:
+            raise AppError("Payment verification failed: Razorpay key secret missing on server.", status.HTTP_500_INTERNAL_SERVER_ERROR)
+    elif not is_test_env:
+        raise AppError("Payment verification failed: signature is required.", status.HTTP_400_BAD_REQUEST)
 
     # Check idempotency using payment event log
     existing_event = None

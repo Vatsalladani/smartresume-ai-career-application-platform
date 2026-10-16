@@ -1750,6 +1750,7 @@ const RESUME_BUILDER_TEMPLATES = {
   executive_professional: {
     id: "executive_professional",
     name: "Executive Professional",
+    access_tier: "PRO",
     fontFamily: '"Georgia", "Times New Roman", Times, serif',
     fontId: "georgia",
     headerAlignment: "center",
@@ -1765,6 +1766,7 @@ const RESUME_BUILDER_TEMPLATES = {
   consulting_management: {
     id: "consulting_management",
     name: "Consulting Professional",
+    access_tier: "PRO",
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontId: "inter",
     headerAlignment: "left",
@@ -1780,6 +1782,7 @@ const RESUME_BUILDER_TEMPLATES = {
   academic_research: {
     id: "academic_research",
     name: "Academic / Research CV",
+    access_tier: "PRO",
     fontFamily: '"EB Garamond", Garamond, "Times New Roman", serif',
     fontId: "garamond",
     headerAlignment: "center",
@@ -1795,6 +1798,7 @@ const RESUME_BUILDER_TEMPLATES = {
   two_column_professional: {
     id: "two_column_professional",
     name: "Two-Column Professional",
+    access_tier: "PRO",
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontId: "inter",
     headerAlignment: "left",
@@ -1812,6 +1816,7 @@ const RESUME_BUILDER_TEMPLATES = {
   creative_professional: {
     id: "creative_professional",
     name: "Creative Professional",
+    access_tier: "PRO",
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontId: "inter",
     headerAlignment: "left",
@@ -1828,6 +1833,7 @@ const RESUME_BUILDER_TEMPLATES = {
   international_professional: {
     id: "international_professional",
     name: "Global / International",
+    access_tier: "PRO",
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontId: "inter",
     headerAlignment: "left",
@@ -1844,6 +1850,7 @@ const RESUME_BUILDER_TEMPLATES = {
   regional_photo_cv: {
     id: "regional_photo_cv",
     name: "Regional Photo CV",
+    access_tier: "PRO",
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     fontId: "helvetica",
     headerAlignment: "left",
@@ -1860,6 +1867,7 @@ const RESUME_BUILDER_TEMPLATES = {
   premium_leadership: {
     id: "premium_leadership",
     name: "Premium Leadership",
+    access_tier: "PRO",
     fontFamily: '"Georgia", "Times New Roman", Times, serif',
     fontId: "georgia",
     headerAlignment: "center",
@@ -4388,7 +4396,14 @@ function wireResumeBuilder() {
   // Template select
   $("#builderTemplateSelect")?.addEventListener("change", (e) => {
     const val = e.target.value;
-    const prevTpl = resumeBuilderState.template || "classic_ats";
+    const prevTpl = resumeBuilderState.template || state.activeTemplateId || "classic_ats";
+    if (typeof isProTemplate === "function" && isProTemplate(val) && typeof hasActiveProAccess === "function" && !hasActiveProAccess()) {
+      e.target.value = prevTpl;
+      if (typeof selectActiveTemplate === "function") {
+        selectActiveTemplate(val);
+      }
+      return;
+    }
     const prevDefOrder = (RESUME_BUILDER_TEMPLATES[prevTpl] || {}).defaultSectionOrder;
     const isDefaultOrder = !resumeBuilderState.sectionOrder ||
       JSON.stringify(resumeBuilderState.sectionOrder) === JSON.stringify(DEFAULT_SECTION_ORDER) ||
@@ -10882,6 +10897,11 @@ async function handleUpgrade(planKey) {
       await loadBillingSummary();
       await loadPaymentHistory();
       renderDashboard();
+      if (pendingUpgradeTemplateId) {
+        const tplToApply = pendingUpgradeTemplateId;
+        pendingUpgradeTemplateId = null;
+        selectActiveTemplate(tplToApply);
+      }
       return;
     }
 
@@ -10912,13 +10932,18 @@ async function handleUpgrade(planKey) {
           await loadBillingSummary();
           await loadPaymentHistory();
           renderDashboard();
+          if (pendingUpgradeTemplateId) {
+            const tplToApply = pendingUpgradeTemplateId;
+            pendingUpgradeTemplateId = null;
+            selectActiveTemplate(tplToApply);
+          }
         } catch (err) {
           toast(err.message || "Payment verification failed. Please try again.", "error");
         }
       },
     });
     rzp.on("payment.failed", function () {
-      toast("Payment could not be completed. Please try again.", "error");
+      toast("Payment could not be completed. Your resume remains unchanged.", "error");
     });
     rzp.open();
   } catch (error) {
@@ -14031,6 +14056,47 @@ function renderPackTabContent(viewName) {
 // ==========================================================================
 // 10. RESUME TEMPLATES MODULE & CUSTOMIZER
 // ==========================================================================
+const PRO_TEMPLATE_IDS = new Set([
+  "executive_professional",
+  "consulting_management",
+  "academic_research",
+  "two_column_professional",
+  "creative_professional",
+  "international_professional",
+  "regional_photo_cv",
+  "premium_leadership",
+]);
+
+function isProTemplate(templateId) {
+  if (!templateId) return false;
+  const clean = String(templateId).trim().toLowerCase();
+  if (PRO_TEMPLATE_IDS.has(clean)) return true;
+  const t = (state.templates || []).find((x) => x.template_id === clean);
+  if (t && (t.access_tier || t.tier)) {
+    return (t.access_tier || t.tier).toUpperCase() === "PRO";
+  }
+  const b = typeof RESUME_BUILDER_TEMPLATES !== "undefined" && RESUME_BUILDER_TEMPLATES[clean];
+  if (b && (b.access_tier || b.tier)) {
+    return (b.access_tier || b.tier).toUpperCase() === "PRO";
+  }
+  return false;
+}
+
+function hasActiveProAccess() {
+  const user = state.user;
+  if (!user) return false;
+  const status = String(user.subscription_status || "").toUpperCase();
+  const plan = String(user.plan_name || "").toUpperCase();
+  if (status !== "ACTIVE" && status !== "TRIALING") return false;
+  if (plan === "PRO_MONTHLY" || plan === "PRO_ANNUAL" || plan === "EXECUTIVE") return true;
+  if (plan === "PRO_TRIAL" || !!user.is_trial) return true;
+  return false;
+}
+
+window.PRO_TEMPLATE_IDS = PRO_TEMPLATE_IDS;
+window.isProTemplate = isProTemplate;
+window.hasActiveProAccess = hasActiveProAccess;
+
 let activePreviewTemplateId = null;
 let pendingUpgradeTemplateId = null;
 window._currentDemoResumeState = null;
@@ -14375,27 +14441,35 @@ function wireTemplates() {
   });
 
   // Upgrade Modal Actions
+  $("#closeTemplateUpgradeBtn")?.addEventListener("click", () => {
+    $("#templateUpgradeModal")?.classList.add("hidden");
+    pendingUpgradeTemplateId = null;
+  });
+
   $("#upgradeModalPreviewBtn")?.addEventListener("click", () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
     if (pendingUpgradeTemplateId) openTemplatePreview(pendingUpgradeTemplateId);
   });
 
-  $("#upgradeModalTrialUseBtn")?.addEventListener("click", () => {
+  $("#upgradeModalNotNowBtn")?.addEventListener("click", () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
-    if (pendingUpgradeTemplateId) selectActiveTemplate(pendingUpgradeTemplateId);
+    pendingUpgradeTemplateId = null;
   });
 
-  $("#upgradeModalMonthlyBtn")?.addEventListener("click", () => {
+  const onContinuePro = () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
     handleUpgrade("PRO_MONTHLY");
-  });
+  };
+  $("#upgradeModalContinueProBtn")?.addEventListener("click", onContinuePro);
+  $("#upgradeModalFooterProBtn")?.addEventListener("click", onContinuePro);
+  $("#upgradeModalMonthlyBtn")?.addEventListener("click", onContinuePro);
 
   $("#upgradeModalAnnualBtn")?.addEventListener("click", () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
     handleUpgrade("PRO_ANNUAL");
   });
 
-  $("#upgradeModalActionBtn")?.addEventListener("click", async () => {
+  const onStartTrial = async () => {
     $("#templateUpgradeModal")?.classList.add("hidden");
     try {
       toast("Activating 7-Day Pro Trial...");
@@ -14405,11 +14479,24 @@ function wireTemplates() {
       renderUserBar();
       await loadBillingSummary();
       if (pendingUpgradeTemplateId) {
-        selectActiveTemplate(pendingUpgradeTemplateId);
+        const tplToApply = pendingUpgradeTemplateId;
+        pendingUpgradeTemplateId = null;
+        selectActiveTemplate(tplToApply);
       }
     } catch (err) {
-      toast("Navigating to billing plans...", "info");
+      toast(err.message || "Could not start trial. Navigating to billing...", "info");
       navigateToTab("billing");
+    }
+  };
+  $("#upgradeModalTrialBtn")?.addEventListener("click", onStartTrial);
+  $("#upgradeModalActionBtn")?.addEventListener("click", onStartTrial);
+
+  $("#upgradeModalTrialUseBtn")?.addEventListener("click", () => {
+    $("#templateUpgradeModal")?.classList.add("hidden");
+    if (pendingUpgradeTemplateId) {
+      const tplToApply = pendingUpgradeTemplateId;
+      pendingUpgradeTemplateId = null;
+      selectActiveTemplate(tplToApply);
     }
   });
 
@@ -15227,41 +15314,48 @@ function openTemplateCompareModal() {
 }
 
 function selectActiveTemplate(templateId) {
-  const t = (state.templates || []).find((x) => x.template_id === templateId) || {
-    name: capitalize(templateId.replace(/_/g, " ")),
-    tier: "FREE",
-    category: "Professional",
-    description: "",
-  };
+  const cleanId = String(templateId || "").trim();
+  const isPro = typeof isProTemplate === "function" ? isProTemplate(cleanId) : false;
+  const hasAccess = typeof hasActiveProAccess === "function" ? hasActiveProAccess() : false;
 
-  const tier = t.access_tier || t.tier || "FREE";
-  const isPro = tier.toUpperCase() === "PRO";
-  const userPlan = state.user?.plan_name || "FREE";
-  const hasProAccess = userPlan === "PRO_MONTHLY" || userPlan === "PRO_ANNUAL" || userPlan === "PRO_TRIAL";
+  const t = (state.templates || []).find((x) => x.template_id === cleanId) ||
+            (typeof RESUME_BUILDER_TEMPLATES !== "undefined" && RESUME_BUILDER_TEMPLATES[cleanId]) || {
+              name: capitalize(cleanId.replace(/_/g, " ")),
+              access_tier: isPro ? "PRO" : "FREE",
+              category: "Professional",
+              description: "",
+            };
 
-  if (isPro && !hasProAccess) {
-    pendingUpgradeTemplateId = templateId;
-    $("#upgradeModalTitle").innerHTML = `<i data-lucide="sparkles" style="color: #d97706;"></i> Pro Template: ${escapeHtml(t.name)}`;
-    $("#upgradeModalSubtitle").textContent = `This specialized ${escapeHtml(t.category)} template is included with SmartResume Pro.`;
-    $("#upgradeModalDesc").textContent = t.description || "Engineered for maximum recruiter readability, leadership scope, and ATS compliance.";
+  if (isPro && !hasAccess) {
+    pendingUpgradeTemplateId = cleanId;
+    const tName = t.name || capitalize(cleanId.replace(/_/g, " "));
+    const titleEl = $("#upgradeModalTitle");
+    if (titleEl) titleEl.textContent = `Pro Template: ${tName}`;
+    const nameEl = $("#upgradeModalTplName");
+    if (nameEl) nameEl.textContent = tName;
+    const subEl = $("#upgradeModalSubtitle");
+    if (subEl) subEl.textContent = `This specialized ${t.category || "Professional"} layout requires an active SmartResume Pro subscription or trial.`;
+    const descEl = $("#upgradeModalDesc");
+    if (descEl) descEl.textContent = t.description || "Engineered for maximum recruiter readability, leadership scope, and ATS compliance.";
+    const atsEl = $("#upgradeModalAtsRating");
+    if (atsEl) atsEl.innerHTML = `<i data-lucide="shield-check"></i> ${escapeHtml(t.ats_rating || "ATS-Friendly")}`;
 
-    // Show trial box if user has trial or can start trial
-    const isTrialActive = userPlan === "PRO_TRIAL";
+    // Show trial box if user has trial
+    const isTrialActive = state.user?.plan_name === "PRO_TRIAL" || !!state.user?.is_trial;
     $("#upgradeModalTrialActiveBox")?.classList.toggle("hidden", !isTrialActive);
-    $("#upgradeModalTrialAvailableBox")?.classList.toggle("hidden", isTrialActive);
 
     $("#templateUpgradeModal")?.classList.remove("hidden");
     drawIcons();
     return;
   }
 
-  state.activeTemplateId = templateId;
-  localStorage.setItem("activeTemplateId", templateId);
+  state.activeTemplateId = cleanId;
+  localStorage.setItem("activeTemplateId", cleanId);
 
   // Apply template to Resume Builder
   if (typeof resumeBuilderState !== "undefined" && resumeBuilderState) {
-    resumeBuilderState.template = templateId;
-    const tplConfig = RESUME_BUILDER_TEMPLATES[templateId];
+    resumeBuilderState.template = cleanId;
+    const tplConfig = typeof RESUME_BUILDER_TEMPLATES !== "undefined" ? RESUME_BUILDER_TEMPLATES[cleanId] : null;
     if (tplConfig) {
       if (t.font_family_default || tplConfig.fontFamily) {
         resumeBuilderState.fontFamily = t.font_family_default || tplConfig.fontFamily;
@@ -15288,6 +15382,16 @@ function selectActiveTemplate(templateId) {
     if (typeof renderResumePreviewCanvas === "function") {
       renderResumePreviewCanvas();
     }
+  }
+
+  // Background sync with active resume if present
+  if (state.activeResumeId) {
+    API.request(`/templates/${cleanId}/apply`, {
+      method: "POST",
+      body: { resume_id: state.activeResumeId }
+    }).catch(err => {
+      console.warn("Template apply background sync:", err);
+    });
   }
 
   syncActiveTemplateDisplay();

@@ -3862,66 +3862,80 @@
   </div>
 
   <!-- MODAL: CONTEXTUAL TEMPLATE UPGRADE -->
-  <div id="templateUpgradeModal" class="modal-overlay hidden">
-    <div class="modal-dialog" style="max-width: 580px;">
+  <div id="templateUpgradeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="upgradeModalTitle">
+    <div class="modal-dialog" style="max-width: 600px;">
       <div class="modal-header">
         <div>
-          <h3 id="upgradeModalTitle"><i data-lucide="sparkles" style="color: #d97706;"></i> Pro Template</h3>
-          <p class="text-sm text-muted" id="upgradeModalSubtitle">This premium layout is included with SmartResume Pro.</p>
+          <span class="tier-badge pro mb-1" style="display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="sparkles"></i> PRO TEMPLATE</span>
+          <h3 id="upgradeModalTitle" style="margin-top: 4px;">Pro Template: Global / International Professional</h3>
+          <p class="text-sm text-muted" id="upgradeModalSubtitle">This specialized layout requires an active SmartResume Pro subscription or trial.</p>
         </div>
-        <button id="closeTemplateUpgradeBtn" class="icon-btn" type="button"><i data-lucide="x"></i></button>
+        <button id="closeTemplateUpgradeBtn" class="icon-btn" type="button" title="Close"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
-        <p id="upgradeModalDesc" class="text-sm mb-3">Engineered for specialized career depth, executive leadership, and international recruitment standards.</p>
+        <!-- Template Highlights & Benefits -->
+        <div class="panel p-3 mb-3 bg-surface-2" style="border: 1px solid var(--border); border-radius: var(--radius-md);">
+          <div class="flex-row justify-between align-center mb-2">
+            <strong id="upgradeModalTplName" class="text-sm">Global / International Professional</strong>
+            <span id="upgradeModalAtsRating" class="meta-pill ats"><i data-lucide="shield-check"></i> ATS-Friendly</span>
+          </div>
+          <p id="upgradeModalDesc" class="text-xs text-muted mb-2">Engineered for specialized career depth, executive leadership, and international recruitment standards.</p>
+          <ul class="text-xs text-muted" style="margin: 0; padding-left: 1.25rem; line-height: 1.6;">
+            <li><strong class="text-main">Enterprise ATS Calibrated:</strong> Passes strict Workday, Taleo, Greenhouse, and Lever scanners with high fidelity.</li>
+            <li><strong class="text-main">Recruiter-Optimized:</strong> High-density visual hierarchy proven to increase interview callbacks.</li>
+            <li><strong class="text-main">Universal Access:</strong> Unlocks all 8 specialized Pro templates, unlimited resume versions, and priority exports.</li>
+          </ul>
+        </div>
 
         <!-- Active Trial Banner (shown if user has active trial) -->
-        <div id="upgradeModalTrialActiveBox" class="panel p-3 bg-surface-2 mb-3 hidden" style="border-left: 4px solid #10b981;">
+        <div id="upgradeModalTrialActiveBox" class="panel p-3 bg-surface-2 mb-3 hidden" style="border-left: 4px solid #10b981; border-radius: var(--radius-md);">
           <div class="flex-row align-center gap-2 mb-1">
             <span class="tier-badge trial">ACTIVE TRIAL</span>
             <strong>Included in your Pro Trial</strong>
           </div>
-          <p class="text-xs text-muted mb-2">You can use this template right now without any additional payment.</p>
-          <button id="upgradeModalTrialUseBtn" class="primary-btn sm" type="button"><i data-lucide="check"></i><span>Use Template with Pro Trial</span></button>
+          <p class="text-xs text-muted mb-2">Your 7-day Pro trial is active. You can apply and use this template immediately at no cost.</p>
+          <button id="upgradeModalTrialUseBtn" class="primary-btn sm w-full" type="button"><i data-lucide="check"></i><span>Use Template with Pro Trial</span></button>
         </div>
 
-        <!-- Pricing Option Cards -->
-        <div class="grid gap-3 mb-3" style="grid-template-columns: 1fr 1fr;">
-          <div class="panel p-3 text-center flex-col justify-between" style="border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);">
+        <!-- Pro Subscription Offer Card -->
+        <div class="panel p-4 mb-3" style="border: 2px solid var(--primary); border-radius: var(--radius-md); background: linear-gradient(180deg, rgba(37,99,235,0.04) 0%, rgba(37,99,235,0.01) 100%);">
+          <div class="flex-row justify-between align-center mb-2">
             <div>
-              <span class="text-xs font-semibold text-muted text-uppercase">Monthly Plan</span>
-              <div class="my-2">
-                <span class="text-2xl font-bold">₹49</span>
-                <span class="text-xs text-muted">/ month</span>
-              </div>
-              <p class="text-xs text-muted mb-3">Billed monthly · Cancel anytime with 1 click</p>
+              <span class="text-xs font-bold text-primary text-uppercase" style="letter-spacing: 0.05em;">Approved Plan</span>
+              <h4 style="margin: 2px 0 0; font-size: 1.15rem;">SmartResume Pro Monthly</h4>
             </div>
-            <button id="upgradeModalMonthlyBtn" class="primary-btn sm w-full" type="button">Start Pro Monthly (₹49)</button>
+            <div class="text-right">
+              <span class="text-3xl font-extrabold" style="color: var(--primary);">₹49</span>
+              <span class="text-xs text-muted">/ month</span>
+            </div>
+          </div>
+          <p class="text-xs text-muted mb-3">All taxes included. Transparent, recurring monthly subscription with complete flexibility.</p>
+          
+          <div class="grid gap-2 text-xs text-muted mb-3" style="grid-template-columns: 1fr 1fr; border-top: 1px dashed var(--border); padding-top: 8px;">
+            <div><i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px; vertical-align: middle;"></i> <strong>Billing:</strong> ₹49 every 30 days</div>
+            <div><i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px; vertical-align: middle;"></i> <strong>Renewal:</strong> Automatic renewal</div>
+            <div><i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px; vertical-align: middle;"></i> <strong>Cancellation:</strong> 1-click cancel anytime</div>
+            <div><i data-lucide="check-circle" style="color: #10b981; width: 14px; height: 14px; vertical-align: middle;"></i> <strong>No Lock-in:</strong> Keep drafts forever</div>
           </div>
 
-          <div class="panel p-3 text-center flex-col justify-between" style="border: 2px solid var(--primary); border-radius: var(--radius-md); background: var(--surface-2); position: relative;">
-            <span class="tier-badge pro" style="position: absolute; top: -10px; right: 12px;">SAVE 32%</span>
-            <div>
-              <span class="text-xs font-semibold text-primary text-uppercase">Annual Plan</span>
-              <div class="my-2">
-                <span class="text-2xl font-bold">₹399</span>
-                <span class="text-xs text-muted">/ year</span>
-              </div>
-              <p class="text-xs text-muted mb-3">Save ₹189/yr · Effective ₹33.25/mo</p>
-            </div>
-            <button id="upgradeModalAnnualBtn" class="primary-btn sm w-full" type="button">Choose Pro Annual (₹399)</button>
-          </div>
+          <button id="upgradeModalContinueProBtn" class="primary-btn w-full" type="button" style="padding: 10px 16px; font-weight: 600; font-size: 0.95rem;">
+            <i data-lucide="sparkles"></i>
+            <span>Continue with Pro (₹49/mo)</span>
+          </button>
         </div>
 
-        <div id="upgradeModalTrialAvailableBox" class="panel p-2 bg-surface-2 text-center mb-2">
-          <p class="text-xs text-muted mb-1"><i data-lucide="gift"></i> New to Pro? Start with a risk-free 7-day trial.</p>
-          <button id="upgradeModalActionBtn" class="secondary-btn sm" type="button"><i data-lucide="zap"></i><span>Start 7-Day Free Trial</span></button>
+        <!-- Alternative options (Annual & 7-day trial) -->
+        <div class="flex-row justify-between align-center text-xs text-muted px-1">
+          <button id="upgradeModalAnnualBtn" class="link-btn" type="button" style="font-size: 0.8rem;">Switch to Annual Plan (₹399/yr · Save 32%)</button>
+          <button id="upgradeModalTrialBtn" class="link-btn" type="button" style="font-size: 0.8rem;"><i data-lucide="zap" style="width: 12px; height: 12px;"></i> Start 7-Day Free Trial</button>
         </div>
-
-        <p class="text-xs text-muted text-center mt-2">Transparent pricing. No automatic hidden renewals. All 8 Pro templates unlocked.</p>
       </div>
       <div class="modal-footer flex-row justify-between align-center p-3 border-t">
-        <button class="secondary-btn sm" type="button" onclick="$('#templateUpgradeModal').classList.add('hidden')">Continue with Free Templates</button>
         <button id="upgradeModalPreviewBtn" class="ghost-btn sm" type="button"><i data-lucide="eye"></i><span>Preview Template</span></button>
+        <div class="flex-row gap-2">
+          <button id="upgradeModalNotNowBtn" class="secondary-btn sm" type="button">Not now</button>
+          <button id="upgradeModalFooterProBtn" class="primary-btn sm" type="button"><i data-lucide="sparkles"></i><span>Continue with Pro</span></button>
+        </div>
       </div>
     </div>
   </div>
