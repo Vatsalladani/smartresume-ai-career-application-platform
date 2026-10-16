@@ -270,8 +270,8 @@
             <button class="nav-item" data-tab="tailor">
               <i data-lucide="sparkles"></i><span>Improve Resume</span>
             </button>
-            <button class="nav-item" data-tab="fit">
-              <i data-lucide="crosshair"></i><span>Job Match</span>
+            <button class="nav-item" data-tab="applications">
+              <i data-lucide="briefcase"></i><span>Application Tracker</span>
             </button>
             <button class="nav-item" data-tab="interview">
               <i data-lucide="messages-square"></i><span>Interview Practice</span>
@@ -287,9 +287,6 @@
             </button>
             <button class="nav-item" data-tab="templates">
               <i data-lucide="layout-template"></i><span>Templates</span>
-            </button>
-            <button class="nav-item" data-tab="applications">
-              <i data-lucide="briefcase"></i><span>Applications</span>
             </button>
             <button class="nav-item" data-tab="billing">
               <i data-lucide="credit-card"></i><span>Billing & Plans</span>
@@ -360,7 +357,7 @@
           </div>
           <div class="view-header-actions">
             <button class="primary-btn sm" type="button" onclick="navigateToTab('resume-builder')"><i data-lucide="file-text"></i><span>Resume Builder</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('fit')"><i data-lucide="crosshair"></i><span>Match a Job</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('applications')"><i data-lucide="briefcase"></i><span>Application Tracker</span></button>
           </div>
         </div>
 
@@ -530,11 +527,11 @@
               <span>Tailor bullets & summary</span>
             </div>
           </div>
-          <div class="dash-action-btn-card" onclick="navigateToTab('fit')">
-            <i data-lucide="crosshair"></i>
+          <div class="dash-action-btn-card" onclick="navigateToTab('applications')">
+            <i data-lucide="briefcase"></i>
             <div>
-              <strong>Match a Job</strong>
-              <span>Instant fit & keywords</span>
+              <strong>Track Applications</strong>
+              <span>Pipeline & stages</span>
             </div>
           </div>
           <div class="dash-action-btn-card" onclick="navigateToTab('interview')">
@@ -2205,9 +2202,9 @@
             <p>Track every job application from saved to offer in one organized pipeline.</p>
           </div>
           <div class="view-header-actions">
-            <button class="primary-btn sm" type="button" onclick="$('#appCompany').focus()"><i data-lucide="plus"></i><span>Add Application</span></button>
-            <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Application</span></button>
-            <button class="secondary-btn sm" type="button" onclick="$('#refreshApplicationsBtn').click()"><i data-lucide="refresh-cw"></i><span>Refresh</span></button>
+            <button id="addApplicationBtn" class="primary-btn sm" type="button" onclick="openAddApplicationModal()"><i data-lucide="plus"></i><span>Add Application</span></button>
+            <button class="secondary-btn sm" type="button" onclick="navigateToTab('tailor')"><i data-lucide="sparkles"></i><span>Prepare Resume</span></button>
+            <button class="secondary-btn sm" type="button" onclick="loadApplications()"><i data-lucide="refresh-cw"></i><span>Refresh</span></button>
           </div>
         </div>
 
@@ -2218,65 +2215,112 @@
           <button class="subnav-pill" type="button" onclick="navigateToTab('smartapply')"><i data-lucide="external-link"></i><span>Quick Answers</span></button>
         </div>
 
-        <div class="panel p-3 mb-4 flex-row align-center gap-3" style="background: var(--surface-2); border-radius: var(--radius-md);">
-          <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px; flex-shrink: 0;"></i>
-          <p class="text-xs text-muted mb-0" style="margin: 0;">Manage your job search pipeline in one place. Link custom resumes and practice interviews for each company.</p>
+        <!-- KPI Summary Ribbon -->
+        <div class="grid four gap-3 mb-4" id="appKpiRibbon">
+          <div class="panel p-3 text-center" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <span class="text-xs text-muted block mb-1">TOTAL TRACKED</span>
+            <strong id="appKpiTotal" class="text-xl text-primary font-bold">0</strong>
+          </div>
+          <div class="panel p-3 text-center" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <span class="text-xs text-muted block mb-1">ACTIVE PIPELINE</span>
+            <strong id="appKpiActive" class="text-xl font-bold" style="color: #2563eb;">0</strong>
+          </div>
+          <div class="panel p-3 text-center" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <span class="text-xs text-muted block mb-1">INTERVIEWS</span>
+            <strong id="appKpiInterviews" class="text-xl font-bold" style="color: #8b5cf6;">0</strong>
+          </div>
+          <div class="panel p-3 text-center" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <span class="text-xs text-muted block mb-1">OFFERS RECEIVED</span>
+            <strong id="appKpiOffers" class="text-xl font-bold" style="color: #10b981;">0</strong>
+          </div>
         </div>
 
-        <div class="grid two">
-          <!-- Create / Edit Application -->
-          <form id="applicationForm" class="panel form-grid">
-            <h3 class="span-2"><i data-lucide="plus-circle"></i> Track Job Application</h3>
-            <label>Company Name
-              <input id="appCompany" required placeholder="e.g. Flipkart, Google, Uber">
-            </label>
-            <label>Role / Job Title
-              <input id="appJobTitle" required placeholder="e.g. Senior Backend Engineer">
-            </label>
-            <label>Job Posting URL
-              <input id="appJobUrl" type="url" placeholder="https://careers.company.com/job/1234">
-            </label>
-            <label>Application Status
-              <select id="appStatus">
-                <option value="SAVED">SAVED</option>
-                <option value="READY">READY</option>
-                <option value="APPLIED">APPLIED</option>
-                <option value="INTERVIEW">INTERVIEWING</option>
-                <option value="OFFER">OFFER</option>
-                <option value="REJECTED">REJECTED</option>
-                <option value="WITHDRAWN">WITHDRAWN</option>
-              </select>
-            </label>
-            <label class="span-2">Linked Resume
-              <select id="appResumeSelect">
-                <option value="">Current Active Resume</option>
-              </select>
-            </label>
-            <label class="span-2">Linked Job Posting (Job Match)
-              <select id="appJobPostingSelect">
-                <option value="">None (Standalone)</option>
-              </select>
-            </label>
-            <label class="span-2">Notes & Interview Timelines
-              <textarea id="appNotes" rows="4" placeholder="Recruiter contacts, referral information, round dates..."></textarea>
-            </label>
-            <button class="primary-btn span-2" type="submit"><i data-lucide="plus"></i><span>Save Application</span></button>
-          </form>
-
-          <!-- Tracked Applications List -->
-          <section class="panel">
-            <div class="panel-head">
-              <h3><i data-lucide="kanban"></i> Tracked Applications</h3>
-              <button id="refreshApplicationsBtn" class="icon-btn" type="button" title="Refresh application list"><i data-lucide="refresh-cw"></i></button>
-            </div>
-            <div id="applicationList" class="cards-list">
-              <div class="empty-state-card">
-                <i data-lucide="briefcase"></i>
-                <h4>No tracked applications</h4>
-                <p>Track your job submissions, interview stages, and offers in one organized dashboard.</p>
+        <!-- Search, Filter & Controls Toolbar -->
+        <div class="panel p-3 mb-4" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);">
+          <div class="flex-row align-center gap-2 flex-wrap justify-between">
+            <div class="flex-row align-center gap-2 flex-wrap" style="flex: 1; min-width: 280px;">
+              <div style="position: relative; flex: 1; min-width: 180px;">
+                <input id="appSearchInput" type="text" class="form-input text-xs" placeholder="Search company, role, location, notes..." style="padding-left: 30px; width: 100%;">
+                <i data-lucide="search" style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted);"></i>
               </div>
+              <select id="appStatusFilter" class="form-select text-xs" style="width: auto;">
+                <option value="ALL">All Statuses</option>
+                <option value="SAVED">Saved</option>
+                <option value="PREPARING">Preparing</option>
+                <option value="APPLIED">Applied</option>
+                <option value="ASSESSMENT">Assessment</option>
+                <option value="INTERVIEW">Interviewing</option>
+                <option value="OFFER">Offer</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="WITHDRAWN">Withdrawn</option>
+              </select>
+              <select id="appSourceFilter" class="form-select text-xs" style="width: auto;">
+                <option value="ALL">All Sources</option>
+                <option value="Company Website">Company Website</option>
+                <option value="College Placement Cell">College Placement Cell</option>
+                <option value="Referral">Referral</option>
+                <option value="Job Portal">Job Portal</option>
+                <option value="Recruiter">Recruiter</option>
+                <option value="Other">Other</option>
+              </select>
+              <select id="appSortSelect" class="form-select text-xs" style="width: auto;">
+                <option value="updated_desc">Recently Updated</option>
+                <option value="company_asc">Company A-Z</option>
+                <option value="deadline_asc">Upcoming Deadline</option>
+              </select>
             </div>
-          </section>
+            <div class="flex-row align-center gap-2">
+              <label class="flex-row align-center gap-1 text-xs text-muted" style="cursor: pointer;">
+                <input type="checkbox" id="appIncludeArchivedToggle" style="cursor: pointer;">
+                <span>Show Archived</span>
+              </label>
+              <div class="view-mode-toggle flex-row gap-1">
+                <button type="button" id="appViewTableBtn" class="icon-btn xs active" title="Table View"><i data-lucide="list"></i></button>
+                <button type="button" id="appViewCardsBtn" class="icon-btn xs" title="Cards View"><i data-lucide="layout-grid"></i></button>
+              </div>
+              <button class="primary-btn xs" type="button" onclick="openAddApplicationModal()"><i data-lucide="plus"></i><span>Add</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Application List / Table Views -->
+        <div id="applicationListContainer">
+          <!-- Table View -->
+          <div id="appTableView" class="panel p-0 mb-4" style="overflow-x: auto; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <table class="w-full text-left" style="border-collapse: collapse; min-width: 760px; font-size: 0.85rem;">
+              <thead>
+                <tr style="background: var(--surface-2); border-bottom: 1px solid var(--border);">
+                  <th style="padding: 10px 14px; font-weight: 700; color: var(--text-muted); font-size: 0.75rem;">COMPANY & ROLE</th>
+                  <th style="padding: 10px 14px; font-weight: 700; color: var(--text-muted); font-size: 0.75rem;">STATUS</th>
+                  <th style="padding: 10px 14px; font-weight: 700; color: var(--text-muted); font-size: 0.75rem;">LOCATION & TYPE</th>
+                  <th style="padding: 10px 14px; font-weight: 700; color: var(--text-muted); font-size: 0.75rem;">DATES / ACTION</th>
+                  <th style="padding: 10px 14px; font-weight: 700; color: var(--text-muted); font-size: 0.75rem;">LINKED RESUME</th>
+                  <th style="padding: 10px 14px; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-align: right;">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="appTableBody">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Cards View (Initially hidden or toggleable) -->
+          <div id="appCardsView" class="cards-list hidden mb-4">
+            <!-- Dynamically rendered -->
+          </div>
+
+          <!-- Legacy compatibility anchors -->
+          <div id="applicationList" class="hidden"></div>
+          <form id="applicationForm" class="hidden">
+            <input id="appCompany">
+            <input id="appJobTitle">
+            <input id="appJobUrl">
+            <select id="appStatus"></select>
+            <select id="appResumeSelect"></select>
+            <select id="appJobPostingSelect"></select>
+            <textarea id="appNotes"></textarea>
+            <button id="refreshApplicationsBtn" type="button"></button>
+          </form>
         </div>
       </section>
 
@@ -3725,9 +3769,9 @@
         <i data-lucide="sparkles"></i>
         <span>Improve</span>
       </button>
-      <button class="mobile-nav-item" data-tab="fit" type="button">
-        <i data-lucide="crosshair"></i>
-        <span>Match</span>
+      <button class="mobile-nav-item" data-tab="applications" type="button">
+        <i data-lucide="briefcase"></i>
+        <span>Tracker</span>
       </button>
       <button class="mobile-nav-item" id="mobileMoreNavBtn" type="button">
         <i data-lucide="menu"></i>
@@ -5217,9 +5261,26 @@
                 <span id="wsNextActionDate" class="text-xs text-muted"></span>
               </div>
               <div class="flex-row align-center gap-2 wrap-gap mt-3">
-                <button class="secondary-btn xs" type="button" id="wsGoToTailorBtn"><i data-lucide="sparkles"></i><span>Application Pack & Diffs</span></button>
-                <button class="secondary-btn xs" type="button" id="wsGoToFitBtn"><i data-lucide="crosshair"></i><span>Job Match Score</span></button>
+                <button class="primary-btn xs" type="button" id="wsTailorResumeBtn"><i data-lucide="sparkles"></i><span>Tailor Resume</span></button>
+                <button class="secondary-btn xs" type="button" id="wsEditAppBtn"><i data-lucide="edit-3"></i><span>Edit Details</span></button>
+                <button class="secondary-btn xs" type="button" id="wsGoToTailorBtn"><i data-lucide="file-check-2"></i><span>Application Pack</span></button>
+                <span id="wsGoToFitBtn" class="hidden"></span>
               </div>
+            </div>
+          </div>
+
+          <div class="grid three gap-2 mb-3 text-xs" id="wsMetaGrid">
+            <div class="p-2" style="background: var(--surface-2); border-radius: var(--radius-sm);">
+              <span class="text-muted block font-semibold mb-1">Location & Arrangement</span>
+              <strong id="wsLocationDisplay">--</strong>
+            </div>
+            <div class="p-2" style="background: var(--surface-2); border-radius: var(--radius-sm);">
+              <span class="text-muted block font-semibold mb-1">Source & Salary</span>
+              <strong id="wsSourceSalaryDisplay">--</strong>
+            </div>
+            <div class="p-2" style="background: var(--surface-2); border-radius: var(--radius-sm);">
+              <span class="text-muted block font-semibold mb-1">Recruiter / Contact</span>
+              <strong id="wsContactDisplay">--</strong>
             </div>
           </div>
 
@@ -5290,6 +5351,123 @@
           <i data-lucide="messages-square"></i><span>Practice Interview</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT JOB APPLICATION -->
+  <div id="appModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+    <div class="modal-dialog" style="max-width: 680px; max-height: 92vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div class="flex-row align-center gap-2">
+          <div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: rgba(37,99,235,0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+            <i data-lucide="briefcase"></i>
+          </div>
+          <div>
+            <h3 id="appModalTitle" style="margin: 0; font-size: 1.15rem;">Add Application</h3>
+            <p class="text-xs text-muted mb-0">Track this job opportunity, customize your resume, and prepare for interviews.</p>
+          </div>
+        </div>
+        <button type="button" class="icon-btn xs" onclick="closeAppModal()" aria-label="Close dialog"><i data-lucide="x"></i></button>
+      </div>
+      <form id="appModalForm" class="modal-body form-grid gap-3" onsubmit="event.preventDefault(); handleSaveApplicationModal();">
+        <input type="hidden" id="appModalId" value="">
+
+        <!-- Primary details -->
+        <label>Company Name *
+          <input type="text" id="appModalCompany" class="form-input" placeholder="e.g. Google, Razorpay, Swiggy" required>
+        </label>
+        <label>Role / Job Title *
+          <input type="text" id="appModalJobTitle" class="form-input" placeholder="e.g. Senior Backend Engineer" required>
+        </label>
+
+        <label>Application Status *
+          <select id="appModalStatus" class="form-select">
+            <option value="SAVED" selected>Saved</option>
+            <option value="PREPARING">Preparing</option>
+            <option value="APPLIED">Applied</option>
+            <option value="ASSESSMENT">Assessment</option>
+            <option value="INTERVIEW">Interviewing</option>
+            <option value="OFFER">Offer</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="WITHDRAWN">Withdrawn</option>
+          </select>
+        </label>
+
+        <label>Work Arrangement
+          <select id="appModalWorkArrangement" class="form-select">
+            <option value="">Select (Optional)</option>
+            <option value="Remote">Remote</option>
+            <option value="Hybrid">Hybrid</option>
+            <option value="On-site">On-site</option>
+          </select>
+        </label>
+
+        <label>Location
+          <input type="text" id="appModalLocation" class="form-input" placeholder="e.g. Bengaluru, India or San Francisco, CA">
+        </label>
+
+        <label>Opportunity Source
+          <select id="appModalSource" class="form-select">
+            <option value="">Select (Optional)</option>
+            <option value="Company Website">Company Website</option>
+            <option value="College Placement Cell">College Placement Cell</option>
+            <option value="Referral">Referral</option>
+            <option value="Job Portal">Job Portal</option>
+            <option value="Recruiter">Recruiter</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+
+        <label>Salary Range (Optional)
+          <input type="text" id="appModalSalary" class="form-input" placeholder="e.g. ₹24L - ₹32L or $140k - $170k">
+        </label>
+
+        <label>Job Posting URL (Optional)
+          <input type="url" id="appModalJobUrl" class="form-input" placeholder="https://company.com/careers/job123">
+        </label>
+
+        <label>Date Applied (Optional)
+          <input type="date" id="appModalAppliedDate" class="form-input">
+        </label>
+
+        <label>Deadline / Follow-up Date (Optional)
+          <input type="date" id="appModalDeadlineDate" class="form-input">
+        </label>
+
+        <label class="span-2">Next Step / Follow-up Action (Optional)
+          <input type="text" id="appModalNextAction" class="form-input" placeholder="e.g. Submit take-home assignment, Follow up with recruiter on Friday">
+        </label>
+
+        <label class="span-2">Linked Resume
+          <select id="appModalResumeSelect" class="form-select">
+            <option value="">-- Active Resume --</option>
+          </select>
+        </label>
+
+        <!-- Recruiter / Contact info -->
+        <label>Contact / Recruiter Name
+          <input type="text" id="appModalContactName" class="form-input" placeholder="e.g. Priya Sharma">
+        </label>
+
+        <label>Contact Email or Phone
+          <input type="text" id="appModalContactEmail" class="form-input" placeholder="e.g. priya.recruiter@company.com">
+        </label>
+
+        <!-- Full JD text -->
+        <label class="span-2">Full Job Description (Used for Tailoring & Interview Prep)
+          <textarea id="appModalJobDesc" class="form-textarea" rows="5" placeholder="Paste requirements, qualifications, and responsibilities..."></textarea>
+        </label>
+
+        <!-- Notes -->
+        <label class="span-2">Personal Notes & Interview Rounds
+          <textarea id="appModalNotes" class="form-textarea" rows="3" placeholder="Referral contacts, interview notes, questions asked..."></textarea>
+        </label>
+
+        <div class="modal-footer span-2 flex-between" style="padding: 12px 0 0 0; margin-top: 8px;">
+          <button type="button" class="secondary-btn sm" onclick="closeAppModal()">Cancel</button>
+          <button type="submit" id="saveAppModalBtn" class="primary-btn sm"><i data-lucide="check"></i><span>Save Application</span></button>
+        </div>
+      </form>
     </div>
   </div>
 

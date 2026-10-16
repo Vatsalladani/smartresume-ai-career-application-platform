@@ -20,6 +20,7 @@ from app.models import (
     AuditLog,
     InterviewEvaluation,
     InterviewSession,
+    JobApplication,
     JobPosting,
     Resume,
     ResumeVersion,
@@ -101,6 +102,14 @@ def get_admin_overview(db: Session) -> dict[str, Any]:
     total_resumes = db.query(func.count(Resume.id)).filter(Resume.is_archived.is_(False)).scalar() or 0
     total_versions = db.query(func.count(ResumeVersion.id)).scalar() or 0
     total_jobs = db.query(func.count(JobPosting.id)).scalar() or 0
+    total_applications = db.query(func.count(JobApplication.id)).scalar() or 0
+    active_applications = db.query(func.count(JobApplication.id)).filter(
+        JobApplication.is_archived.is_(False),
+        ~JobApplication.status.in_(["REJECTED", "WITHDRAWN"]),
+    ).scalar() or 0
+    offers_extended = db.query(func.count(JobApplication.id)).filter(
+        JobApplication.status == "OFFER"
+    ).scalar() or 0
     total_interviews = db.query(func.count(InterviewSession.id)).scalar() or 0
     completed_interviews = db.query(func.count(InterviewSession.id)).filter(InterviewSession.status == "COMPLETED").scalar() or 0
 
@@ -133,7 +142,13 @@ def get_admin_overview(db: Session) -> dict[str, Any]:
         "document_metrics": {
             "total_resumes": total_resumes,
             "total_versions": total_versions,
-            "total_jobs_tracked": total_jobs,
+            "total_jobs_tracked": total_applications or total_jobs,
+            "total_applications": total_applications,
+        },
+        "application_metrics": {
+            "total_applications": total_applications,
+            "active_applications": active_applications,
+            "offers_extended": offers_extended,
         },
         "interview_metrics": {
             "total_sessions": total_interviews,

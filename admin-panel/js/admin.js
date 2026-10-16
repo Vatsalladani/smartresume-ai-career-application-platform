@@ -619,6 +619,8 @@ async function loadOverview() {
     if ($("#kpiTotalVersions")) $("#kpiTotalVersions").textContent = `${data.document_metrics?.total_versions ?? 0} versions recorded`;
     if ($("#kpiTotalInterviews")) $("#kpiTotalInterviews").textContent = data.interview_metrics?.total_sessions ?? 0;
     if ($("#kpiCompletedInterviews")) $("#kpiCompletedInterviews").textContent = `${data.interview_metrics?.completed_sessions ?? 0} completed sessions`;
+    if ($("#kpiTotalApplications")) $("#kpiTotalApplications").textContent = data.application_metrics?.total_applications ?? 0;
+    if ($("#kpiActiveApplications")) $("#kpiActiveApplications").textContent = `${data.application_metrics?.active_applications ?? 0} active pipelines`;
 
     const aiOps = data.ai_ops_summary || {};
     if ($("#kpiAiOpsStatus")) $("#kpiAiOpsStatus").textContent = aiOps.healthy ? "Operational" : "Degraded";
@@ -628,7 +630,21 @@ async function loadOverview() {
     const flags = data.feature_flags || {};
     const flagsContainer = $("#quickFlagsList");
     if (flagsContainer) {
-      flagsContainer.innerHTML = Object.entries(flags).slice(0, 4).map(([k, v]) => `
+      const preferredKeys = [
+        "application_tracker_enabled",
+        "focus_coaching_enabled",
+        "smartbuild_ai_wizard",
+        "gemini_live_mode",
+      ];
+      const entries = [];
+      preferredKeys.forEach((pk) => {
+        if (pk in flags) entries.push([pk, flags[pk]]);
+      });
+      Object.entries(flags).forEach(([k, v]) => {
+        if (!preferredKeys.includes(k) && entries.length < 4) entries.push([k, v]);
+      });
+
+      flagsContainer.innerHTML = entries.map(([k, v]) => `
         <div class="health-item">
           <span>${formatFlagName(k)}</span>
           <label class="toggle-switch">
@@ -1002,7 +1018,7 @@ async function loadFeatureFlags() {
       "strict_focus_mode_enabled": "Allow candidates to opt-in to Strict Focus Practice with automated violation termination.",
       "smartbuild_ai_wizard": "7-step conversational AI wizard for building grounded resumes from scratch.",
       "gemini_live_mode": "Live AI generation and evaluation with Google Gemini API.",
-      "job_radar_crawler": "Automated career opportunity scanning and job match tracking service.",
+      "application_tracker_enabled": "Enable full-lifecycle Application Tracker, interview prep linkage, and career workspace.",
       "international_workspace": "Multi-region compliance checks and international resume format adaptations.",
       "public_signup_enabled": "Permit new candidate account registration on the public application.",
       "maintenance_mode": "Put the public platform into read-only maintenance mode with advisory banner.",

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import Optional
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.responses import success_response
@@ -21,6 +23,34 @@ def _to_application_out(app: JobApplication) -> JobApplicationOut:
     return out
 
 
+@router.get("/summary")
+def get_applications_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    q = db.query(JobApplication).filter(JobApplication.user_id == current_user.id)
+    total = q.count()
+    archived = q.filter(JobApplication.is_archived.is_(True)).count()
+    active = q.filter(
+        JobApplication.is_archived.is_(False),
+        ~JobApplication.status.in_(["REJECTED", "WITHDRAWN"]),
+    ).count()
+    offers = q.filter(JobApplication.status == "OFFER").count()
+    interviews = q.filter(JobApplication.status == "INTERVIEW").count()
+    applied = q.filter(JobApplication.status == "APPLIED").count()
+    saved = q.filter(JobApplication.status == "SAVED").count()
+
+    return success_response({
+        "total": total,
+        "active": active,
+        "offers": offers,
+        "interviews": interviews,
+        "applied": applied,
+        "saved": saved,
+        "archived": archived,
+    })
+
+
 @router.post("")
 def create_application(
     payload: JobApplicationCreate,
@@ -38,13 +68,33 @@ def create_application(
 
 
 @router.get("")
-def list_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
-    rows = (
-        db.query(JobApplication)
-        .filter(JobApplication.user_id == current_user.id)
-        .order_by(JobApplication.updated_at.desc())
-        .all()
-    )
+def list_applications(
+    status: Optional[str] = Query(None, description="Filter by status"),
+    source: Optional[str] = Query(None, description="Filter by source"),
+    search: Optional[str] = Query(None, description="Search company, job_title, notes"),
+    include_archived: bool = Query(False, description="Include archived applications"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    query = db.query(JobApplication).filter(JobApplication.user_id == current_user.id)
+    if not include_archived:
+        query = query.filter(JobApplication.is_archived.is_(False))
+    if status and status.strip().upper() != "ALL":
+        query = query.filter(JobApplication.status == status.strip().upper())
+    if source and source.strip().upper() != "ALL":
+        query = query.filter(JobApplication.source == source.strip())
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        query = query.filter(
+            or_(
+                JobApplication.company.ilike(term),
+                JobApplication.job_title.ilike(term),
+                JobApplication.location.ilike(term),
+                JobApplication.contact_name.ilike(term),
+                JobApplication.notes.ilike(term),
+            )
+        )
+    rows = query.order_by(JobApplication.updated_at.desc()).all()
     return success_response([_to_application_out(row).model_dump() for row in rows])
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -19,6 +19,16 @@ class JobApplication(Base):
     job_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     job_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="SAVED")
+    location: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    work_arrangement: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    applied_date: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    deadline_date: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    salary_range: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    contact_name: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    contact_email: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    contact_phone: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     next_action: Mapped[str | None] = mapped_column(String(150), nullable=True)
     next_action_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

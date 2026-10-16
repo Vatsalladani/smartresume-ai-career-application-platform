@@ -13,6 +13,16 @@ class JobApplicationCreate(BaseModel):
     job_posting_id: int | None = None
     version_id: int | None = None
     status: str = Field(default="SAVED", max_length=30)
+    location: str = Field(default="", max_length=150)
+    work_arrangement: str = Field(default="", max_length=50)
+    source: str = Field(default="", max_length=100)
+    applied_date: str = Field(default="", max_length=50)
+    deadline_date: str = Field(default="", max_length=50)
+    salary_range: str = Field(default="", max_length=100)
+    contact_name: str = Field(default="", max_length=150)
+    contact_email: str = Field(default="", max_length=150)
+    contact_phone: str = Field(default="", max_length=50)
+    is_archived: bool = False
     notes: str | None = Field(default=None, max_length=10_000)
     next_action: str | None = Field(default=None, max_length=150)
     next_action_at: datetime | None = None
@@ -49,6 +59,16 @@ class JobApplicationUpdate(BaseModel):
     job_posting_id: int | None = None
     version_id: int | None = None
     status: str | None = Field(default=None, max_length=30)
+    location: str | None = Field(default=None, max_length=150)
+    work_arrangement: str | None = Field(default=None, max_length=50)
+    source: str | None = Field(default=None, max_length=100)
+    applied_date: str | None = Field(default=None, max_length=50)
+    deadline_date: str | None = Field(default=None, max_length=50)
+    salary_range: str | None = Field(default=None, max_length=100)
+    contact_name: str | None = Field(default=None, max_length=150)
+    contact_email: str | None = Field(default=None, max_length=150)
+    contact_phone: str | None = Field(default=None, max_length=50)
+    is_archived: bool | None = None
     notes: str | None = Field(default=None, max_length=10_000)
     next_action: str | None = Field(default=None, max_length=150)
     next_action_at: datetime | None = None
@@ -86,6 +106,16 @@ class JobApplicationOut(BaseModel):
     job_url: str | None
     job_description: str | None
     status: str
+    location: str = ""
+    work_arrangement: str = ""
+    source: str = ""
+    applied_date: str = ""
+    deadline_date: str = ""
+    salary_range: str = ""
+    contact_name: str = ""
+    contact_email: str = ""
+    contact_phone: str = ""
+    is_archived: bool = False
     notes: str | None
     next_action: str | None
     next_action_at: datetime | None

@@ -78,10 +78,10 @@ CANONICAL_DEFAULTS: dict[str, dict[str, Any]] = {
         "description": "Enable live Google Gemini 2.5 generative AI orchestration",
         "is_public": True,
     },
-    "job_radar_crawler": {
+    "application_tracker_enabled": {
         "value": True,
         "type": "boolean",
-        "description": "Enable automated Job Radar market search and tracking",
+        "description": "Enable full-lifecycle Application Tracker and preparation workspace",
         "is_public": True,
     },
     "international_workspace": {

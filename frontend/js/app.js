@@ -942,10 +942,10 @@ const ROUTES = {
   "#/evidence-vault": "evidence-vault",
   "#/resume-builder": "resume-builder",
   "#/templates": "templates",
-  "#/job-radar": "job-radar",
-  "#/job-match": "fit",
-  "#/check-job-fit": "fit",
-  "#/fit": "fit",
+  "#/job-radar": "applications",
+  "#/job-match": "applications",
+  "#/check-job-fit": "applications",
+  "#/fit": "applications",
   "#/improve-resume": "tailor",
   "#/tailor": "tailor",
   "#/prepare-application": "prepare-application",
@@ -966,8 +966,8 @@ const TAB_TO_ROUTE = {
   "evidence-vault": "#/evidence",
   "resume-builder": "#/resume-builder",
   "templates": "#/templates",
-  "job-radar": "#/job-radar",
-  "fit": "#/check-job-fit",
+  "job-radar": "#/application-tracker",
+  "fit": "#/application-tracker",
   "tailor": "#/improve-resume",
   "improve-resume": "#/improve-resume",
   "prepare-application": "#/prepare-application",
@@ -1002,17 +1002,22 @@ const TAB_MAP = {
 
 function wireNavigation() {
   function activateTab(tabName, updateHash = true) {
+    if (tabName === "fit" || tabName === "job-radar" || tabName === "job-match" || tabName === "check-job-fit") {
+      tabName = "applications";
+    }
     const validTab = TAB_MAP[tabName] ? tabName : "dashboard";
 
     // 1. Highlight sidebar & mobile navigation items (map sub-tabs to their parent journey pillar)
     const TAB_PARENT_MAP = {
       "evidence-vault": "profile",
       "templates": "resume-builder",
-      "job-radar": "fit",
+      "job-radar": "applications",
+      "fit": "applications",
       "tailor": "tailor",
       "improve-resume": "tailor",
       "prepare-application": "applications",
       "smartapply": "applications",
+      "applications": "applications",
       "career-insights": "interview",
       "insights": "interview",
     };
@@ -1024,8 +1029,8 @@ function wireNavigation() {
       "tailor": "Improve Resume",
       "improve-resume": "Improve Resume",
       "job-description": "Target a Job",
-      "applications": "Applications",
-      "fit": "Job Radar",
+      "applications": "Application Tracker",
+      "fit": "Application Tracker",
       "interview": "Interview Copilot",
       "profile": "Profile & Experience",
       "templates": "Resume Templates",
@@ -1079,7 +1084,7 @@ function wireNavigation() {
     if (validTab === "resume-builder") loadResumeBuilderView();
     if (validTab === "templates") loadTemplatesView();
     if (validTab === "evidence-vault") loadEvidenceVault();
-    if (validTab === "job-radar") loadJobRadar();
+    if (validTab === "applications") loadApplications();
     if (validTab === "career-insights") loadCareerInsights();
     if (validTab === "interview") {
       loadInterviewSessions();
@@ -10249,9 +10254,51 @@ async function exportActiveVersion(format) {
 
 // TAB 4: APPLICATIONS TRACKER & CONNECTED JOB WORKSPACE
 let currentWsAppId = null;
+let currentAppViewMode = "table";
+
+function getAppStatusBadgeHtml(status) {
+  const s = (status || "SAVED").toUpperCase();
+  const styles = {
+    SAVED: "background: rgba(100, 116, 139, 0.12); color: #64748b; border: 1px solid rgba(100, 116, 139, 0.25);",
+    PREPARING: "background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);",
+    READY: "background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);",
+    APPLIED: "background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.25);",
+    ASSESSMENT: "background: rgba(99, 102, 241, 0.12); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.25);",
+    INTERVIEW: "background: rgba(139, 92, 246, 0.12); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.25);",
+    OFFER: "background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25);",
+    REJECTED: "background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25);",
+    WITHDRAWN: "background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);",
+  };
+  const style = styles[s] || styles.SAVED;
+  return `<span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; ${style}">${escapeHtml(s)}</span>`;
+}
 
 function wireApplications() {
-  $("#applicationForm")?.addEventListener("submit", handleSaveApplication);
+  // Toolbar and filters
+  $("#appSearchInput")?.addEventListener("input", () => renderApplicationsList());
+  $("#appStatusFilter")?.addEventListener("change", () => renderApplicationsList());
+  $("#appSourceFilter")?.addEventListener("change", () => renderApplicationsList());
+  $("#appSortSelect")?.addEventListener("change", () => renderApplicationsList());
+  $("#appIncludeArchivedToggle")?.addEventListener("change", () => renderApplicationsList());
+
+  // View mode toggles
+  $("#appViewTableBtn")?.addEventListener("click", () => {
+    currentAppViewMode = "table";
+    $("#appViewTableBtn")?.classList.add("active");
+    $("#appViewCardsBtn")?.classList.remove("active");
+    $("#appTableView")?.classList.remove("hidden");
+    $("#appCardsView")?.classList.add("hidden");
+  });
+  $("#appViewCardsBtn")?.addEventListener("click", () => {
+    currentAppViewMode = "cards";
+    $("#appViewCardsBtn")?.classList.add("active");
+    $("#appViewTableBtn")?.classList.remove("active");
+    $("#appCardsView")?.classList.remove("hidden");
+    $("#appTableView")?.classList.add("hidden");
+  });
+
+  // Modal actions
+  $("#appModalForm")?.addEventListener("submit", handleSaveApplicationModal);
   $("#refreshApplicationsBtn")?.addEventListener("click", loadApplications);
 
   // Job Workspace Modal Listeners
@@ -10260,6 +10307,16 @@ function wireApplications() {
   $("#wsLaunchInterviewBtn")?.addEventListener("click", launchInterviewFromWorkspace);
   $("#wsStartPracticeNowBtn")?.addEventListener("click", launchInterviewFromWorkspace);
   $("#wsFooterLaunchBtn")?.addEventListener("click", launchInterviewFromWorkspace);
+  $("#wsTailorResumeBtn")?.addEventListener("click", () => {
+    const app = (state.applications || []).find((a) => a.id === currentWsAppId);
+    if (app) launchTailorFromApplication(app);
+    closeJobWorkspaceModal();
+  });
+  $("#wsEditAppBtn")?.addEventListener("click", () => {
+    const appId = currentWsAppId;
+    closeJobWorkspaceModal();
+    if (appId) openEditApplicationModal(appId);
+  });
 
   // Workspace subnav tabs
   $("#wsTabOverviewBtn")?.addEventListener("click", () => switchWorkspaceTab("overview"));
@@ -10304,13 +10361,9 @@ function wireApplications() {
   });
 
   $("#wsGoToTailorBtn")?.addEventListener("click", () => {
+    const app = (state.applications || []).find((a) => a.id === currentWsAppId);
+    if (app) launchTailorFromApplication(app);
     closeJobWorkspaceModal();
-    navigateToTab("tailor");
-  });
-
-  $("#wsGoToFitBtn")?.addEventListener("click", () => {
-    closeJobWorkspaceModal();
-    navigateToTab("fit");
   });
 }
 
@@ -10334,109 +10387,405 @@ function switchWorkspaceTab(tab) {
   }
 }
 
-function populateAppResumeSelect() {
-  const sel = $("#appResumeSelect");
+function populateAppModalResumeSelect(selectedResumeId = null) {
+  const sel = $("#appModalResumeSelect");
   if (!sel) return;
-  const currentVal = sel.value;
   sel.innerHTML = `<option value="">Current Active Resume (${escapeHtml(state.currentResumeTitle || "Active")})</option>`;
   (state.allResumes || []).forEach((r) => {
     const opt = document.createElement("option");
     opt.value = r.id;
     opt.textContent = `${r.title} (${r.status || "Draft"})`;
-    if (r.id === state.activeResumeId) opt.selected = true;
+    if (selectedResumeId ? r.id === selectedResumeId : r.id === state.activeResumeId) {
+      opt.selected = true;
+    }
     sel.appendChild(opt);
   });
 }
 
+function populateAppResumeSelect() {
+  populateAppModalResumeSelect();
+}
+
 async function loadApplications() {
   try {
-    const apps = await API.request("/applications");
-    state.applications = apps;
-    renderApplicationsList(apps);
-    populateAppResumeSelect();
+    // 1. Fetch summary metrics
+    try {
+      const summary = await API.request("/applications/summary");
+      if (summary) {
+        if ($("#appKpiTotal")) $("#appKpiTotal").textContent = summary.total ?? 0;
+        if ($("#appKpiActive")) $("#appKpiActive").textContent = summary.active ?? 0;
+        if ($("#appKpiInterviews")) $("#appKpiInterviews").textContent = summary.interviews ?? 0;
+        if ($("#appKpiOffers")) $("#appKpiOffers").textContent = summary.offers ?? 0;
+        if ($("#dashValJobs")) $("#dashValJobs").textContent = summary.total ?? 0;
+      }
+    } catch (_) {
+      // Degraded summary fallback
+    }
+
+    // 2. Fetch full applications list
+    const apps = await API.request("/applications?include_archived=true");
+    state.applications = apps || [];
+    renderApplicationsList();
+    populateAppModalResumeSelect();
   } catch (error) {
-    // Graceful error handling
+    console.error("Failed to load applications:", error);
   }
 }
 
-function renderApplicationsList(apps) {
-  const container = $("#applicationList");
-  container.innerHTML = "";
-  if (!apps.length) {
-    container.innerHTML = `
-      <div class="empty-state-card">
-        <i data-lucide="briefcase"></i>
-        <h4>No tracked applications</h4>
-        <p>Track your job submissions, interview stages, and offers in one organized dashboard.</p>
+function renderApplicationsList() {
+  const apps = state.applications || [];
+  const searchTerm = ($("#appSearchInput")?.value || "").toLowerCase().trim();
+  const statusFilter = $("#appStatusFilter")?.value || "ALL";
+  const sourceFilter = $("#appSourceFilter")?.value || "ALL";
+  const sortOption = $("#appSortSelect")?.value || "updated_desc";
+  const includeArchived = Boolean($("#appIncludeArchivedToggle")?.checked);
+
+  // Filter
+  let filtered = apps.filter((app) => {
+    if (!includeArchived && app.is_archived) return false;
+    if (statusFilter !== "ALL" && app.status !== statusFilter) return false;
+    if (sourceFilter !== "ALL" && app.source !== sourceFilter) return false;
+    if (searchTerm) {
+      const match =
+        (app.company && app.company.toLowerCase().includes(searchTerm)) ||
+        (app.job_title && app.job_title.toLowerCase().includes(searchTerm)) ||
+        (app.location && app.location.toLowerCase().includes(searchTerm)) ||
+        (app.contact_name && app.contact_name.toLowerCase().includes(searchTerm)) ||
+        (app.notes && app.notes.toLowerCase().includes(searchTerm));
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    if (sortOption === "company_asc") {
+      return (a.company || "").localeCompare(b.company || "");
+    }
+    if (sortOption === "deadline_asc") {
+      const dA = a.deadline_date || a.next_action_at || "9999";
+      const dB = b.deadline_date || b.next_action_at || "9999";
+      return dA.localeCompare(dB);
+    }
+    // updated_desc
+    return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+  });
+
+  const tableBody = $("#appTableBody");
+  const cardsContainer = $("#appCardsView");
+
+  if (!tableBody || !cardsContainer) return;
+
+  tableBody.innerHTML = "";
+  cardsContainer.innerHTML = "";
+
+  if (filtered.length === 0) {
+    const emptyHtml = `
+      <div class="empty-state-structured" style="padding: 40px 20px; text-align: center;">
+        <div class="empty-icon" style="width: 52px; height: 52px; margin: 0 auto 12px; background: rgba(37,99,235,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+          <i data-lucide="briefcase" style="width: 28px; height: 28px;"></i>
+        </div>
+        <h4 style="font-size: 1.05rem; margin-bottom: 6px;">${searchTerm || statusFilter !== "ALL" ? "No applications match your filter" : "No job applications tracked yet"}</h4>
+        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 480px; margin: 0 auto 16px;">
+          ${searchTerm || statusFilter !== "ALL" ? "Try clearing your search filters to view your entire career pipeline." : "Track your applications, link tailored resumes, and rehearse interview questions grounded in each role."}
+        </p>
+        <button class="primary-btn sm" type="button" onclick="openAddApplicationModal()">
+          <i data-lucide="plus"></i><span>Track Your First Opportunity</span>
+        </button>
       </div>`;
+
+    tableBody.innerHTML = `<tr><td colspan="6">${emptyHtml}</td></tr>`;
+    cardsContainer.innerHTML = emptyHtml;
     drawIcons();
     return;
   }
 
-  apps.forEach((app) => {
-    const card = document.createElement("div");
-    card.className = "card-item";
+  filtered.forEach((app) => {
     const resumeLabel = app.resume_title || (state.allResumes?.find((r) => r.id === app.resume_id)?.title) || "Active Resume";
-    card.innerHTML = `
-      <div class="card-item-header">
-        <div>
-          <h4>${escapeHtml(app.job_title)} <span class="text-muted">at</span> ${escapeHtml(app.company)}</h4>
-          <div class="flex-row align-center gap-2 mt-1">
-            <span class="badge-musthave">${escapeHtml(app.status)}</span>
-            <span class="badge-sub text-xs"><i data-lucide="file-text"></i> ${escapeHtml(resumeLabel)}</span>
-            ${app.job_url ? `<a href="${escapeHtml(app.job_url)}" target="_blank" class="text-xs text-primary ml-1">Job Link &nearr;</a>` : ""}
+    const initial = (app.company || "J").charAt(0).toUpperCase();
+    const typeLabel = [app.location, app.work_arrangement].filter(Boolean).join(" • ") || "--";
+    const dateLabel = app.applied_date ? `Applied: ${escapeHtml(app.applied_date)}` : (app.created_at ? `Saved: ${new Date(app.created_at).toLocaleDateString()}` : "--");
+    const deadlineLabel = app.deadline_date ? `<span class="text-xs text-danger block font-semibold"><i data-lucide="calendar"></i> Deadline: ${escapeHtml(app.deadline_date)}</span>` : "";
+    const nextActionLabel = app.next_action ? `<span class="badge-sub text-xs block mt-1" style="max-width: 220px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${escapeHtml(app.next_action)}"><i data-lucide="check-circle-2"></i> ${escapeHtml(app.next_action)}</span>` : "";
+
+    // 1. Table row
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid var(--border)";
+    tr.innerHTML = `
+      <td style="padding: 12px 14px;">
+        <div class="flex-row align-center gap-2">
+          <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background: rgba(37,99,235,0.1); color: var(--primary); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
+            ${escapeHtml(initial)}
+          </div>
+          <div>
+            <strong class="text-sm block" style="color: var(--text);">${escapeHtml(app.company)}</strong>
+            <span class="text-xs text-muted block">${escapeHtml(app.job_title)}</span>
+            ${app.job_url ? `<a href="${escapeHtml(app.job_url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary" style="text-decoration: underline;">Posting &nearr;</a>` : ""}
           </div>
         </div>
-        <div class="card-actions">
-          <button class="primary-btn xs" type="button" data-ws-app="${app.id}" title="Open Connected Job Workspace & Preparation Hub"><i data-lucide="briefcase"></i> Prepare for this Job</button>
-          <select class="text-xs" data-status-app="${app.id}">
-            <option value="SAVED" ${app.status === "SAVED" ? "selected" : ""}>SAVED</option>
-            <option value="READY" ${app.status === "READY" ? "selected" : ""}>READY</option>
-            <option value="APPLIED" ${app.status === "APPLIED" ? "selected" : ""}>APPLIED</option>
-            <option value="INTERVIEW" ${app.status === "INTERVIEW" ? "selected" : ""}>INTERVIEW</option>
-            <option value="OFFER" ${app.status === "OFFER" ? "selected" : ""}>OFFER</option>
-            <option value="REJECTED" ${app.status === "REJECTED" ? "selected" : ""}>REJECTED</option>
-          </select>
-          <button class="icon-btn sm" type="button" data-del-app="${app.id}"><i data-lucide="trash-2"></i></button>
+      </td>
+      <td style="padding: 12px 14px;">
+        ${getAppStatusBadgeHtml(app.status)}
+      </td>
+      <td style="padding: 12px 14px; font-size: 0.8rem; color: var(--text-muted);">
+        <div>${escapeHtml(typeLabel)}</div>
+        ${app.source ? `<span class="badge-sub text-xs" style="margin-top: 2px;">${escapeHtml(app.source)}</span>` : ""}
+      </td>
+      <td style="padding: 12px 14px; font-size: 0.8rem;">
+        <span class="text-muted block">${dateLabel}</span>
+        ${deadlineLabel}
+        ${nextActionLabel}
+      </td>
+      <td style="padding: 12px 14px; font-size: 0.8rem;">
+        <span class="badge-sub" style="font-size: 0.72rem;"><i data-lucide="file-text"></i> ${escapeHtml(resumeLabel)}</span>
+        ${app.salary_range ? `<span class="text-xs text-muted block mt-1"><i data-lucide="tag"></i> ${escapeHtml(app.salary_range)}</span>` : ""}
+      </td>
+      <td style="padding: 12px 14px; text-align: right;">
+        <div class="flex-row align-center justify-end gap-1 wrap-gap">
+          <button class="primary-btn xs" type="button" data-tailor-app="${app.id}" title="Tailor Resume for this role"><i data-lucide="sparkles"></i><span>Tailor</span></button>
+          <button class="secondary-btn xs" type="button" data-prep-app="${app.id}" title="Practice Interview for this role"><i data-lucide="messages-square"></i><span>Prep</span></button>
+          <button class="icon-btn xs" type="button" data-ws-app="${app.id}" title="View Details & Workspace"><i data-lucide="eye"></i></button>
+          <button class="icon-btn xs" type="button" data-edit-app="${app.id}" title="Edit Application"><i data-lucide="edit-3"></i></button>
+          <button class="icon-btn xs text-danger" type="button" data-del-app="${app.id}" title="Delete Application"><i data-lucide="trash-2"></i></button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+
+    // 2. Card view item
+    const card = document.createElement("div");
+    card.className = "card-item p-3 mb-2";
+    card.style.background = "var(--surface-1)";
+    card.style.border = "1px solid var(--border)";
+    card.style.borderRadius = "var(--radius-md)";
+    card.innerHTML = `
+      <div class="flex-between align-center mb-2">
+        <div class="flex-row align-center gap-2">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37,99,235,0.1); color: var(--primary); font-weight: 800; display: flex; align-items: center; justify-content: center;">
+            ${escapeHtml(initial)}
+          </div>
+          <div>
+            <h4 style="margin: 0; font-size: 0.95rem;">${escapeHtml(app.job_title)} <span class="text-muted">at</span> ${escapeHtml(app.company)}</h4>
+            <span class="text-xs text-muted">${escapeHtml(typeLabel)}</span>
+          </div>
+        </div>
+        ${getAppStatusBadgeHtml(app.status)}
+      </div>
+      <div class="flex-row align-center gap-2 flex-wrap mb-2 text-xs text-muted">
+        <span>${dateLabel}</span>
+        ${app.salary_range ? `<span>• ${escapeHtml(app.salary_range)}</span>` : ""}
+        <span class="badge-sub"><i data-lucide="file-text"></i> ${escapeHtml(resumeLabel)}</span>
+      </div>
+      ${app.next_action ? `<div class="p-2 mb-2" style="background: var(--surface-2); border-radius: var(--radius-sm); font-size: 0.78rem;"><strong>Next:</strong> ${escapeHtml(app.next_action)}</div>` : ""}
+      <div class="flex-row align-center justify-between gap-2 mt-2 pt-2" style="border-top: 1px solid var(--border);">
+        <div class="flex-row align-center gap-1">
+          <button class="primary-btn xs" type="button" data-tailor-app="${app.id}"><i data-lucide="sparkles"></i><span>Tailor</span></button>
+          <button class="secondary-btn xs" type="button" data-prep-app="${app.id}"><i data-lucide="messages-square"></i><span>Prep</span></button>
+        </div>
+        <div class="flex-row align-center gap-1">
+          <button class="icon-btn xs" type="button" data-ws-app="${app.id}" title="View Details"><i data-lucide="eye"></i></button>
+          <button class="icon-btn xs" type="button" data-edit-app="${app.id}" title="Edit"><i data-lucide="edit-3"></i></button>
+          <button class="icon-btn xs text-danger" type="button" data-del-app="${app.id}" title="Delete"><i data-lucide="trash-2"></i></button>
         </div>
       </div>
-      ${app.notes ? `<p class="text-xs text-muted mt-1">${escapeHtml(app.notes)}</p>` : ""}
     `;
-
-    card.querySelector(`[data-ws-app="${app.id}"]`)?.addEventListener("click", () => {
-      openJobWorkspaceModal(app.id);
-    });
-    card.querySelector(`[data-status-app="${app.id}"]`).addEventListener("change", (e) => updateAppStatus(app.id, e.target.value));
-    card.querySelector(`[data-del-app="${app.id}"]`).addEventListener("click", () => deleteApplication(app.id));
-    container.appendChild(card);
+    cardsContainer.appendChild(card);
   });
+
+  // Attach button event listeners
+  $$("[data-tailor-app]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const appId = Number(btn.getAttribute("data-tailor-app"));
+      const app = (state.applications || []).find((a) => a.id === appId);
+      if (app) launchTailorFromApplication(app);
+    });
+  });
+
+  $$("[data-prep-app]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const appId = Number(btn.getAttribute("data-prep-app"));
+      const app = (state.applications || []).find((a) => a.id === appId);
+      if (app) launchInterviewFromApplication(app);
+    });
+  });
+
+  $$("[data-ws-app]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const appId = Number(btn.getAttribute("data-ws-app"));
+      openJobWorkspaceModal(appId);
+    });
+  });
+
+  $$("[data-edit-app]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const appId = Number(btn.getAttribute("data-edit-app"));
+      openEditApplicationModal(appId);
+    });
+  });
+
+  $$("[data-del-app]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const appId = Number(btn.getAttribute("data-del-app"));
+      deleteApplication(appId);
+    });
+  });
+
   drawIcons();
 }
 
-async function handleSaveApplication(e) {
-  e.preventDefault();
-  const resumeSelectVal = $("#appResumeSelect")?.value;
+function openAddApplicationModal() {
+  const modal = $("#appModal");
+  if (!modal) return;
+  $("#appModalTitle").textContent = "Add Job Opportunity";
+  $("#appModalId").value = "";
+  $("#appModalCompany").value = "";
+  $("#appModalJobTitle").value = "";
+  $("#appModalStatus").value = "SAVED";
+  $("#appModalLocation").value = "";
+  $("#appModalWorkArrangement").value = "";
+  $("#appModalSource").value = "";
+  $("#appModalSalary").value = "";
+  $("#appModalJobUrl").value = "";
+  $("#appModalAppliedDate").value = "";
+  $("#appModalDeadlineDate").value = "";
+  $("#appModalNextAction").value = "";
+  $("#appModalContactName").value = "";
+  $("#appModalContactEmail").value = "";
+  $("#appModalJobDesc").value = "";
+  $("#appModalNotes").value = "";
+  populateAppModalResumeSelect();
+  modal.classList.remove("hidden");
+  drawIcons();
+  setTimeout(() => $("#appModalCompany")?.focus(), 50);
+}
+
+function openEditApplicationModal(appId) {
+  const app = (state.applications || []).find((a) => a.id === appId);
+  if (!app) return;
+  const modal = $("#appModal");
+  if (!modal) return;
+  $("#appModalTitle").textContent = `Edit Application — ${app.company}`;
+  $("#appModalId").value = app.id;
+  $("#appModalCompany").value = app.company || "";
+  $("#appModalJobTitle").value = app.job_title || "";
+  $("#appModalStatus").value = app.status || "SAVED";
+  $("#appModalLocation").value = app.location || "";
+  $("#appModalWorkArrangement").value = app.work_arrangement || "";
+  $("#appModalSource").value = app.source || "";
+  $("#appModalSalary").value = app.salary_range || "";
+  $("#appModalJobUrl").value = app.job_url || "";
+  $("#appModalAppliedDate").value = app.applied_date || "";
+  $("#appModalDeadlineDate").value = app.deadline_date || "";
+  $("#appModalNextAction").value = app.next_action || "";
+  $("#appModalContactName").value = app.contact_name || "";
+  $("#appModalContactEmail").value = app.contact_email || "";
+  $("#appModalJobDesc").value = app.job_description || "";
+  $("#appModalNotes").value = app.notes || "";
+  populateAppModalResumeSelect(app.resume_id);
+  modal.classList.remove("hidden");
+  drawIcons();
+}
+
+function closeAppModal() {
+  $("#appModal")?.classList.add("hidden");
+}
+
+async function handleSaveApplicationModal(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const appId = $("#appModalId")?.value ? Number($("#appModalId").value) : null;
+  const company = $("#appModalCompany")?.value?.trim();
+  const jobTitle = $("#appModalJobTitle")?.value?.trim();
+
+  if (!company || !jobTitle) {
+    toast("Please enter both Company and Job Title.", "error");
+    return;
+  }
+
+  const resumeSelVal = $("#appModalResumeSelect")?.value;
   const payload = {
-    company: $("#appCompany").value,
-    job_title: $("#appJobTitle").value,
-    job_url: $("#appJobUrl").value || null,
-    status: $("#appStatus").value,
-    notes: $("#appNotes").value || null,
-    resume_id: resumeSelectVal ? Number(resumeSelectVal) : (state.activeResumeId || null),
-    job_posting_id: $("#appJobPostingSelect").value ? Number($("#appJobPostingSelect").value) : null,
+    company,
+    job_title: jobTitle,
+    status: $("#appModalStatus")?.value || "SAVED",
+    location: $("#appModalLocation")?.value?.trim() || "",
+    work_arrangement: $("#appModalWorkArrangement")?.value || "",
+    source: $("#appModalSource")?.value || "",
+    salary_range: $("#appModalSalary")?.value?.trim() || "",
+    job_url: $("#appModalJobUrl")?.value?.trim() || null,
+    applied_date: $("#appModalAppliedDate")?.value || "",
+    deadline_date: $("#appModalDeadlineDate")?.value || "",
+    next_action: $("#appModalNextAction")?.value?.trim() || "",
+    contact_name: $("#appModalContactName")?.value?.trim() || "",
+    contact_email: $("#appModalContactEmail")?.value?.trim() || "",
+    job_description: $("#appModalJobDesc")?.value?.trim() || "",
+    notes: $("#appModalNotes")?.value?.trim() || "",
+    resume_id: resumeSelVal ? Number(resumeSelVal) : (state.activeResumeId || null),
   };
+
   try {
-    const res = await API.request("/applications", { method: "POST", body: payload });
-    $("#applicationForm").reset();
-    toast("Application saved.");
+    const btn = $("#saveAppModalBtn");
+    setButtonLoading(btn, true, "Saving...");
+    if (appId) {
+      await API.request(`/applications/${appId}`, { method: "PATCH", body: payload });
+      toast(`Application for ${company} updated.`);
+    } else {
+      await API.request("/applications", { method: "POST", body: payload });
+      toast(`Application for ${company} added to pipeline.`);
+    }
+    setButtonLoading(btn, false, "Save Application");
+    closeAppModal();
     await loadApplications();
     renderDashboard();
-    if (res && res.id) {
-      openJobWorkspaceModal(res.id);
-    }
   } catch (error) {
+    const btn = $("#saveAppModalBtn");
+    setButtonLoading(btn, false, "Save Application");
     toast(error.message, "error");
   }
+}
+
+async function handleSaveApplication(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  return handleSaveApplicationModal(e);
+}
+
+function launchTailorFromApplication(app) {
+  if (!app) return;
+  const targetRoleEl = $("#improveTargetRole");
+  const targetCompanyEl = $("#improveTargetCompany");
+  const targetJdEl = $("#improveJobDescription");
+  const targetPanel = $("#improveTargetJobPanel");
+
+  if (targetRoleEl) targetRoleEl.value = app.job_title || "";
+  if (targetCompanyEl) targetCompanyEl.value = app.company || "";
+  if (targetJdEl) targetJdEl.value = app.job_description || "";
+  if (targetPanel) targetPanel.classList.remove("hidden");
+
+  if (app.resume_id) {
+    state.improveResume = state.improveResume || {};
+    state.improveResume.selectedResumeId = app.resume_id;
+    const resSel = $("#improveResumeSelector");
+    if (resSel) resSel.value = app.resume_id;
+  }
+
+  navigateToTab("tailor");
+  toast(`Loaded details for ${app.job_title} at ${app.company} into Resume Tailoring.`);
+}
+
+function launchInterviewFromApplication(app) {
+  if (!app) return;
+  state.activeJobContext = {
+    role: app.job_title || "Software Engineer",
+    company: app.company || "Target Company",
+    companyUrl: "",
+    jobUrl: app.job_url || "",
+    jobId: app.job_posting_id || null,
+    resumeId: app.resume_id || state.activeResumeId || null,
+    jobDescription: app.job_description || "",
+    verification: null,
+  };
+
+  syncInterviewContextUI();
+  navigateToTab("interview");
+  toast(`Initialized Interview Copilot for ${app.job_title} at ${app.company}.`);
 }
 
 async function updateAppStatus(id, status) {
@@ -10451,7 +10800,7 @@ async function updateAppStatus(id, status) {
 }
 
 async function deleteApplication(id) {
-  if (!confirm("Delete this tracked application?")) return;
+  if (!confirm("Are you sure you want to delete this tracked application?")) return;
   try {
     await API.request(`/applications/${id}`, { method: "DELETE" });
     toast("Application deleted.");
@@ -10490,6 +10839,17 @@ async function openJobWorkspaceModal(applicationId) {
     $("#wsCompanyRoleSubtitle").textContent = `${app.job_title} at ${app.company}`;
     $("#wsAppStatusBadge").textContent = app.status;
     $("#wsQuickStatusSelect").value = app.status;
+
+    // Metadata display
+    if ($("#wsLocationDisplay")) {
+      $("#wsLocationDisplay").textContent = [app.location, app.work_arrangement].filter(Boolean).join(" • ") || "Not specified";
+    }
+    if ($("#wsSourceSalaryDisplay")) {
+      $("#wsSourceSalaryDisplay").textContent = [app.source, app.salary_range].filter(Boolean).join(" • ") || "Not specified";
+    }
+    if ($("#wsContactDisplay")) {
+      $("#wsContactDisplay").textContent = [app.contact_name, app.contact_email].filter(Boolean).join(" • ") || "Not specified";
+    }
 
     // Resume overview
     if (resume) {
@@ -10588,28 +10948,20 @@ function closeJobWorkspaceModal() {
 function launchInterviewFromWorkspace() {
   if (!currentWsAppId) return;
   const app = (state.applications || []).find((a) => a.id === currentWsAppId);
-  const role = app ? app.job_title : ($("#wsCompanyRoleSubtitle").textContent.split(" at ")[0] || "Software Engineer");
-  const company = app ? app.company : ($("#wsCompanyRoleSubtitle").textContent.split(" at ")[1] || "Target Company");
-  const resumeId = app?.resume_id || state.activeResumeId || null;
-  const jobId = app?.job_posting_id || null;
-  const jobDesc = app?.job_description || null;
-
+  if (app) {
+    launchInterviewFromApplication(app);
+  }
   closeJobWorkspaceModal();
-
-  state.activeJobContext = {
-    role,
-    company,
-    companyUrl: "",
-    jobUrl: app?.job_url || "",
-    jobId,
-    resumeId,
-    jobDescription: jobDesc,
-    verification: null,
-  };
-
-  syncInterviewContextUI();
-  navigateToTab("interview");
 }
+
+window.openAddApplicationModal = openAddApplicationModal;
+window.openEditApplicationModal = openEditApplicationModal;
+window.closeAppModal = closeAppModal;
+window.handleSaveApplicationModal = handleSaveApplicationModal;
+window.launchTailorFromApplication = launchTailorFromApplication;
+window.launchInterviewFromApplication = launchInterviewFromApplication;
+window.deleteApplication = deleteApplication;
+window.loadApplications = loadApplications;
 
 
 // TAB 5: BILLING, PRICING & PAYMENT ORCHESTRATION
